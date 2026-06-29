@@ -1,0 +1,6 @@
+{
+  "name": "Capuchino Bunny MinMin",
+  "description": "A cute pastel writing and roleplay novel creation app.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
