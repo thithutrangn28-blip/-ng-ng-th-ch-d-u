@@ -4,6 +4,8 @@ import GlamIntroScreen from "./screens/GlamIntroScreen";
 import LockScreen from "./screens/LockScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ApiProxyScreen from "./screens/ApiProxyScreen";
+import PromptMarkdownSmartContextScreen from "./screens/prompt-studio/PromptMarkdownSmartContextScreen";
+import LipstickAppScreen from "./screens/lipstick-prompt/LipstickAppScreen";
 
 export default function App() {
   const [activeScreen, setActiveScreen] = useState("welcome");
@@ -72,6 +74,8 @@ export default function App() {
       <LockScreen active={activeScreen === "lock"} onNext={() => navigate("home")} onBack={() => navigate("glamIntro")} time={time} date={dateStr} batteryLevel={batteryLevel} />
       <HomeScreen active={activeScreen === "home"} onOpenApp={(id) => navigate(id)} time={time} date={homeDateStr} />
       <ApiProxyScreen active={activeScreen === "apiProxy"} onHome={() => navigate("home")} />
+      <PromptMarkdownSmartContextScreen active={activeScreen === "promptMarkdown"} onHome={() => navigate("home")} />
+      <LipstickAppScreen active={activeScreen === "lipstick"} onHome={() => navigate("home")} />
     </main>
   );
 }

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ApiProfile, dbGetAll, dbPut, dbDelete, dbClearPrimary } from "../lib/api-db";
+import { callAIText, callAIStream, pullModels } from "../lib/api-client";
+import { getApiProxySettings, setApiProxySettings } from "../utils/apiProxy";
 
 type Props = {
   active: boolean;
@@ -24,11 +26,19 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
   const [testOutput, setTestOutput] = useState("");
   const [isError, setIsError] = useState(false);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [useLocalProxy, setUseLocalProxyState] = useState(true);
 
   const loadProfiles = async () => {
     const all = await dbGetAll();
     all.sort((a, b) => (b.primary ? 1 : 0) - (a.primary ? 1 : 0) || b.updatedAt - a.updatedAt);
     setProfiles(all);
+    setUseLocalProxyState(getApiProxySettings().useLocalProxy);
+  };
+
+  const handleToggleLocalProxy = (val: boolean) => {
+    setUseLocalProxyState(val);
+    setApiProxySettings({ useLocalProxy: val });
+    showMsg(`Đã chuyển chế độ: ${val ? "Bật Local Proxy (Chuyển tiếp qua server giúp tránh lỗi CORS & keep-alive)" : "Tắt Local Proxy (Trình duyệt gọi trực tiếp đến API Proxy của bạn)"}`);
   };
 
   useEffect(() => {
@@ -123,36 +133,19 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
     const profile = await handleSave(false);
     if (!profile) return;
     
-    showMsg("Đang test kết nối tạo nội dung qua route /api/test-proxy ...\nNếu mở file local thì route backend chưa chạy; deploy Cloudflare Pages để test thật.");
+    showMsg("Đang test kết nối tạo nội dung qua API service của app...\nNếu đang mở bản giao diện tĩnh/local preview thì backend/API service có thể chưa chạy. Vui lòng chạy bằng môi trường app có server/API service thật để test kết nối.");
     
     try {
-      const res = await fetch("/api/test-proxy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, action: "test_generation" })
+      const startTime = Date.now();
+      const sampleText = await callAIText({
+        messages: [{ role: "user", content: "Reply with exactly OK." }],
+        profileOverride: profile
       });
-
-      const text = await res.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error(
-          "Backend route /api/test-proxy không trả về JSON. Nó trả về:\n" +
-          text.slice(0, 120)
-        );
-      }
+      const elapsedMs = Date.now() - startTime;
       
-      if (!res.ok || data.ok === false) throw new Error(data.error || "Lỗi không xác định");
-      
-      let sampleText = data.sample;
-      if (data.parsedData && data.parsedData.choices && data.parsedData.choices[0]?.message?.content) {
-        sampleText = data.parsedData.choices[0].message.content;
-      }
-      
-      showMsg(`Kết nối tạo nội dung thành công.\nEndpoint: ${data.endpointUsed || profile.endpoint}\nModel: ${profile.model}\nThời gian: ${data.elapsedMs || "?"}ms\nPhản hồi mẫu: ${sampleText || "OK"}`);
+      showMsg(`Kết nối tạo nội dung thành công.\nEndpoint: ${profile.endpoint}\nModel: ${profile.model}\nThời gian: ${elapsedMs}ms\nPhản hồi mẫu: ${sampleText || "OK"}`);
     } catch (err: any) {
-      showMsg(`Chưa test được tạo nội dung.\nLý do: ${err.message}\n\nDeploy ZIP lên Cloudflare Pages để functions/api/test-proxy.js hoạt động.`, true);
+      showMsg(`Chưa test được tạo nội dung.\nLý do: ${err.message}\n\nVui lòng chạy app trong môi trường có backend/server/API service thật để route test kết nối hoạt động.`, true);
     }
   };
 
@@ -160,68 +153,28 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
     const profile = await handleSave(false);
     if (!profile) return;
     
-    showMsg("Đang test kết nối tạo nội dung (STREAM) qua route /api/ai-stream ...\n");
+    showMsg("Đang test kết nối tạo nội dung (STREAM) qua API service của app...\n");
     
-    try {
-      const payload = {
-        profile,
-        messages: [{ role: "user", content: "Reply with exactly OK." }]
-      };
+    let fullContent = "";
+    let chunkCount = 0;
+    setTestOutput("Đang nhận stream...\n");
 
-      const res = await fetch("/api/ai-stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`HTTP ${res.status}: ${text}`);
+    await callAIStream({
+      messages: [{ role: "user", content: "Reply with exactly OK." }],
+      profileOverride: profile,
+      onToken: (chunk) => {
+        chunkCount++;
+        fullContent += chunk;
+        setTestOutput(`Kết nối tạo nội dung (STREAM) thành công.\nEndpoint: ${profile.endpoint}\nModel: ${profile.model}\nSố chunk đã nhận: ${chunkCount}\n\nNội dung đang stream: ${fullContent}`);
+      },
+      onDone: (finalContent) => {
+        setIsError(false);
+        setTestOutput(`Kết nối tạo nội dung (STREAM) hoàn tất.\nEndpoint: ${profile.endpoint}\nModel: ${profile.model}\nTổng số chunk: ${chunkCount}\nNội dung cuối: ${finalContent}`);
+      },
+      onError: (err) => {
+        showMsg(`Chưa test được stream.\nLý do: ${err}`, true);
       }
-
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder("utf-8");
-      
-      let fullContent = "";
-      let chunkCount = 0;
-      let buffer = "";
-      
-      setTestOutput("Đang nhận stream...\n");
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          chunkCount++;
-          buffer += decoder.decode(value, { stream: true });
-          
-          let lines = buffer.split("\n");
-          // Keep the last incomplete line in the buffer
-          buffer = lines.pop() || "";
-          
-          for (const line of lines) {
-            if (line.startsWith("data: ") && line.trim() !== "data: [DONE]") {
-              try {
-                const data = JSON.parse(line.substring(6));
-                if (data.choices && data.choices[0]?.delta?.content) {
-                  fullContent += data.choices[0].delta.content;
-                  setTestOutput(`Kết nối tạo nội dung (STREAM) thành công.\nEndpoint: ${profile.endpoint}\nModel: ${profile.model}\nSố chunk đã nhận: ${chunkCount}\n\nNội dung đang stream: ${fullContent}`);
-                }
-              } catch (e) {
-                // Ignore parse errors on partial chunks
-              }
-            }
-          }
-        }
-      }
-      
-      setIsError(false);
-      setTestOutput(`Kết nối tạo nội dung (STREAM) hoàn tất.\nEndpoint: ${profile.endpoint}\nModel: ${profile.model}\nTổng số chunk: ${chunkCount}\nNội dung cuối: ${fullContent}`);
-      
-    } catch (err: any) {
-      showMsg(`Chưa test được stream.\nLý do: ${err.message}`, true);
-    }
+    });
   };
 
   const handlePullModels = async () => {
@@ -231,28 +184,9 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
       return;
     }
     
-    showMsg("Đang kéo danh sách model qua route /api/models ...");
+    showMsg("Đang kéo danh sách model qua API service của app ...");
     try {
-      const res = await fetch("/api/models", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile })
-      });
-
-      const text = await res.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error(
-          "Backend route /api/models không trả về JSON. Nó trả về:\n" +
-          text.slice(0, 120)
-        );
-      }
-      
-      if (!res.ok || data.ok === false) throw new Error(data.error || "Lỗi không xác định");
-      
-      const list = data.models || [];
+      const list = await pullModels(profile);
       setModelOptions(list.slice(0, 100));
       
       let msg = `Kéo danh sách model thành công.\nĐã kéo được ${list.length} model.\n${list.slice(0, 12).join("\n") || "Không có model trong phản hồi."}`;
@@ -266,6 +200,7 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
     }
   };
 
+
   const maskKey = (k: string) => {
     if (!k) return "chưa có key";
     if (k.length <= 8) return "••••";
@@ -277,8 +212,9 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
       <div className="api-bg"></div>
       <section className="api-wrap">
         <header className="api-head">
-          <button className="icon-btn" onClick={onHome}>
-            <svg viewBox="0 0 48 48"><path d="M29 12L17 24l12 12"></path></svg>
+          <button className="btn soft" onClick={onHome} style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 800, padding: '8px 14px', background: '#ffebee', color: '#c62828', border: '1px solid #e96b9b', borderRadius: '999px', cursor: 'pointer'}}>
+            <svg viewBox="0 0 48 48" style={{width: 18, height: 18, stroke: 'currentColor', strokeWidth: 4, fill: 'none'}}><path d="M29 12L17 24l12 12"></path></svg>
+            🏠 Về Home
           </button>
           <div className="api-title">
             <small>୨ৎ Main connection</small>
@@ -288,6 +224,42 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
             <svg viewBox="0 0 48 48"><path d="M24 12v24M12 24h24"></path></svg>
           </button>
         </header>
+
+        <section className="api-card" style={{ marginBottom: 16, padding: '16px 20px', background: 'rgba(255, 243, 248, 0.95)', border: '1.5px solid #ffb6c1' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '15px', color: '#880e4f', display: 'flex', alignItems: 'center', gap: 6 }}>
+                🛡️ Chế độ chuyển tiếp kết nối (Local Proxy Engine)
+              </h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#555' }}>
+                <b>Bật (Khuyên dùng):</b> Gửi request qua server trung chuyển, giúp tránh lỗi CORS, giữ kết nối keep-alive tới 900s và không bị timeout. <br/>
+                <b>Tắt:</b> Trình duyệt sẽ gọi trực tiếp đến địa chỉ API Proxy bên thứ ba hoặc API chính thức mà bạn thiết lập.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, background: '#fff', padding: 4, borderRadius: 999, border: '1px solid #ffcdd2' }}>
+              <button 
+                onClick={() => handleToggleLocalProxy(true)}
+                style={{
+                  padding: '6px 14px', borderRadius: 999, border: 'none', fontSize: 13, fontWeight: 'bold', cursor: 'pointer',
+                  background: useLocalProxy ? '#e91e63' : 'transparent', color: useLocalProxy ? '#fff' : '#666',
+                  transition: 'all 0.2s'
+                }}
+              >
+                ✓ Bật Local Proxy
+              </button>
+              <button 
+                onClick={() => handleToggleLocalProxy(false)}
+                style={{
+                  padding: '6px 14px', borderRadius: 999, border: 'none', fontSize: 13, fontWeight: 'bold', cursor: 'pointer',
+                  background: !useLocalProxy ? '#37474f' : 'transparent', color: !useLocalProxy ? '#fff' : '#666',
+                  transition: 'all 0.2s'
+                }}
+              >
+                ✕ Tắt (Trực tiếp)
+              </button>
+            </div>
+          </div>
+        </section>
 
         <section className="api-card">
           <div className="segmented">
@@ -367,7 +339,7 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
               Đặt làm chính
             </button>
           </div>
-          <p className="api-note">Mọi app con sau này sẽ đọc API chính tại đây. Khi deploy Cloudflare, route /api/test-proxy và /api/ai-stream giúp request đi qua cùng domain để tránh CORS.</p>
+          <p className="api-note">Mọi app con sau này sẽ đọc API chính tại đây. Khi chạy bản app thật, các route nội bộ như /api/test-proxy, /api/models và /api/ai-stream phải được xử lý bởi backend/server/API service của app. Các route này giúp request đi qua lớp trung gian của app để tránh CORS, bảo vệ API key và stream dữ liệu về UI ổn định.</p>
           
           {testOutput && (
             <pre className="test-output" style={{ background: isError ? "#5b2537" : "#23305d" }}>

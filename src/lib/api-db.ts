@@ -67,3 +67,14 @@ export async function dbClearPrimary(): Promise<void> {
   const all = await dbGetAll();
   await Promise.all(all.map((p) => dbPut({ ...p, primary: false })));
 }
+
+export async function getPrimaryApiProfile(): Promise<ApiProfile | null> {
+  const all = await dbGetAll();
+  const primary = all.find((p) => p.primary);
+  if (primary) return primary;
+  // Fallback to the most recently updated profile if no primary is set
+  if (all.length > 0) {
+    return all.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  }
+  return null;
+}
