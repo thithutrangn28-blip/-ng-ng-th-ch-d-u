@@ -126,19 +126,28 @@ async function startServer() {
   // 1b. Cập nhật cấu hình bảo mật tối mật (OAuth Client ID & Whitelist)
   app.post("/api/auth/update-config", (req, res) => {
     try {
-      const token = req.headers["authorization"]?.toString().replace("Bearer ", "").trim();
-      const deviceId = req.headers["x-device-id"]?.toString().trim();
-      if (!token || !deviceId) {
-        return res.status(401).json({ ok: false, error: "Thiếu thông tin xác thực bảo mật tối mật (Token hoặc Device ID)! 🔒" });
-      }
-
+      const { googleClientId, allowedEmail, allowedPhone, allowedName, pin } = req.body;
       const store = loadSecurityStore();
-      const session = store.activeSessions[token];
-      if (!session || session.deviceId !== deviceId || store.approvedDeviceId !== deviceId) {
-        return res.status(401).json({ ok: false, error: "Phiên làm việc không hợp lệ hoặc thiết bị không được liên kết! 🔒" });
+
+      let isAuthorized = false;
+
+      // Cho phép cập nhật nếu có mã PIN bảo mật chính xác (như PIN "9093" của vợ yêu)
+      if (pin && pin.trim() === "9093") {
+        isAuthorized = true;
+      } else {
+        const token = req.headers["authorization"]?.toString().replace("Bearer ", "").trim();
+        const deviceId = req.headers["x-device-id"]?.toString().trim();
+        if (token && deviceId) {
+          const session = store.activeSessions[token];
+          if (session && session.deviceId === deviceId && store.approvedDeviceId === deviceId) {
+            isAuthorized = true;
+          }
+        }
       }
 
-      const { googleClientId, allowedEmail, allowedPhone, allowedName } = req.body;
+      if (!isAuthorized) {
+        return res.status(401).json({ ok: false, error: "Thiếu thông tin xác thực bảo mật tối mật hoặc mã PIN không chính xác! 🔒" });
+      }
       
       if (googleClientId !== undefined) store.googleClientId = googleClientId.trim();
       if (allowedEmail !== undefined) store.allowedEmail = allowedEmail.trim();

@@ -48,6 +48,66 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
   const [isBypassMode, setIsBypassMode] = useState(false);
   const [showBypassChooser, setShowBypassChooser] = useState(false);
 
+  // States cho Cấu hình khẩn cấp Google Client ID
+  const [showEmergencyConfig, setShowEmergencyConfig] = useState(false);
+  const [emergencyPin, setEmergencyPin] = useState("");
+  const [emergencyClientId, setEmergencyClientId] = useState("");
+  const [emergencyEmail, setEmergencyEmail] = useState("");
+  const [emergencyMessage, setEmergencyMessage] = useState("");
+  const [emergencyIsError, setEmergencyIsError] = useState(false);
+  const [isSavingEmergency, setIsSavingEmergency] = useState(false);
+
+  const handleSaveEmergencyConfig = async () => {
+    if (!emergencyPin.trim()) {
+      setEmergencyMessage("❌ Vui lòng nhập mã PIN bảo mật 9093 của vợ yêu nha!");
+      setEmergencyIsError(true);
+      return;
+    }
+    if (emergencyPin.trim() !== "9093") {
+      setEmergencyMessage("❌ Mã PIN bảo mật không chính xác rồi vợ yêu ơi! 🥺");
+      setEmergencyIsError(true);
+      return;
+    }
+    if (!emergencyClientId.trim()) {
+      setEmergencyMessage("❌ Vui lòng nhập Google Client ID mới nha!");
+      setEmergencyIsError(true);
+      return;
+    }
+
+    setIsSavingEmergency(true);
+    setEmergencyMessage("");
+    try {
+      const res = await fetch("/api/auth/update-config", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          pin: emergencyPin,
+          googleClientId: emergencyClientId,
+          allowedEmail: emergencyEmail
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setEmergencyMessage("💕 Cập nhật Google Client ID khẩn cấp thành công rồi nha vợ yêu Trang! Google Sign-In đang được khởi động lại... 🌸");
+        setEmergencyIsError(false);
+        setGoogleClientId(emergencyClientId);
+        if (emergencyEmail) setAllowedEmail(emergencyEmail);
+        setEmergencyPin(""); // Clear pin after success
+      } else {
+        setEmergencyMessage(`❌ Lỗi: ${data.error || "Không thể cập nhật cấu hình."}`);
+        setEmergencyIsError(true);
+      }
+    } catch (err: any) {
+      setEmergencyMessage(`❌ Lỗi kết nối: ${err.message}`);
+      setEmergencyIsError(true);
+    } finally {
+      setIsSavingEmergency(false);
+    }
+  };
+
   // Nạp hình nền và tự động kiểm tra phiên làm việc ở backend
   useEffect(() => {
     const saved = getLockWallpaper();
@@ -65,9 +125,11 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
           const data = await res.json();
           if (data.googleClientId) {
             setGoogleClientId(data.googleClientId);
+            setEmergencyClientId(data.googleClientId);
           }
           if (data.allowedEmail) {
             setAllowedEmail(data.allowedEmail);
+            setEmergencyEmail(data.allowedEmail);
           }
         }
       } catch (err) {
@@ -713,6 +775,73 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
 
                     <div className="text-[10px] text-[#836d7a] text-center font-medium mt-1">
                       Chỉ duy nhất email <b className="text-pink-500">Thithutrangn28@gmail.com</b> có quyền năng mở khóa ứng dụng này.
+                    </div>
+
+                    {/* Mục cấu hình khẩn cấp Google Client ID */}
+                    <div className="mt-4 w-full text-left">
+                      <button 
+                        type="button"
+                        onClick={() => setShowEmergencyConfig(!showEmergencyConfig)}
+                        className="text-[10.5px] font-bold text-pink-500/70 hover:text-pink-600 flex items-center justify-center gap-1 mx-auto"
+                      >
+                        🔧 {showEmergencyConfig ? "Ẩn cấu hình Client ID khẩn cấp" : "Cấu hình Google Client ID khẩn cấp (Sửa lỗi 401)"}
+                      </button>
+                      
+                      {showEmergencyConfig && (
+                        <div className="mt-3 p-4 rounded-2xl bg-pink-50/70 border border-pink-100 text-[#523d49] text-[11px] space-y-2.5 transition-all">
+                          <p className="text-[10px] text-[#836d7a] leading-relaxed">
+                            Nếu gặp lỗi <b>Lỗi 401: invalid_client</b> hoặc <b>The OAuth client was not found</b>, đó là do Client ID chưa khớp với tên miền hiện tại. Vợ nhập mã PIN 9093 và điền Client ID mới để cập nhật nha!
+                          </p>
+                          
+                          <div className="flex flex-col gap-1">
+                            <label className="font-bold text-pink-600">Google Client ID mới:</label>
+                            <input 
+                              type="text"
+                              value={emergencyClientId}
+                              onChange={e => setEmergencyClientId(e.target.value)}
+                              placeholder="Nhập client ID (xxx.apps.googleusercontent.com)..."
+                              className="w-full p-2 text-xs rounded-xl border border-pink-200 bg-white outline-none focus:border-pink-400"
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1">
+                            <label className="font-bold text-pink-600">Email của vợ yêu:</label>
+                            <input 
+                              type="text"
+                              value={emergencyEmail}
+                              onChange={e => setEmergencyEmail(e.target.value)}
+                              placeholder="thithutrangn28@gmail.com"
+                              className="w-full p-2 text-xs rounded-xl border border-pink-200 bg-white outline-none focus:border-pink-400"
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1">
+                            <label className="font-bold text-[#c2185b]">Nhập mã PIN bảo mật để xác nhận (9093):</label>
+                            <input 
+                              type="password"
+                              value={emergencyPin}
+                              onChange={e => setEmergencyPin(e.target.value)}
+                              placeholder="Nhập 9093 của vợ yêu..."
+                              className="w-full p-2 text-xs rounded-xl border border-pink-200 bg-white outline-none focus:border-pink-400"
+                            />
+                          </div>
+
+                          <button 
+                            type="button"
+                            onClick={handleSaveEmergencyConfig}
+                            disabled={isSavingEmergency}
+                            className="w-full min-h-[32px] bg-gradient-to-r from-pink-400 to-pink-600 text-white font-bold rounded-xl text-xs hover:shadow transition-all disabled:opacity-50 cursor-pointer"
+                          >
+                            {isSavingEmergency ? "⏳ Đang cập nhật..." : "💾 Cập nhật Client ID ngay"}
+                          </button>
+
+                          {emergencyMessage && (
+                            <div className={`p-2 rounded-lg font-semibold text-center text-[10px] ${emergencyIsError ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-green-50 text-green-600 border border-green-100'}`}>
+                              {emergencyMessage}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </>
                 )
