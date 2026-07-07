@@ -29,7 +29,7 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
   const passContainerRef = useRef<HTMLDivElement>(null);
 
   // Trạng thái Bảo mật Google & Thiết bị Tối Cao
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "747323776599-vps7l5614i1qfujk8d67f5g086b976t8.apps.googleusercontent.com";
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
   const [allowedEmail, setAllowedEmail] = useState("thithutrangn28@gmail.com");
   const [isSessionChecking, setIsSessionChecking] = useState(true);
   const [isSessionValid, setIsSessionValid] = useState(false);

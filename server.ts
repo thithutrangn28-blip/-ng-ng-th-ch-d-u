@@ -118,7 +118,7 @@ async function startServer() {
       allowedEmail: store.allowedEmail,
       allowedPhone: store.allowedPhone,
       allowedName: store.allowedName,
-      googleClientId: process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || store.googleClientId || "747323776599-vps7l5614i1qfujk8d67f5g086b976t8.apps.googleusercontent.com",
+      googleClientId: process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || store.googleClientId || "",
       hasApprovedDevice: !!store.approvedDeviceId
     });
   });
