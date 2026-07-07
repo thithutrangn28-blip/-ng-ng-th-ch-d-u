@@ -30,15 +30,6 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [useLocalProxy, setUseLocalProxyState] = useState(true);
 
-  // States cho cấu hình Google OAuth Client ID & Whitelist Bảo Mật
-  const [googleClientIdConfig, setGoogleClientIdConfig] = useState("");
-  const [allowedEmailConfig, setAllowedEmailConfig] = useState("");
-  const [allowedPhoneConfig, setAllowedPhoneConfig] = useState("");
-  const [allowedNameConfig, setAllowedNameConfig] = useState("");
-  const [securityMessage, setSecurityMessage] = useState("");
-  const [securityIsError, setSecurityIsError] = useState(false);
-  const [isSavingSecurity, setIsSavingSecurity] = useState(false);
-
   const [isWorking, setIsWorking] = useState(false);
   const [workStage, setWorkStage] = useState("");
   const [workNotification, setWorkNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
@@ -111,89 +102,6 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
     showMsg(`Đã chuyển chế độ: ${val ? "Bật Local Proxy (Chuyển tiếp qua server giúp tránh lỗi CORS & keep-alive)" : "Tắt Local Proxy (Trình duyệt gọi trực tiếp đến API Proxy của bạn)"}`);
   };
 
-  const fetchAuthConfigInSettings = async () => {
-    try {
-      const res = await fetch("/api/auth/config");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.googleClientId) {
-          setGoogleClientIdConfig(data.googleClientId);
-          localStorage.setItem("niki_google_client_id", data.googleClientId);
-        }
-        if (data.allowedEmail) {
-          setAllowedEmailConfig(data.allowedEmail);
-          localStorage.setItem("niki_allowed_email", data.allowedEmail);
-        }
-        if (data.allowedPhone) setAllowedPhoneConfig(data.allowedPhone);
-        if (data.allowedName) setAllowedNameConfig(data.allowedName);
-      } else {
-        // Fallback đọc từ localStorage
-        const localId = localStorage.getItem("niki_google_client_id") || (import.meta as any).env.VITE_GOOGLE_CLIENT_ID || "";
-        const localEmail = localStorage.getItem("niki_allowed_email") || "thithutrangn28@gmail.com";
-        if (localId) setGoogleClientIdConfig(localId);
-        if (localEmail) setAllowedEmailConfig(localEmail);
-      }
-    } catch (err) {
-      console.error("Lỗi nạp cấu hình bảo mật:", err);
-      // Fallback đọc từ localStorage
-      const localId = localStorage.getItem("niki_google_client_id") || (import.meta as any).env.VITE_GOOGLE_CLIENT_ID || "";
-      const localEmail = localStorage.getItem("niki_allowed_email") || "thithutrangn28@gmail.com";
-      if (localId) setGoogleClientIdConfig(localId);
-      if (localEmail) setAllowedEmailConfig(localEmail);
-    }
-  };
-
-  const handleSaveSecurityConfig = async () => {
-    setIsSavingSecurity(true);
-    setSecurityMessage("");
-    
-    // Đồng bộ vào LocalStorage ngay lập tức để đảm bảo hoạt động độc lập với backend (ví dụ khi deploy Vercel tĩnh)
-    localStorage.setItem("niki_google_client_id", googleClientIdConfig.trim());
-    localStorage.setItem("niki_allowed_email", allowedEmailConfig.trim());
-
-    try {
-      const token = getSessionToken();
-      const devId = getDeviceId();
-      if (!token) {
-        setSecurityMessage("❌ Không tìm thấy token phiên làm việc! Vui lòng khóa màn hình và đăng nhập lại nha.");
-        setSecurityIsError(true);
-        setIsSavingSecurity(false);
-        return;
-      }
-      
-      const res = await fetch("/api/auth/update-config", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-          "X-Device-ID": devId
-        },
-        body: JSON.stringify({
-          googleClientId: googleClientIdConfig,
-          allowedEmail: allowedEmailConfig,
-          allowedPhone: allowedPhoneConfig,
-          allowedName: allowedNameConfig
-        })
-      });
-
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        setSecurityMessage("💕 Cập nhật cấu hình bảo mật tối mật thành công rồi nha vợ yêu Trang! 🌸");
-        setSecurityIsError(false);
-      } else {
-        // Fallback khi server trả về lỗi lưu file
-        setSecurityMessage("💕 Đã cập nhật cấu hình bảo mật vào trình duyệt của vợ yêu Trang thành công! (Môi trường Vercel tĩnh không đồng bộ file, đã lưu cục bộ để chạy) 🌸");
-        setSecurityIsError(false);
-      }
-    } catch (err: any) {
-      // Fallback khi lỗi mạng hoặc 404
-      setSecurityMessage(`💕 Đã cập nhật cấu hình bảo mật vào trình duyệt của vợ yêu Trang thành công! (Mã lỗi server: ${err.message || "404"}, đã lưu cục bộ để chạy) 🌸`);
-      setSecurityIsError(false);
-    } finally {
-      setIsSavingSecurity(false);
-    }
-  };
-
   useEffect(() => {
     if (active) {
       setIsWorking(false);
@@ -202,7 +110,6 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
       setTestOutput("");
       setIsError(false);
       loadProfiles(true);
-      fetchAuthConfigInSettings();
     }
   }, [active]);
 
@@ -755,92 +662,6 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
             <pre className="test-output" style={{ background: isError ? "#5b2537" : "#23305d" }}>
               {testOutput}
             </pre>
-          )}
-        </section>
-
-        <section className="api-card" style={{ background: "rgba(255, 248, 250, 0.95)", border: "1.5px solid #ffccd8" }}>
-          <div className="api-title">
-            <small>🛡️ Security & Whitelist</small>
-            <h2 style={{ color: "#d81b60" }}>Bảo mật & Cổng đăng nhập Google</h2>
-          </div>
-          <p style={{ fontSize: "11.5px", color: "#666", margin: "4px 0 12px 0", lineHeight: "1.4" }}>
-            Vợ yêu có thể tùy chỉnh <b>Google OAuth Client ID</b> để sửa lỗi <i>invalid_client</i> của Google, và cập nhật <b>Whitelist tài khoản được phép truy cập</b> vào hệ thống Niki kiko tại đây nha.
-          </p>
-
-          <div className="form-grid">
-            <div className="field">
-              <label style={{ color: "#c2185b" }}>Google Client ID (xxx.apps.googleusercontent.com)</label>
-              <input 
-                value={googleClientIdConfig} 
-                onChange={e => setGoogleClientIdConfig(e.target.value)} 
-                placeholder="Nhập Google OAuth Client ID mới của vợ..." 
-                style={{ border: "1px solid #ffccd8", background: "#fff" }}
-              />
-            </div>
-            
-            <div className="row-2">
-              <div className="field">
-                <label style={{ color: "#c2185b" }}>Email của vợ (Được phép đăng nhập)</label>
-                <input 
-                  value={allowedEmailConfig} 
-                  onChange={e => setAllowedEmailConfig(e.target.value)} 
-                  placeholder="thithutrangn28@gmail.com" 
-                  style={{ border: "1px solid #ffccd8", background: "#fff" }}
-                />
-              </div>
-              <div className="field">
-                <label style={{ color: "#c2185b" }}>Tên của vợ yêu</label>
-                <input 
-                  value={allowedNameConfig} 
-                  onChange={e => setAllowedNameConfig(e.target.value)} 
-                  placeholder="Trang" 
-                  style={{ border: "1px solid #ffccd8", background: "#fff" }}
-                />
-              </div>
-            </div>
-
-            <div className="field">
-              <label style={{ color: "#c2185b" }}>Số điện thoại của vợ</label>
-              <input 
-                value={allowedPhoneConfig} 
-                onChange={e => setAllowedPhoneConfig(e.target.value)} 
-                placeholder="Nhập SĐT của vợ yêu..." 
-                style={{ border: "1px solid #ffccd8", background: "#fff" }}
-              />
-            </div>
-          </div>
-
-          <div style={{ marginTop: "14px" }}>
-            <button 
-              className="save-btn" 
-              onClick={handleSaveSecurityConfig} 
-              disabled={isSavingSecurity}
-              style={{ 
-                width: "100%", 
-                background: "linear-gradient(180deg, #ff9eb5, #e91e63)", 
-                border: "none",
-                opacity: isSavingSecurity ? 0.7 : 1,
-                cursor: isSavingSecurity ? "not-allowed" : "pointer"
-              }}
-            >
-              {isSavingSecurity ? "⏳ Đang lưu cấu hình..." : "💾 Lưu Cấu Hình Bảo Mật tối mật"}
-            </button>
-          </div>
-
-          {securityMessage && (
-            <div style={{
-              marginTop: "12px",
-              padding: "10px 12px",
-              borderRadius: "14px",
-              fontSize: "12px",
-              fontWeight: "bold",
-              lineHeight: "1.4",
-              background: securityIsError ? "#ffebee" : "#e8f5e9",
-              border: `1px solid ${securityIsError ? "#ef5350" : "#66bb6a"}`,
-              color: securityIsError ? "#c62828" : "#2e7d32"
-            }}>
-              {securityMessage}
-            </div>
           )}
         </section>
 

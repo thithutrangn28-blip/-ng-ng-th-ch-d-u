@@ -123,54 +123,6 @@ async function startServer() {
     });
   });
 
-  // 1b. Cập nhật cấu hình bảo mật tối mật (OAuth Client ID & Whitelist)
-  app.post("/api/auth/update-config", (req, res) => {
-    try {
-      const { googleClientId, allowedEmail, allowedPhone, allowedName, pin } = req.body;
-      const store = loadSecurityStore();
-
-      let isAuthorized = false;
-
-      // Cho phép cập nhật nếu có mã PIN bảo mật chính xác (như PIN "9093" của vợ yêu)
-      if (pin && pin.trim() === "9093") {
-        isAuthorized = true;
-      } else {
-        const token = req.headers["authorization"]?.toString().replace("Bearer ", "").trim();
-        const deviceId = req.headers["x-device-id"]?.toString().trim();
-        if (token && deviceId) {
-          const session = store.activeSessions[token];
-          if (session && session.deviceId === deviceId && store.approvedDeviceId === deviceId) {
-            isAuthorized = true;
-          }
-        }
-      }
-
-      if (!isAuthorized) {
-        return res.status(401).json({ ok: false, error: "Thiếu thông tin xác thực bảo mật tối mật hoặc mã PIN không chính xác! 🔒" });
-      }
-      
-      if (googleClientId !== undefined) store.googleClientId = googleClientId.trim();
-      if (allowedEmail !== undefined) store.allowedEmail = allowedEmail.trim();
-      if (allowedPhone !== undefined) store.allowedPhone = allowedPhone.trim();
-      if (allowedName !== undefined) store.allowedName = allowedName.trim();
-
-      saveSecurityStore(store);
-
-      res.json({
-        ok: true,
-        message: "Cập nhật cấu hình bảo mật tối mật thành công rồi nha vợ yêu! 💕🌸",
-        config: {
-          allowedEmail: store.allowedEmail,
-          allowedPhone: store.allowedPhone,
-          allowedName: store.allowedName,
-          googleClientId: store.googleClientId
-        }
-      });
-    } catch (err: any) {
-      res.status(500).json({ ok: false, error: err.message });
-    }
-  });
-
   // 2. Xác thực thông tin Google Sign-In và kiểm tra Allowlist + Device Binding (Không dùng Firebase Auth!)
   app.post("/api/auth/google-verify", async (req, res) => {
     try {
