@@ -1,0 +1,24 @@
+{
+  "allowedEmail": "thithutrangn28@gmail.com",
+  "allowedPhone": "0981267115",
+  "allowedName": "Nguyễn Thị Thu Trang",
+  "googleClientId": "747323776599-vps7l5614i1qfujk8d67f5g086b976t8.apps.googleusercontent.com",
+  "approvedDeviceId": "dev_device_0dp1ecp35bm6mra5j3fs",
+  "deviceHistory": [
+    {
+      "deviceId": "dev_device_0dp1ecp35bm6mra5j3fs",
+      "deviceName": "Thiết bị của Trang",
+      "approvedAt": "2026-07-07T09:15:07.923Z",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Mobile Safari/537.36"
+    }
+  ],
+  "activeSessions": {
+    "token_iy4tktvx9tmrafnz83": {
+      "email": "thithutrangn28@gmail.com",
+      "deviceId": "dev_device_0dp1ecp35bm6mra5j3fs",
+      "createdAt": "2026-07-07T09:15:07.923Z",
+      "expiresAt": "2026-08-06T09:15:07.923Z"
+    }
+  },
+  "currentChallenge": "3Ox1AgR5MXEG0iN_KNQHdo-Y9_oT78ZdUKfDdXQh8qY"
+}
