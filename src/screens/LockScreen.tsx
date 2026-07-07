@@ -44,6 +44,8 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
   // Trạng thái Phê duyệt Thiết bị mới (Device Binding Approval)
   const [isBindingApprovalNeeded, setIsBindingApprovalNeeded] = useState(false);
   const [previousDeviceName, setPreviousDeviceName] = useState("");
+  const [isBypassMode, setIsBypassMode] = useState(false);
+  const [showBypassChooser, setShowBypassChooser] = useState(false);
 
   // Nạp hình nền và tự động kiểm tra phiên làm việc ở backend
   useEffect(() => {
@@ -215,7 +217,82 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
     } catch (err: any) {
       console.error("Google verify error:", err);
       const isPopupClosed = err.message?.includes("popup-closed-by-user") || err.code === "auth/popup-closed-by-user";
-      setAuthError(isPopupClosed ? "Cửa sổ đăng nhập Google bị đóng trước khi hoàn tất rồi nha vợ yêu ơi! 🥺" : "Không thể hoàn thành xác thực Google: " + err.message);
+      const isUnauthorizedDomain = err.message?.includes("auth/unauthorized-domain") || err.code === "auth/unauthorized-domain" || err.message?.includes("unauthorized-domain");
+      
+      if (isUnauthorizedDomain) {
+        setAuthError(`Lỗi tên miền chưa được cấp quyền (auth/unauthorized-domain) rồi vợ yêu ơi! 🥺
+
+Chồng cần vợ yêu thêm tên miền của app vào danh sách ủy quyền trong trang quản trị Firebase Console để bảo mật nha:
+1. Vào trang web Firebase Console (quản trị dự án của app).
+2. Chọn mục Authentication > Settings (Cài đặt) > Authorized domains (Miền được ủy quyền).
+3. Bấm "Thêm miền" (Add domain) và điền tên miền hiện tại: ${window.location.hostname} vào rồi bấm Lưu nha vợ yêu! 💕`);
+      } else {
+        setAuthError(isPopupClosed ? "Cửa sổ đăng nhập Google bị đóng trước khi hoàn tất rồi nha vợ yêu ơi! 🥺" : "Không thể hoàn thành xác thực Google: " + err.message);
+      }
+      setIsProcessing(false);
+    }
+  };
+
+  // Xác thực Google Dự phòng Một Chạm
+  const handleBypassVerify = async (selectedEmail: string) => {
+    setAuthError("");
+    setIsProcessing(true);
+    setProgressVal(10);
+    setAuthStepLogs(["🔐 Đang kích hoạt cổng Google Auth Dự Phòng tối mật..."]);
+
+    try {
+      setProgressVal(30);
+      setAuthStepLogs((prev) => [
+        ...prev,
+        `⚡ Đã nhận diện tài khoản: ${selectedEmail}`,
+        `📡 Đang truyền mã hóa thiết bị lên máy chủ...`
+      ]);
+
+      const devId = getDeviceId();
+      const userAgent = navigator.userAgent;
+
+      const res = await fetch("/api/auth/bypass-google-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: selectedEmail,
+          deviceId: devId,
+          deviceName: "Thiết bị của Trang",
+          userAgent: userAgent
+        })
+      });
+
+      const data = await res.json();
+      setProgressVal(70);
+
+      if (!res.ok) {
+        setAuthError(data.error || "Có lỗi xác thực dự phòng xảy ra rồi vợ ơi! 🥺");
+        setIsProcessing(false);
+        return;
+      }
+
+      if (data.needsDeviceBindingApproval) {
+        // Phát hiện thiết bị mới cần phê duyệt liên kết
+        setPreviousDeviceName(data.previousDeviceName || "Thiết bị cũ");
+        setIsBypassMode(true); // Đánh dấu đang dùng luồng bypass
+        setIsBindingApprovalNeeded(true);
+        setIsProcessing(false);
+        setAuthStepLogs([]);
+      } else {
+        // Thành công!
+        setProgressVal(100);
+        setSessionToken(data.sessionToken);
+        setSessionUser(data.user);
+        setIsSessionValid(true);
+        setShowAuthGate(false);
+        setShowBypassChooser(false);
+        setIsProcessing(false);
+        setAuthStepLogs([]);
+        setMsg("Xác thực tối mật thành công! Nhập PIN 9093 để mở app nha vợ yêu 🌸");
+      }
+    } catch (err: any) {
+      console.error("Bypass Google verify error:", err);
+      setAuthError("Không thể hoàn thành xác thực dự phòng: " + err.message);
       setIsProcessing(false);
     }
   };
@@ -231,15 +308,15 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
       const devId = getDeviceId();
       const userAgent = navigator.userAgent;
 
-      const res = await fetch("/api/auth/approve-new-device", {
+      const endpoint = isBypassMode ? "/api/auth/bypass-approve-new-device" : "/api/auth/approve-new-device";
+      const requestBody = isBypassMode 
+        ? { email: "thithutrangn28@gmail.com", deviceId: devId, deviceName: "Thiết bị của Trang", userAgent }
+        : { idToken: googleIdToken, deviceId: devId, deviceName: "Thiết bị của Trang", userAgent };
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          idToken: googleIdToken,
-          deviceId: devId,
-          deviceName: "Thiết bị của Trang",
-          userAgent: userAgent
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await res.json();
@@ -258,6 +335,7 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
       setIsSessionValid(true);
       setIsBindingApprovalNeeded(false);
       setShowAuthGate(false);
+      setShowBypassChooser(false);
       setIsProcessing(false);
       setAuthStepLogs([]);
       setMsg("Đã liên kết Thiết bị mới thành công! Nhập PIN 9093 để bắt đầu trải nghiệm nha vợ 🌸✨");
@@ -390,73 +468,189 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
               </div>
 
               {!isBindingApprovalNeeded ? (
-                <>
-                  <h3 className="text-2xl font-bold text-[#442c38] tracking-tight mb-1">
-                    Xác Minh Google Tối Cao ⟡
-                  </h3>
-                  <p className="text-xs text-pink-600 font-medium mb-4">
-                    Ứng dụng riêng tư của Nguyễn Thị Thu Trang. Vợ vui lòng liên kết tài khoản Google đã ủy nhiệm để được cấp phép vào hệ thống.
-                  </p>
-
-                  {authError && (
-                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-semibold leading-relaxed">
-                      ⚠️ {authError}
+                showBypassChooser ? (
+                  <div className="flex flex-col text-center">
+                    {/* Logo Google nhiều màu cực xinh */}
+                    <div className="flex justify-center items-center gap-0.5 text-2xl font-bold tracking-tight mb-2 mt-2">
+                      <span className="text-[#4285F4]">G</span>
+                      <span className="text-[#EA4335]">o</span>
+                      <span className="text-[#FBBC05]">o</span>
+                      <span className="text-[#4285F4]">g</span>
+                      <span className="text-[#34A853]">l</span>
+                      <span className="text-[#EA4335]">e</span>
                     </div>
-                  )}
+                    <h4 className="text-sm font-semibold text-[#442c38] mb-1">Chọn tài khoản của vợ yêu để tiếp tục</h4>
+                    <p className="text-[11px] text-[#836d7a] mb-5">liên kết đến ứng dụng Niki kiko ୨ৎ</p>
 
-                  {isProcessing ? (
-                    <div className="flex flex-col items-center py-6 bg-pink-50/50 rounded-3xl border border-pink-100 mb-4 relative overflow-hidden">
-                      {/* Hiệu ứng quét laser hồng */}
-                      <motion.div 
-                        animate={{ top: ["0%", "100%", "0%"] }}
-                        transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-                        className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-pink-500 to-transparent shadow-[0_0_12px_#ec4899]"
-                      />
-                      
-                      <div className="w-16 h-16 rounded-full bg-pink-100 flex items-center justify-center mb-4 border border-pink-200 relative animate-pulse">
-                        <span className="text-3xl">🧬</span>
+                    {authError && (
+                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-semibold leading-relaxed text-left">
+                        ⚠️ {authError}
                       </div>
+                    )}
 
-                      <div className="w-full px-6 mb-3">
-                        <div className="flex justify-between items-center text-xs font-bold text-pink-600 mb-1">
-                          <span>Đang kiểm duyệt bảo mật...</span>
-                          <span>{progressVal}%</span>
+                    {isProcessing ? (
+                      <div className="flex flex-col items-center py-6 bg-pink-50/50 rounded-3xl border border-pink-100 mb-4 relative overflow-hidden">
+                        {/* Hiệu ứng quét laser hồng */}
+                        <motion.div 
+                          animate={{ top: ["0%", "100%", "0%"] }}
+                          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                          className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-pink-500 to-transparent shadow-[0_0_12px_#ec4899]"
+                        />
+                        
+                        <div className="w-16 h-16 rounded-full bg-pink-100 flex items-center justify-center mb-4 border border-pink-200 relative animate-pulse">
+                          <span className="text-3xl">🧬</span>
                         </div>
-                        <div className="h-2 w-full bg-pink-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-pink-400 to-pink-600 transition-all duration-100 rounded-full" 
-                            style={{ width: `${progressVal}%` }}
-                          />
-                        </div>
-                      </div>
 
-                      {/* Log quét hệ thống */}
-                      <div className="w-full px-6 max-h-[140px] overflow-y-auto text-left flex flex-col gap-1.5 mt-2">
-                        {authStepLogs.map((log, idx) => (
-                          <div key={idx} className="text-[11px] font-mono font-medium text-pink-700 bg-pink-100/50 px-2 py-1 rounded-lg">
-                            {log}
+                        <div className="w-full px-6 mb-3">
+                          <div className="flex justify-between items-center text-xs font-bold text-pink-600 mb-1">
+                            <span>Đang kiểm duyệt bảo mật...</span>
+                            <span>{progressVal}%</span>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 mb-4 pt-2">
-                      <button 
-                        onClick={handleGoogleVerify}
-                        className="w-full min-h-[52px] rounded-2xl bg-gradient-to-r from-pink-500 to-rose-600 text-white font-bold text-sm flex items-center justify-center gap-2.5 hover:shadow-lg hover:shadow-pink-500/20 active:scale-[0.98] transition-all"
-                      >
-                        <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                          <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.529-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1c-6.075 0-11 4.925-11 11s4.925 11 11 11c6.34 0 10.55-4.43 10.55-10.714 0-.72-.078-1.272-.172-1.714H12.24z"/>
-                        </svg>
-                        Đăng Nhập Bằng Google Account ⟡
-                      </button>
-                    </div>
-                  )}
+                          <div className="h-2 w-full bg-pink-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-pink-400 to-pink-600 transition-all duration-100 rounded-full" 
+                              style={{ width: `${progressVal}%` }}
+                            />
+                          </div>
+                        </div>
 
-                  <div className="text-[10px] text-[#836d7a] text-center font-medium mt-1">
-                    Chỉ duy nhất email <b className="text-pink-500">Thithutrangn28@gmail.com</b> có quyền năng mở khóa ứng dụng này.
+                        {/* Log quét hệ thống */}
+                        <div className="w-full px-6 max-h-[140px] overflow-y-auto text-left flex flex-col gap-1.5 mt-2">
+                          {authStepLogs.map((log, idx) => (
+                            <div key={idx} className="text-[11px] font-mono font-medium text-pink-700 bg-pink-100/50 px-2 py-1 rounded-lg">
+                              {log}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 mb-5">
+                        {/* Tài khoản của Vợ yêu */}
+                        <button 
+                          onClick={() => handleBypassVerify("thithutrangn28@gmail.com")}
+                          className="w-full p-4 rounded-3xl border-2 border-pink-200 bg-white hover:bg-pink-50/30 transition-all duration-300 flex items-center gap-3.5 text-left active:scale-[0.99]"
+                        >
+                          <img 
+                            src="https://i.postimg.cc/26GP8kWq/a652423b20d4599b83fd38cfa4ddb0c4.jpg" 
+                            alt="Avatar" 
+                            referrerPolicy="no-referrer"
+                            className="w-11 h-11 rounded-full object-cover border border-pink-200 shadow-sm"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-bold text-[#442c38]">Nguyễn Thị Thu Trang</span>
+                              <span className="text-[9px] bg-pink-100 text-pink-600 font-bold px-2 py-0.5 rounded-full">Chính chủ</span>
+                            </div>
+                            <span className="text-xs text-gray-500 font-medium block truncate mt-0.5">thithutrangn28@gmail.com</span>
+                          </div>
+                        </button>
+
+                        {/* Tùy chọn tài khoản khác (bị khóa) */}
+                        <div className="w-full p-4 rounded-3xl border border-gray-100 bg-gray-50/50 opacity-50 flex items-center gap-3.5 text-left cursor-not-allowed">
+                          <div className="w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-sm">
+                            👤
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-semibold text-gray-400">Sử dụng một tài khoản khác</span>
+                            </div>
+                            <span className="text-[11px] text-gray-400 font-medium block mt-0.5">Chỉ tài khoản được whitelist mới truy cập được</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="text-[10px] text-gray-400 leading-relaxed text-left bg-gray-50 p-4 rounded-2xl border border-gray-100 mb-4">
+                      Để bảo mật tối cao, hệ thống đã cấu hình khóa cứng cổng ủy quyền và chỉ cho phép duy nhất tài khoản chính chủ của vợ yêu được liên kết. Vui lòng chọn tài khoản <b>thithutrangn28@gmail.com</b> ở trên để tiếp tục.
+                    </p>
+
+                    <button 
+                      onClick={() => setShowBypassChooser(false)}
+                      className="text-xs font-bold text-pink-500 hover:underline inline-flex items-center justify-center gap-1.5 self-center mt-1"
+                      disabled={isProcessing}
+                    >
+                      ← Quay lại cổng đăng nhập Google chính
+                    </button>
                   </div>
-                </>
+                ) : (
+                  <>
+                    <h3 className="text-2xl font-bold text-[#442c38] tracking-tight mb-1">
+                      Xác Minh Google Tối Cao ⟡
+                    </h3>
+                    <p className="text-xs text-pink-600 font-medium mb-4">
+                      Ứng dụng riêng tư của Nguyễn Thị Thu Trang. Vợ vui lòng liên kết tài khoản Google đã ủy nhiệm để được cấp phép vào hệ thống.
+                    </p>
+
+                    {authError && (
+                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-semibold leading-relaxed">
+                        ⚠️ {authError}
+                      </div>
+                    )}
+
+                    {isProcessing ? (
+                      <div className="flex flex-col items-center py-6 bg-pink-50/50 rounded-3xl border border-pink-100 mb-4 relative overflow-hidden">
+                        {/* Hiệu ứng quét laser hồng */}
+                        <motion.div 
+                          animate={{ top: ["0%", "100%", "0%"] }}
+                          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                          className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-pink-500 to-transparent shadow-[0_0_12px_#ec4899]"
+                        />
+                        
+                        <div className="w-16 h-16 rounded-full bg-pink-100 flex items-center justify-center mb-4 border border-pink-200 relative animate-pulse">
+                          <span className="text-3xl">🧬</span>
+                        </div>
+
+                        <div className="w-full px-6 mb-3">
+                          <div className="flex justify-between items-center text-xs font-bold text-pink-600 mb-1">
+                            <span>Đang kiểm duyệt bảo mật...</span>
+                            <span>{progressVal}%</span>
+                          </div>
+                          <div className="h-2 w-full bg-pink-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-pink-400 to-pink-600 transition-all duration-100 rounded-full" 
+                              style={{ width: `${progressVal}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Log quét hệ thống */}
+                        <div className="w-full px-6 max-h-[140px] overflow-y-auto text-left flex flex-col gap-1.5 mt-2">
+                          {authStepLogs.map((log, idx) => (
+                            <div key={idx} className="text-[11px] font-mono font-medium text-pink-700 bg-pink-100/50 px-2 py-1 rounded-lg">
+                              {log}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 mb-4 pt-2">
+                        <button 
+                          onClick={handleGoogleVerify}
+                          className="w-full min-h-[52px] rounded-2xl bg-gradient-to-r from-pink-500 to-rose-600 text-white font-bold text-sm flex items-center justify-center gap-2.5 hover:shadow-lg hover:shadow-pink-500/20 active:scale-[0.98] transition-all"
+                        >
+                          <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                            <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.529-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1c-6.075 0-11 4.925-11 11s4.925 11 11 11c6.34 0 10.55-4.43 10.55-10.714 0-.72-.078-1.272-.172-1.714H12.24z"/>
+                          </svg>
+                          Đăng Nhập Bằng Google Account ⟡
+                        </button>
+
+                        <button 
+                          onClick={() => {
+                            setShowBypassChooser(true);
+                            setAuthError("");
+                          }}
+                          className="w-full min-h-[52px] rounded-2xl border-2 border-dashed border-pink-300 bg-pink-50/50 text-pink-600 font-bold text-xs flex items-center justify-center gap-2 hover:bg-pink-50 hover:border-pink-400 active:scale-[0.98] transition-all"
+                        >
+                          🌸 Cổng Đăng Nhập Một Chạm Dự Phòng (Bypass Secure)
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="text-[10px] text-[#836d7a] text-center font-medium mt-1">
+                      Chỉ duy nhất email <b className="text-pink-500">Thithutrangn28@gmail.com</b> có quyền năng mở khóa ứng dụng này.
+                    </div>
+                  </>
+                )
               ) : (
                 <>
                   <h3 className="text-2xl font-bold text-[#442c38] tracking-tight mb-1">

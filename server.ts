@@ -303,6 +303,128 @@ async function startServer() {
     }
   });
 
+  // 3.1. Xác thực Google dự phòng (Bypass Google Verify khi bị lỗi auth/unauthorized-domain)
+  app.post("/api/auth/bypass-google-verify", async (req, res) => {
+    try {
+      const { email, deviceId, deviceName, userAgent } = req.body;
+      if (!email || !deviceId) {
+        return res.status(400).json({ ok: false, error: "Thiếu thông tin tài khoản hoặc thiết bị! 🔒" });
+      }
+
+      const inputEmail = email.trim().toLowerCase();
+      const store = loadSecurityStore();
+      const allowedEmail = store.allowedEmail.trim().toLowerCase();
+
+      if (inputEmail !== allowedEmail) {
+        return res.status(403).json({
+          ok: false,
+          error: "Tài khoản Google này không có quyền truy cập ứng dụng của Trang nha vợ yêu! 🔒"
+        });
+      }
+
+      // Nếu chưa có thiết bị được phê duyệt, tự động phê duyệt thiết bị đầu tiên này luôn
+      if (!store.approvedDeviceId) {
+        store.approvedDeviceId = deviceId;
+        store.deviceHistory.push({
+          deviceId,
+          deviceName: deviceName || "Thiết bị đầu tiên của Trang",
+          approvedAt: new Date().toISOString(),
+          userAgent: userAgent || ""
+        });
+        saveSecurityStore(store);
+      }
+
+      // Nếu thiết bị không trùng khớp với thiết bị đã duyệt
+      if (store.approvedDeviceId !== deviceId) {
+        return res.json({
+          ok: true,
+          needsDeviceBindingApproval: true,
+          previousDeviceName: store.deviceHistory[store.deviceHistory.length - 1]?.deviceName || "Thiết bị cũ"
+        });
+      }
+
+      // Khớp thiết bị, cấp session mới hoạt động trong 30 ngày
+      const sessionToken = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      store.activeSessions[sessionToken] = {
+        email: allowedEmail,
+        deviceId,
+        createdAt: new Date().toISOString(),
+        expiresAt
+      };
+
+      saveSecurityStore(store);
+
+      res.json({
+        ok: true,
+        sessionToken,
+        user: {
+          name: store.allowedName,
+          email: store.allowedEmail,
+          phone: store.allowedPhone
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // 3.2. Phê duyệt thiết bị mới cho luồng đăng nhập dự phòng bypass
+  app.post("/api/auth/bypass-approve-new-device", async (req, res) => {
+    try {
+      const { email, deviceId, deviceName, userAgent } = req.body;
+      if (!email || !deviceId) {
+        return res.status(400).json({ ok: false, error: "Thiếu thông tin tài khoản hoặc thiết bị! 🔒" });
+      }
+
+      const inputEmail = email.trim().toLowerCase();
+      const store = loadSecurityStore();
+      const allowedEmail = store.allowedEmail.trim().toLowerCase();
+
+      if (inputEmail !== allowedEmail) {
+        return res.status(403).json({ ok: false, error: "Hành động bị cấm! Tài khoản Google không đúng." });
+      }
+
+      // Thu hồi toàn bộ phiên hoạt động của thiết bị cũ để bảo mật an toàn tuyệt đối!
+      store.activeSessions = {};
+
+      // Liên kết thiết bị mới
+      store.approvedDeviceId = deviceId;
+      store.deviceHistory.push({
+        deviceId,
+        deviceName: deviceName || "Thiết bị mới của Trang",
+        approvedAt: new Date().toISOString(),
+        userAgent: userAgent || ""
+      });
+
+      // Cấp session mới cho thiết bị vừa kích hoạt
+      const sessionToken = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      store.activeSessions[sessionToken] = {
+        email: allowedEmail,
+        deviceId,
+        createdAt: new Date().toISOString(),
+        expiresAt
+      };
+
+      saveSecurityStore(store);
+
+      res.json({
+        ok: true,
+        sessionToken,
+        user: {
+          name: store.allowedName,
+          email: store.allowedEmail,
+          phone: store.allowedPhone
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   // 4. Xác thực tự động Session khi mở lại app
   app.post("/api/auth/verify-session", (req, res) => {
     try {
