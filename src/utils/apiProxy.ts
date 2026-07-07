@@ -1,5 +1,4 @@
 import { ApiProfile } from "../lib/api-db";
-import { getDeviceId, getSessionToken } from "../lib/storage";
 
 /**
  * Chuẩn hóa cấu trúc Payload ảnh tham chiếu theo đúng tài liệu API (OpenAI / OpenRouter Vision),
@@ -184,18 +183,9 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
       };
 
       console.log(`[API Proxy Lifecycle] Giai đoạn 3: Gửi request đến Local Proxy -> Upstream.`);
-      const localHeaders: Record<string, string> = {
-        "Content-Type": "application/json",
-        "x-device-id": getDeviceId()
-      };
-      const token = getSessionToken();
-      if (token) {
-        localHeaders["Authorization"] = `Bearer ${token}`;
-      }
-
       res = await fetch(targetUrl, {
         method: "POST",
-        headers: localHeaders,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
         signal: signal || AbortSignal.timeout(timeoutMs),
       });
@@ -435,18 +425,9 @@ export async function executeApiProxyText(
       maxTokensOverride: maxTokens,
     };
 
-    const localHeaders: Record<string, string> = {
-      "Content-Type": "application/json",
-      "x-device-id": getDeviceId()
-    };
-    const token = getSessionToken();
-    if (token) {
-      localHeaders["Authorization"] = `Bearer ${token}`;
-    }
-
     const res = await fetch(targetUrl, {
       method: "POST",
-      headers: localHeaders,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(timeoutMs),
     });

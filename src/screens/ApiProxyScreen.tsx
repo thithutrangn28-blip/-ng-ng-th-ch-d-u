@@ -3,7 +3,6 @@ import { ApiProfile, dbGetAll, dbPut, dbDelete, dbClearPrimary } from "../lib/ap
 import { callAIText, callAIStream, pullModels } from "../lib/api-client";
 import { getApiProxySettings, setApiProxySettings } from "../utils/apiProxy";
 import { compressImageFile } from "../utils/imageCompressor";
-import { getSessionToken, getDeviceId } from "../lib/storage";
 
 type Props = {
   active: boolean;
