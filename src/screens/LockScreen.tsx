@@ -262,7 +262,15 @@ Chồng cần vợ yêu thêm tên miền của app vào danh sách ủy quyền
         })
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get("content-type");
+      let data: any;
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        console.error("Non-JSON Response text:", text);
+        throw new Error(`Phản hồi từ máy chủ không hợp lệ (Mã lỗi: ${res.status}). Chồng đã khởi động lại máy chủ rồi, vợ yêu tải lại trang (F5) rồi thử lại nha! 🥺`);
+      }
       setProgressVal(70);
 
       if (!res.ok) {
@@ -319,7 +327,15 @@ Chồng cần vợ yêu thêm tên miền của app vào danh sách ủy quyền
         body: JSON.stringify(requestBody)
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get("content-type");
+      let data: any;
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        console.error("Non-JSON Response text:", text);
+        throw new Error(`Phản hồi từ máy chủ không hợp lệ (Mã lỗi: ${res.status}). Chồng đã khởi động lại máy chủ rồi, vợ yêu tải lại trang (F5) rồi thử lại nha! 🥺`);
+      }
       setProgressVal(80);
 
       if (!res.ok) {
