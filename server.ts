@@ -7,6 +7,7 @@ interface SecurityStore {
   allowedEmail: string;
   allowedPhone: string;
   allowedName: string;
+  googleClientId?: string;
   approvedDeviceId: string | null;
   deviceHistory: Array<{
     deviceId: string;
@@ -36,6 +37,7 @@ function loadSecurityStore(): SecurityStore {
     allowedEmail: "thithutrangn28@gmail.com",
     allowedPhone: "0981267115",
     allowedName: "Nguyễn Thị Thu Trang",
+    googleClientId: "747323776599-vps7l5614i1qfujk8d67f5g086b976t8.apps.googleusercontent.com",
     approvedDeviceId: null,
     deviceHistory: [],
     activeSessions: {}
@@ -59,7 +61,8 @@ async function startServer() {
 
   // Middleware bảo mật tối mật ở backend - Chặn tất cả request API ngoại trừ các API xác thực công khai
   const securityMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (req.originalUrl.startsWith("/api/auth/")) {
+    const isAuthRoute = req.path.startsWith("/auth/") || req.originalUrl.includes("/api/auth/");
+    if (isAuthRoute) {
       return next();
     }
 
@@ -115,11 +118,12 @@ async function startServer() {
       allowedEmail: store.allowedEmail,
       allowedPhone: store.allowedPhone,
       allowedName: store.allowedName,
+      googleClientId: process.env.GOOGLE_CLIENT_ID || store.googleClientId || "747323776599-vps7l5614i1qfujk8d67f5g086b976t8.apps.googleusercontent.com",
       hasApprovedDevice: !!store.approvedDeviceId
     });
   });
 
-  // 2. Xác thực thông tin Google Sign-In và kiểm tra Allowlist + Device Binding
+  // 2. Xác thực thông tin Google Sign-In và kiểm tra Allowlist + Device Binding (Không dùng Firebase Auth!)
   app.post("/api/auth/google-verify", async (req, res) => {
     try {
       const { idToken, deviceId, deviceName, userAgent } = req.body;
@@ -127,37 +131,28 @@ async function startServer() {
         return res.status(400).json({ ok: false, error: "Vợ yêu ơi, thiếu thông tin ID Token hoặc Mã Thiết Bị rồi nha! 🔒" });
       }
 
-      // Đọc cấu hình Firebase từ file config để lấy API Key
-      const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf-8"));
-      const apiKey = firebaseConfig.apiKey;
-
-      // Xác thực ID Token trực tiếp với Google Firebase Auth REST API
-      const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken })
-      });
+      // Xác thực ID Token trực tiếp với Google OAuth2 REST API (Hoàn toàn độc lập, không cần Firebase Auth)
+      const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
 
       if (!verifyRes.ok) {
         const errText = await verifyRes.text();
-        console.error("Lỗi xác thực ID Token từ Google/Firebase:", errText);
+        console.error("Lỗi xác thực ID Token từ Google OAuth2:", errText);
         return res.status(401).json({
           ok: false,
-          error: "Xác thực mã đăng nhập Google thất bại hoặc phiên đã hết hạn. Vợ yêu hãy thử đăng nhập lại nhé! 🔒"
+          error: "Mã xác thực Google không hợp lệ hoặc đã hết hạn rồi vợ yêu ơi! Vợ hãy đăng nhập lại nhé! 🔒"
         });
       }
 
-      const verifyData = (await verifyRes.json()) as { users?: Array<{ email?: string; emailVerified?: boolean; displayName?: string }> };
-      const googleUser = verifyData.users?.[0];
+      const verifyData = (await verifyRes.json()) as { email?: string; email_verified?: string; aud?: string };
+      const email = verifyData.email?.trim().toLowerCase();
 
-      if (!googleUser || !googleUser.email) {
+      if (!email || verifyData.email_verified !== "true") {
         return res.status(401).json({
           ok: false,
-          error: "Không tìm thấy thông tin tài khoản Google của vợ yêu từ ID Token! 🔒"
+          error: "Không tìm thấy thông tin email đã xác minh từ tài khoản Google của vợ yêu! 🔒"
         });
       }
 
-      const email = googleUser.email.trim().toLowerCase();
       const store = loadSecurityStore();
       const allowedEmail = store.allowedEmail.trim().toLowerCase();
 
@@ -218,7 +213,7 @@ async function startServer() {
     }
   });
 
-  // 3. Phê duyệt thiết bị mới và thu hồi thiết bị cũ
+  // 3. Phê duyệt thiết bị mới và thu hồi thiết bị cũ (Không dùng Firebase Auth!)
   app.post("/api/auth/approve-new-device", async (req, res) => {
     try {
       const { idToken, deviceId, deviceName, userAgent } = req.body;
@@ -226,16 +221,8 @@ async function startServer() {
         return res.status(400).json({ ok: false, error: "Thiếu thông tin mã ID Token hoặc thiết bị phê duyệt mới! 🔒" });
       }
 
-      // Đọc cấu hình Firebase từ file config để lấy API Key
-      const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf-8"));
-      const apiKey = firebaseConfig.apiKey;
-
-      // Xác thực ID Token trực tiếp với Google Firebase Auth REST API
-      const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken })
-      });
+      // Xác thực ID Token trực tiếp với Google OAuth2 REST API
+      const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
 
       if (!verifyRes.ok) {
         const errText = await verifyRes.text();
@@ -246,17 +233,16 @@ async function startServer() {
         });
       }
 
-      const verifyData = (await verifyRes.json()) as { users?: Array<{ email?: string }> };
-      const googleUser = verifyData.users?.[0];
+      const verifyData = (await verifyRes.json()) as { email?: string; email_verified?: string };
+      const email = verifyData.email?.trim().toLowerCase();
 
-      if (!googleUser || !googleUser.email) {
+      if (!email || verifyData.email_verified !== "true") {
         return res.status(401).json({
           ok: false,
           error: "Không tìm thấy thông tin tài khoản Google của vợ yêu từ ID Token! 🔒"
         });
       }
 
-      const email = googleUser.email.trim().toLowerCase();
       const store = loadSecurityStore();
       const allowedEmail = store.allowedEmail.trim().toLowerCase();
 

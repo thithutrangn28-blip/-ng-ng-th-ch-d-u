@@ -10,7 +10,6 @@ import {
 } from "../lib/storage";
 import { motion, AnimatePresence } from "motion/react";
 import { compressImageFile } from "../utils/imageCompressor";
-import { googleSignInWithIdToken } from "../lib/firebase-auth";
 
 type Props = {
   active: boolean;
@@ -30,6 +29,8 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
   const passContainerRef = useRef<HTMLDivElement>(null);
 
   // Trạng thái Bảo mật Google & Thiết bị Tối Cao
+  const [googleClientId, setGoogleClientId] = useState("747323776599-vps7l5614i1qfujk8d67f5g086b976t8.apps.googleusercontent.com");
+  const [allowedEmail, setAllowedEmail] = useState("thithutrangn28@gmail.com");
   const [isSessionChecking, setIsSessionChecking] = useState(true);
   const [isSessionValid, setIsSessionValid] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
@@ -54,6 +55,71 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
     
     checkBackendSession();
   }, [active]);
+
+  // Lấy cấu hình Client ID và Whitelist Email từ backend
+  useEffect(() => {
+    const fetchAuthConfig = async () => {
+      try {
+        const res = await fetch("/api/auth/config");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.googleClientId) {
+            setGoogleClientId(data.googleClientId);
+          }
+          if (data.allowedEmail) {
+            setAllowedEmail(data.allowedEmail);
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi lấy cấu hình auth từ backend:", err);
+      }
+    };
+    fetchAuthConfig();
+  }, []);
+
+  // Tự động khởi tạo Google Identity Services khi mở Auth Gate
+  useEffect(() => {
+    if (!showAuthGate || isSessionChecking || isBindingApprovalNeeded) return;
+
+    let attempts = 0;
+    const initGoogleSignIn = () => {
+      const google = (window as any).google;
+      if (google && google.accounts && google.accounts.id) {
+        try {
+          google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: handleGsiCredentialResponse,
+            auto_select: false,
+            itp_support: true,
+            context: "signin"
+          });
+
+          const container = document.getElementById("google-signin-btn-container");
+          if (container) {
+            google.accounts.id.renderButton(container, {
+              type: "standard",
+              theme: "filled_blue",
+              size: "large",
+              text: "signin_with",
+              shape: "pill",
+              logo_alignment: "left",
+              width: 300
+            });
+          }
+        } catch (err) {
+          console.error("Lỗi khởi tạo Google Identity Services:", err);
+        }
+      } else {
+        if (attempts < 30) {
+          attempts++;
+          setTimeout(initGoogleSignIn, 200);
+        }
+      }
+    };
+
+    const timer = setTimeout(initGoogleSignIn, 150);
+    return () => clearTimeout(timer);
+  }, [showAuthGate, isSessionChecking, isBindingApprovalNeeded, googleClientId]);
 
   const checkBackendSession = async () => {
     setIsSessionChecking(true);
@@ -149,31 +215,24 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
     }
   };
 
-  // Quy trình kích hoạt Google Sign-In & Xác thực backend
-  const handleGoogleVerify = async () => {
+  // Callback xử lý credential nhận được từ Google Identity Services Client
+  const handleGsiCredentialResponse = async (response: any) => {
+    if (!response || !response.credential) {
+      setAuthError("Không lấy được mã xác thực ID Token từ Google.");
+      return;
+    }
+
+    const idToken = response.credential;
+    setGoogleIdToken(idToken);
     setAuthError("");
     setIsProcessing(true);
-    setProgressVal(10);
-    setAuthStepLogs(["🔐 Đang chuẩn bị cổng kết nối Google Account chính thức..."]);
+    setProgressVal(30);
+    setAuthStepLogs([
+      "🔐 Đã mã hóa danh tính Google Account thành công!",
+      "📡 Đang kết nối bảo mật đến máy chủ Niki kiko..."
+    ]);
 
     try {
-      setAuthStepLogs((prev) => [...prev, "⚡ Đang mở cửa sổ chọn tài khoản Google (Secure Popup)..."]);
-      const authResult = await googleSignInWithIdToken();
-      
-      if (!authResult) {
-        throw new Error("Không lấy được thông tin đăng nhập từ Google.");
-      }
-
-      const { user, idToken } = authResult;
-      setGoogleIdToken(idToken);
-      setProgressVal(50);
-      setAuthStepLogs((prev) => [
-        ...prev,
-        `📧 Đã đăng nhập tài khoản Google thành công!`,
-        `👤 Tài khoản: ${user.email}`,
-        `📡 Đang mã hóa và truyền ID Token lên máy chủ Express...`
-      ]);
-
       const devId = getDeviceId();
       const userAgent = navigator.userAgent;
 
@@ -188,23 +247,31 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
         })
       });
 
-      const data = await res.json();
-      setProgressVal(80);
+      const contentType = res.headers.get("content-type");
+      let data: any;
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        console.error("Non-JSON Response text:", text);
+        throw new Error(`Mã phản hồi từ máy chủ không hợp lệ: ${res.status}`);
+      }
+
+      setProgressVal(85);
 
       if (!res.ok) {
-        setAuthError(data.error || "Có lỗi bảo mật xảy ra rồi vợ ơi! 🥺");
+        setAuthError(data.error || "Có lỗi xác thực Google xảy ra rồi vợ yêu ơi! 🥺");
         setIsProcessing(false);
         return;
       }
 
       if (data.needsDeviceBindingApproval) {
-        // Phát hiện thiết bị mới cần phê duyệt liên kết
         setPreviousDeviceName(data.previousDeviceName || "Thiết bị cũ");
+        setIsBypassMode(false); // Xác định là đang dùng luồng chính thức (không bypass)
         setIsBindingApprovalNeeded(true);
         setIsProcessing(false);
         setAuthStepLogs([]);
       } else {
-        // Thành công!
         setProgressVal(100);
         setSessionToken(data.sessionToken);
         setSessionUser(data.user);
@@ -215,20 +282,8 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
         setMsg("Xác thực tối mật thành công! Nhập PIN 9093 để mở app nha vợ yêu 🌸");
       }
     } catch (err: any) {
-      console.error("Google verify error:", err);
-      const isPopupClosed = err.message?.includes("popup-closed-by-user") || err.code === "auth/popup-closed-by-user";
-      const isUnauthorizedDomain = err.message?.includes("auth/unauthorized-domain") || err.code === "auth/unauthorized-domain" || err.message?.includes("unauthorized-domain");
-      
-      if (isUnauthorizedDomain) {
-        setAuthError(`Lỗi tên miền chưa được cấp quyền (auth/unauthorized-domain) rồi vợ yêu ơi! 🥺
-
-Chồng cần vợ yêu thêm tên miền của app vào danh sách ủy quyền trong trang quản trị Firebase Console để bảo mật nha:
-1. Vào trang web Firebase Console (quản trị dự án của app).
-2. Chọn mục Authentication > Settings (Cài đặt) > Authorized domains (Miền được ủy quyền).
-3. Bấm "Thêm miền" (Add domain) và điền tên miền hiện tại: ${window.location.hostname} vào rồi bấm Lưu nha vợ yêu! 💕`);
-      } else {
-        setAuthError(isPopupClosed ? "Cửa sổ đăng nhập Google bị đóng trước khi hoàn tất rồi nha vợ yêu ơi! 🥺" : "Không thể hoàn thành xác thực Google: " + err.message);
-      }
+      console.error("GSI verify error:", err);
+      setAuthError("Không thể hoàn thành xác thực Google: " + err.message);
       setIsProcessing(false);
     }
   };
@@ -639,16 +694,10 @@ Chồng cần vợ yêu thêm tên miền của app vào danh sách ủy quyền
                         </div>
                       </div>
                     ) : (
-                      <div className="space-y-4 mb-4 pt-2">
-                        <button 
-                          onClick={handleGoogleVerify}
-                          className="w-full min-h-[52px] rounded-2xl bg-gradient-to-r from-pink-500 to-rose-600 text-white font-bold text-sm flex items-center justify-center gap-2.5 hover:shadow-lg hover:shadow-pink-500/20 active:scale-[0.98] transition-all"
-                        >
-                          <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                            <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.529-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1c-6.075 0-11 4.925-11 11s4.925 11 11 11c6.34 0 10.55-4.43 10.55-10.714 0-.72-.078-1.272-.172-1.714H12.24z"/>
-                          </svg>
-                          Đăng Nhập Bằng Google Account ⟡
-                        </button>
+                      <div className="space-y-4 mb-4 pt-2 flex flex-col items-center">
+                        <div className="w-full flex justify-center py-2 min-h-[52px]">
+                          <div id="google-signin-btn-container" className="flex justify-center" />
+                        </div>
 
                         <button 
                           onClick={() => {
