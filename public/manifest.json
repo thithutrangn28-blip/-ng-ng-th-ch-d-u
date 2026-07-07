@@ -1,0 +1,15 @@
+{
+  "short_name": "Cậu",
+  "name": "cậu thật dễ thương và tốt bụng",
+  "icons": [
+    {
+      "src": "https://i.postimg.cc/nzdFgNvs/215b99c879bdd6e6511287efda1b90ee.jpg",
+      "type": "image/jpeg",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff"
+}

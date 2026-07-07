@@ -13,7 +13,7 @@ type Props = {
 };
 
 export default function LockScreen({ active, onNext, onBack, time, date, batteryLevel }: Props) {
-  const [wallpaper, setWallpaper] = useState<string>("https://i.postimg.cc/nrbp34RQ/011e2f9cdee58c5bbb8da86ccf374663.jpg");
+  const [wallpaper, setWallpaper] = useState<string>("https://i.postimg.cc/nzdFgNvs/215b99c879bdd6e6511287efda1b90ee.jpg");
   const [pass, setPass] = useState("");
   const [longPass, setLongPass] = useState("");
   const [msg, setMsg] = useState("Chọn hình nền hoặc nhập mật khẩu để mở khóa.");
@@ -54,7 +54,7 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
     setPass(newPass);
     
     if (newPass.length === 4) {
-      if (newPass === secret || newPass === longSecret) {
+      if (newPass === secret && longPass === longSecret) {
         setMsg("Đã mở khóa.");
         setTimeout(() => {
           onNext();
@@ -64,18 +64,38 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
           setLongPass("");
           setMsg("Chọn hình nền hoặc nhập mật khẩu để mở khóa.");
         }, 680);
-      } else {
+      } else if (newPass !== secret) {
         setMsg("Mật khẩu chưa đúng, thử lại nha.");
         setShake(true);
         setTimeout(() => setShake(false), 300);
         setTimeout(() => setPass(""), 520);
+      } else {
+        setMsg("Hãy nhập thêm mật khẩu dài nữa nha.");
       }
+    }
+  };
+
+  const handleLongPassChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setLongPass(val);
+    if (val === longSecret && pass === secret) {
+      setMsg("Đã mở khóa.");
+      setTimeout(() => {
+        onNext();
+      }, 260);
+      setTimeout(() => {
+        setPass("");
+        setLongPass("");
+        setMsg("Chọn hình nền hoặc nhập mật khẩu để mở khóa.");
+      }, 680);
+    } else if (val === longSecret && pass !== secret) {
+      setMsg("Hãy nhập thêm mật khẩu ngắn nữa nha.");
     }
   };
 
   const handleLongPassSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (longPass === longSecret || longPass === secret) {
+    if (longPass === longSecret && pass === secret) {
       setMsg("Đã mở khóa.");
       setTimeout(() => {
         onNext();
@@ -86,10 +106,15 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
         setMsg("Chọn hình nền hoặc nhập mật khẩu để mở khóa.");
       }, 680);
     } else {
-      setMsg("Mật khẩu chưa đúng, thử lại nha.");
+      setMsg("Mật khẩu chưa đúng hoặc chưa đủ, thử lại nha.");
       setShake(true);
       setTimeout(() => setShake(false), 300);
-      setTimeout(() => setLongPass(""), 520);
+      if (longPass !== longSecret) {
+        setTimeout(() => setLongPass(""), 520);
+      }
+      if (pass !== secret && pass.length === 4) {
+        setTimeout(() => setPass(""), 520);
+      }
     }
   };
 
@@ -158,7 +183,7 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
             <input 
               type="password" 
               value={longPass} 
-              onChange={e => setLongPass(e.target.value)} 
+              onChange={handleLongPassChange} 
               placeholder="Hoặc nhập mật khẩu dài..."
               className="long-pass-input"
               style={{
