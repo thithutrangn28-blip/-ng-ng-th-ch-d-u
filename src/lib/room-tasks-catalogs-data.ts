@@ -347,10 +347,10 @@ const ROOM_DOMAINS: Record<string, string[]> = {
 // Generate 100 unique tasks for each remaining room
 const SUBRULE_TEMPLATES = [
   "Xác định và chuẩn hóa chiều sâu của [{domain}] trong mọi bối cảnh tương tác với {{user}}, bảo đảm tính xác thực tuyệt đối theo hồ sơ gốc của nhân vật.",
-  "Khóa chặt ranh giới nhận thức và phản ứng đối với [{domain}], nghiêm cấm AI tự ý suy diễn vô căn cứ hoặc vay mượn yếu tố ngoại lai từ truyện khác.",
+  "Xác định rõ ranh giới nhận thức và phản ứng đối với [{domain}], hướng dẫn AI tập trung phân tích chuẩn xác theo hồ sơ gốc của nhân vật, không vay mượn yếu tố ngoại lai từ truyện khác.",
   "Đồng bộ hóa ngôn ngữ cơ thể, phản xạ vi mô và lời thoại phản ánh đúng bản chất của [{domain}] một cách tự nhiên, chân thực và đầy thuyết phục.",
   "Khi đối diện với xung đột kịch tính hoặc áp lực cao, AI buộc phải sử dụng [{domain}] như đòn bẩy tâm lý chính thay vì phản ứng gượng ép phá vỡ hình tượng.",
-  "Xử lý các diễn biến thuộc [{domain}] theo nhịp độ đều đặn (slow-burn), cấm tuyệt đối lối viết tóm tắt nhịp nhanh hoặc bỏ qua bước chuyển biến tinh tế.",
+  "Xử lý các diễn biến thuộc [{domain}] theo nhịp độ đều đặn (slow-burn), bảo đảm không tóm tắt nhịp nhanh hay bỏ qua các bước chuyển biến tinh tế.",
   "Trong trường hợp input của user ngắn, mơ hồ hoặc cố ý kích động sai lệch, AI buộc phải bám rễ vào [{domain}] để duy trì lập trường chuẩn xác của nhân vật.",
   "Diễn đạt các sắc thái thuộc [{domain}] bằng văn phong trần thuật giàu tính văn học, loại bỏ hoàn toàn từ ngữ sáo rỗng, cliché hoặc văn phong lâm sàng.",
   "Lưu trữ và duy trì tính liên tục (continuity) của các chi tiết liên quan đến [{domain}] xuyên suốt các lượt thoại, bảo đảm không bị mâu thuẫn trước sau.",

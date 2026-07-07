@@ -1,3 +1,12 @@
+export type LipstickAnnotation = {
+  id: string;
+  x: number; // Tỉ lệ % (0 - 100) trên chiều rộng ảnh
+  y: number; // Tỉ lệ % (0 - 100) trên chiều cao ảnh
+  text: string;
+  placement?: 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  color?: string; // Màu sắc của chữ và mũi tên chỉ
+};
+
 export type LipstickImageRef = {
   imageId: string;
   storyId: string;
@@ -13,6 +22,7 @@ export type LipstickImageRef = {
   analysisStatus: 'pending' | 'analyzing' | 'analyzed' | 'failed';
   imageAnalysisText?: string;
   imageAnalysisJson?: any;
+  annotations?: LipstickAnnotation[];
   // Legacy fields for backward compatibility
   id?: string;
   name?: string;
@@ -53,7 +63,7 @@ export type LipstickRoomState = {
   background: string;
   cover: string;
   avatar: string;
-  targetMode: 'bot' | 'user' | 'couple';
+  targetMode: 'bot' | 'user' | 'couple' | string;
   styleAnalyzer: LipstickStyleAnalyzer;
   cards: Record<string, LipstickCardState>;
   history: LipstickHistoryItem[];
@@ -121,6 +131,7 @@ export type LipstickStory = {
   avatar: string;
   files: LipstickStoryFile[];
   rooms: Record<string, LipstickRoomState>;
+  customRooms?: Room[];
   createdAt: string;
 };
 
@@ -130,5 +141,22 @@ export type LipstickState = {
     globalAvatar: string;
   };
   stories: LipstickStory[];
+};
+
+export type RoomCard = {
+  id: string;
+  name: string;
+  instruction: string;
+  visual: string;
+};
+
+export type Room = {
+  id: string;
+  icon: string;
+  title: string;
+  subtitle: string;
+  seed: number;
+  cover?: string;
+  cards: RoomCard[];
 };
 

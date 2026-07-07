@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getHomeWallpaper, setHomeWallpaper } from "../lib/storage";
+import { compressImageFile } from "../utils/imageCompressor";
 
 type Props = {
   active: boolean;
@@ -16,16 +17,14 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
     if (saved) setWallpaper(saved);
   }, []);
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    const r = new FileReader();
-    r.onload = () => {
-      const res = r.result as string;
+    try {
+      const res = await compressImageFile(f, 1024, 1024, 0.82);
       setWallpaper(res);
       setHomeWallpaper(res);
-    };
-    r.readAsDataURL(f);
+    } catch (err) {}
   };
 
   return (

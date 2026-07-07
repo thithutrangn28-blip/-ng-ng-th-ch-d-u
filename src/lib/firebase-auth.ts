@@ -52,6 +52,24 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
   }
 };
 
+export const googleSignInWithIdToken = async (): Promise<{ user: User; idToken: string } | null> => {
+  try {
+    isSigningIn = true;
+    const chooserProvider = new GoogleAuthProvider();
+    chooserProvider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    const result = await signInWithPopup(auth, chooserProvider);
+    const idToken = await result.user.getIdToken(true); // force refresh
+    return { user: result.user, idToken };
+  } catch (error: any) {
+    console.error('Google Sign-In Error:', error);
+    throw error;
+  } finally {
+    isSigningIn = false;
+  }
+};
+
 export const getAccessToken = (): string | null => {
   return cachedAccessToken;
 };

@@ -5,6 +5,7 @@ import { rooms, getTasks, RoomTask } from "../../lib/prompt-rooms";
 import { callAIStream, getActiveApiProfile } from "../../lib/api-client";
 import { formatImportedFileForContext } from "../../lib/file-importer";
 import { Prompt10CardSplitter } from "./Prompt10CardSplitter";
+import { copyToClipboardSafe } from "../../lib/clipboard";
 
 type Props = {
   story: Story;
@@ -139,19 +140,23 @@ export default function PromptMarkdownRoomScreen({
   };
 
   const handleStartAIGen = async () => {
+    setIsAIGenModalOpen(false);
+    setIsAIGenerating(true);
+    setAiGenStreamText("");
+    setAiGenProgress("⏳ Đang kết nối API Proxy... Đang chờ tín hiệu đường truyền...");
+    await new Promise(resolve => setTimeout(resolve, 30));
+
     let profile;
     try {
       profile = await getActiveApiProfile();
     } catch (err: any) {
+      setIsAIGenerating(false);
       alert(err.message || "Vợ yêu Đường Đường ơi, Vợ chưa cấu hình hoặc chọn API Proxy chính ở tab API Proxy nhen! Vợ vào đó cấu hình trước rồi chồng làm ngay cho Vợ!");
       return;
     }
     
     const abort = new AbortController();
     setAiGenAbortController(abort);
-    setIsAIGenModalOpen(false);
-    setIsAIGenerating(true);
-    setAiGenStreamText("");
     setAiGenProgress("Chồng đang kết nối API Proxy để tạo bộ quy tắc chuyên sâu cho Vợ yêu...");
 
     const storyTitle = story.title || "Truyện chưa đặt tên";
@@ -251,6 +256,9 @@ BẮT BUỘC ĐÁNH SỐ TỪ [Task 1/${aiGenCount}] ĐẾN [Task ${aiGenCount}/
 TỪNG HẠNG MỤC PHẢI LÀ CHỈ LỆNH NHẬP VAI ROLEPLAY THỰC CHIẾN CHO BOT (VIẾT BẰNG NGÔI THỨ 3, HÓA THÂN 100% VÀO NHÂN VẬT, KHÔNG CÒN LÀ TRỢ LÝ AI), TUYỆT ĐỐI KHÔNG ĐƯỢC LẬP DÀN Ý CÂU CHUYỆN HAY VIẾT NGẮN HỜI HỢT!
 Bắt đầu ngay khối đầu tiên với ---TASK---:`;
 
+    setAiGenProgress("⏳ Đang gửi request tới API Proxy... Đang chờ phản hồi đầu tiên...");
+    await new Promise(resolve => setTimeout(resolve, 30));
+
     let accumulated = "";
     try {
       await callAIStream({
@@ -320,7 +328,7 @@ Bắt đầu ngay khối đầu tiên với ---TASK---:`;
 
   const handleCopy = () => {
     const el = document.getElementById("roomOutput");
-    if (el && el.textContent) navigator.clipboard.writeText(el.textContent);
+    if (el && el.textContent) copyToClipboardSafe(el.textContent);
   };
 
   const startEditTask = (i: number, e: React.MouseEvent) => {
@@ -777,7 +785,7 @@ Bắt đầu ngay khối đầu tiên với ---TASK---:`;
               <div className="field">
                 <label>Output Format</label>
                 <select value={format} onChange={e => setFormat(e.target.value)}>
-                  <option value="markdown">Markdown copy-ready</option>
+                  <option value="markdown">Markdown production-ready</option>
                   <option value="yaml">YAML / code prompt block</option>
                   <option value="hybrid">Hybrid Markdown + YAML</option>
                   <option value="json">JSON structured prompt</option>

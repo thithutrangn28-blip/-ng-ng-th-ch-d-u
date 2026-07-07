@@ -1,5 +1,6 @@
 import { ApiProfile, getPrimaryApiProfile } from "./api-db";
 import { executeApiProxyText, executeApiProxyStream, resolveEndpointUrl, getApiProxySettings } from "../utils/apiProxy";
+import { getDeviceId, getSessionToken } from "./storage";
 
 export type { ApiProfile };
 
@@ -78,9 +79,18 @@ export async function callAIStream(options: AiStreamOptions): Promise<void> {
 export async function pullModels(profile: ApiProfile): Promise<string[]> {
   const settings = getApiProxySettings();
   if (settings.useLocalProxy === true) {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "x-device-id": getDeviceId()
+    };
+    const token = getSessionToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const res = await fetch("/api/models", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ profile }),
     });
 

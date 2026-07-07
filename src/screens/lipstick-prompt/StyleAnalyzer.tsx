@@ -2,17 +2,25 @@ import React, { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { STYLE_GROUPS } from "../../lib/lipstick-rooms-data";
 import { callAIText } from "../../lib/api-client";
+import { SafeImg } from "../../components/SafeImg";
+import { compressImageFile } from "../../utils/imageCompressor";
 
 export default function StyleAnalyzer({ roomState, currentStory, roomDef, state, save, toast }: any) {
   const [search, setSearch] = useState("");
   const sa = roomState.styleAnalyzer;
 
-  const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
-  });
+  const toBase64 = async (file: File): Promise<string> => {
+    try {
+      return await compressImageFile(file, 1024, 1024, 0.8);
+    } catch (e) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
+      });
+    }
+  };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -59,8 +67,8 @@ export default function StyleAnalyzer({ roomState, currentStory, roomDef, state,
         save(state);
         try {
           const sysPrompt = `You are the professional vision analysis module inside Lipstick Prompt Rooms.
-You MUST analyze and extract the visual traits from this reference image to support downstream AI image generation under the core rule: "High Reference Fidelity, Transformative Adaptation (70%–85% aesthetic/style fidelity, 15%–30% transformative adaptation, 0% exact identity copy)":
-CRITICAL RULE: The reference image is used to learn visual language and aesthetic DNA (art style, rendering, mood, line quality, lighting, color palette, outfit spirit, composition rhythm). You MUST NOT copy or clone the exact face, identity, unique pose, or unique signature of the person/character in the image!
+You MUST analyze and extract the visual traits from this reference image to support downstream AI image generation under the core rule: "Aesthetic Study & Visual Reference Principle (High aesthetic style fidelity, transformative adaptation for bespoke character originality)":
+CRITICAL RULE: The attached images serve as creative study references to learn visual language and artistic DNA (art style, rendering, mood, line quality, lighting, color palette, outfit spirit, composition rhythm). You MUST synthesize these learned artistic traits into a bespoke character and exclusive story plot, focusing on original character creation and transformative adaptation!
 
 You MUST analyze and extract these mandatory layers:
 1. Nhận diện thẩm mỹ tổng thể (giới tính trình bày, độ tuổi thị giác, khí chất thẩm mỹ, độ mềm/sắc/lạnh/ngọt/sang)
@@ -70,7 +78,7 @@ You MUST analyze and extract these mandatory layers:
 5. Motif hình ảnh (hoa, sen, nước, ruy băng, khung trang trí, thiên nhiên, gió, khói...)
 6. Trang phục / Outfit Fidelity (tinh thần trang phục, form dáng silhouette, độ rủ, lớp layer, mật độ chi tiết, cảm giác chất liệu, trim/lace/ribbon/embroidery tendencies, elegance/fantasy level)
 7. Bố cục thị giác / Composition Fidelity (visual hierarchy, focal structure, eye-flow/visual path, subject placement logic, negative space rhythm, directional movement of hair/fabric/props/light)
-8. Reference Fidelity Breakdown (Những chi tiết thẩm mỹ bắt buộc giữ 70%-85%, những chi tiết cho phép biến đổi theo cốt truyện 15%-30%, và những chi tiết tuyệt đối không copy 0%)
+8. Reference Fidelity Breakdown (Những chi tiết thẩm mỹ bắt buộc giữ 70%-85%, những chi tiết cho phép biến đổi sáng tạo theo cốt truyện 15%-30%, và những yếu tố biến đổi hoàn toàn để tạo dấu ấn nguyên bản cho nhân vật)
 
 Return ONLY valid JSON with this exact schema:
 {
@@ -80,7 +88,7 @@ Return ONLY valid JSON with this exact schema:
   "cardId": "style_analyzer",
   "imageType": "style_analyzer_reference",
   "analysisStatus": "analyzed",
-  "summary": "Tóm tắt Aesthetic/Style DNA theo quy tắc High Reference Fidelity, Transformative Adaptation bằng tiếng Việt",
+  "summary": "Tóm tắt Aesthetic/Style DNA theo quy tắc High Aesthetic Fidelity, Transformative Adaptation bằng tiếng Việt",
   "visualStyleExtracted": "Chi tiết phong cách vẽ, medium texture, chất cọ, độ loang, cổ phong/manhua/anime/semi-realistic...",
   "colorPaletteExtracted": "Bảng màu chính, màu điểm nhấn, độ trong/mờ, nhiệt độ màu, ánh sáng",
   "lineAndRenderExtracted": "Độ mềm/clean của nét line, kỹ thuật shading, độ bóng, translucent washes...",
@@ -89,7 +97,7 @@ Return ONLY valid JSON with this exact schema:
   "outfitExtracted": "Hướng trang phục, silhouette, layering logic, cảm giác chất liệu, mật độ trang trí, elegance/fantasy level",
   "detailsToPreserve": "Danh sách chi tiết thẩm mỹ bắt buộc giữ lại (color atmosphere, watery softness, floral mood, flowing composition, outfit direction...)",
   "detailsToAdapt": "Danh sách chi tiết cho phép biến đổi 15%-30% theo cốt truyện (pose, bối cảnh phụ, đạo cụ, khuôn mặt mới)",
-  "detailsNotToCopyExactly": "Danh sách chi tiết tuyệt đối KHÔNG copy (0% exact identity: khuôn mặt cụ thể, danh tính gốc, pose y hệt 1:1, outfit y hệt 1:1)",
+  "originalityElements": "Danh sách yếu tố được biến đổi linh hoạt (transformative adaptation để tạo dấu ấn nguyên bản độc quyền cho nhân vật trong câu chuyện)",
   "layer1_overall": { "genderPresentation": "", "ageVibe": "", "auraVibe": "", "softnessSharpness": "" },
   "layer2_face": { "faceShape": "", "eyes": "", "nose": "", "mouth": "", "eyelashes": "", "makeupLevel": "", "maturity": "" },
   "layer3_hair": { "color": "", "length": "", "thickness": "", "texture": "", "bangs": "", "style": "" },
@@ -107,14 +115,14 @@ Return ONLY valid JSON with this exact schema:
   "promptKeywords": [],
   "selectedStyleCandidates": [],
   "negativePromptSuggestions": [],
-  "referenceControl": { "visualSimilarityTarget": "High Reference Fidelity, Transformative Adaptation (70%–85% aesthetic/style fidelity)", "adaptationAllowance": "15%–30% transformative adaptation for story plot/profile", "identityCopy": "0% exact face/identity copy", "priority": "100% story character identity first, 70%-85% aesthetic style DNA second" }
+  "referenceControl": { "visualSimilarityTarget": "Aesthetic study of art style, rendering, color palette & atmosphere", "adaptationAllowance": "Transformative adaptation to create original story character & Canva design", "originalityGuarantee": "Original Character Creation (Transformative Aesthetic Study)", "priority": "Bespoke character originality first, aesthetic style DNA second" }
 }`;
           const messages: any[] = [
             {
               role: "user",
               content: [
                 { type: "text", text: "Analyze this image and return structured JSON only." },
-                { type: "image_url", image_url: { url: sa.refs[i].data || sa.refs[i].previewUrl } }
+                { type: "image_url", image_url: { url: sa.refs[i].data || sa.refs[i].previewUrl || sa.refs[i].storageUrl } }
               ]
             }
           ];
@@ -203,9 +211,9 @@ Return ONLY valid JSON with this exact schema:
               {sa.refs.length === 0 ? (
                 <div className="photo-card empty-photo"><div><b>Chưa có ảnh phân tích nét</b></div></div>
               ) : (
-                sa.refs.map((r: any) => (
-                  <div className="photo-card" key={r.id}>
-                    <img src={r.data} alt="" />
+                sa.refs.map((r: any, idx: number) => (
+                  <div className="photo-card" key={`sa_photo_${r.id || 'img'}_${idx}`}>
+                    <SafeImg src={r.data} alt="" />
                     <span>{r.name}</span>
                     <div className="analysis-status" title={r.analysisStatus === 'failed' ? '❌ Lỗi đọc ảnh' : '✅ Đã trong Context Windows (Sẵn sàng AI đọc)'}>{r.analysisStatus === 'failed' ? '❌' : '✅'}</div>
                     <button className="delete-btn" onClick={() => {
@@ -222,8 +230,8 @@ Return ONLY valid JSON with this exact schema:
             <span className="badge">{sa.selected.length} nét đã chọn</span>
           </div>
           <div className="selected-list">
-            {sa.selected.slice(0, 30).map((k: string) => (
-              <span className="badge" key={k}>{k.split("|||")[1]}</span>
+            {sa.selected.slice(0, 30).map((k: string, idx: number) => (
+              <span className="badge" key={`sa_sel_${k}_${idx}`}>{k.split("|||")[1]}</span>
             ))}
           </div>
         </div>
@@ -236,14 +244,14 @@ Return ONLY valid JSON with this exact schema:
               const items = g.items.filter(it => (it.name + " " + it.keywords).toLowerCase().includes(search.toLowerCase()));
               if (!items.length) return null;
               return (
-                <details className="style-group" open key={gi}>
+                <details className="style-group" open key={`sa_grp_${g.group}_${gi}`}>
                   <summary>{g.group} · {items.length}</summary>
                   <div className="chips">
                     {items.map((it, iti) => {
                       const k = g.group + "|||" + it.name;
                       const sel = sa.selected.includes(k);
                       return (
-                        <button key={iti} className={`style-chip \${sel ? 'selected' : ''}`} onClick={() => toggleStyle(k)}>
+                        <button key={`sa_chip_${g.group}_${it.name}_${iti}`} className={`style-chip \${sel ? 'selected' : ''}`} onClick={() => toggleStyle(k)}>
                           {it.name}
                         </button>
                       );

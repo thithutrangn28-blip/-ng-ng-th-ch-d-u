@@ -11,6 +11,11 @@
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
+  overflow-anchor: none !important;
+  touch-action: manipulation;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--ink);
   background-color: #fff8fb;
@@ -18,7 +23,17 @@
   background-size: contain;
   background-position: top center;
   background-repeat: no-repeat;
-  background-attachment: fixed;
+}
+.gpu-fixed-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transform: translateZ(0);
+  will-change: transform;
 }
 .lipstick-root::before {
   content:"";
@@ -30,9 +45,14 @@
   backdrop-filter: none !important;
 }
 
-.lipstick-root * { box-sizing: border-box; }
+.lipstick-root * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 .lipstick-root button, .lipstick-root input, .lipstick-root textarea, .lipstick-root select { font: inherit; }
-.lipstick-root button { cursor: pointer; }
+.lipstick-root button, .lipstick-root a, .lipstick-root .btn, .lipstick-root .icon, .lipstick-root .style-chip, .lipstick-root .history-item, .lipstick-root .profile-card, .lipstick-root .work-card, .lipstick-root .target-option, .lipstick-root .preset, .lipstick-root .room-heart-toggle, .lipstick-root .rail-btn {
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+.lipstick-root input, .lipstick-root textarea { user-select: text; }
 
 .lipstick-root .app-container {
   max-width: 1180px;
@@ -40,7 +60,7 @@
   padding: calc(36px + env(safe-area-inset-top, 0px)) clamp(12px,3vw,28px) 72px;
 }
 
-.lipstick-root .topbar{position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(14px + env(safe-area-inset-top, 0px)) clamp(12px,3vw,28px) 14px;background: rgba(255,236,244,.55) !important; border-bottom: 1px solid rgba(255,193,219,.45) !important; backdrop-filter: blur(8px) saturate(1.08) !important; box-shadow: 0 10px 26px rgba(173,88,122,.08) !important; min-height: 72px;}
+.lipstick-root .topbar{position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(14px + env(safe-area-inset-top, 0px)) clamp(12px,3vw,28px) 14px;background: rgba(255,236,244,.88) !important; border-bottom: 1px solid rgba(255,193,219,.45) !important; box-shadow: 0 10px 26px rgba(173,88,122,.08) !important; min-height: 72px;}
 .lipstick-root .brand{display:flex;align-items:center;gap:11px;min-width:0}
 .lipstick-root .brand b{font-size:18px;letter-spacing:-.045em;white-space:nowrap; color: #241b24 !important; text-shadow: 0 1px 0 rgba(255,255,255,.52) !important; font-weight: 900 !important;}
 .lipstick-root .brand small{display:block;color:#51404c !important;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; text-shadow: 0 1px 0 rgba(255,255,255,.40) !important; font-weight: 650 !important;}
@@ -53,13 +73,13 @@
 .lipstick-root .btn{border:0;border-radius:999px;padding:10px 14px;font-weight:850; display: inline-flex; align-items: center; justify-content: center;}
 .lipstick-root .btn.small{font-size:12px;padding:7px 10px}
 .lipstick-root .btn.primary{color:white !important;background:linear-gradient(135deg, #ff8ebd, #f56da2) !important;box-shadow:0 12px 26px rgba(245,109,162,.26) !important;}
-.lipstick-root .btn.ghost{background: rgba(255,230,240,.22) !important; border: 1px solid rgba(236,146,184,.62) !important; color:#795363;backdrop-filter:blur(10px)}
+.lipstick-root .btn.ghost{background: rgba(255,230,240,.75) !important; border: 1px solid rgba(236,146,184,.62) !important; color:#795363;}
 .lipstick-root .btn.danger{background:#ffe7ef;border:1px solid rgba(232,106,153,.22);color:#9b3158}
 .lipstick-root .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.lipstick-root .icon{width:42px;height:42px;border-radius:16px;border: 1px solid rgba(236,146,184,.62) !important; background: rgba(255,230,240,.22) !important; color:#8c526b;font-weight:950;display:grid;place-items:center;backdrop-filter:blur(10px)}
-.lipstick-root .glass-panel{background: linear-gradient(180deg, rgba(255,214,229,.14), rgba(255,235,244,.10)) !important; border: 1px solid rgba(238,153,190,.55) !important; box-shadow: 0 16px 34px rgba(150,74,108,.08), inset 0 0 0 1px rgba(255,255,255,.22) !important; border-radius:var(--radius);padding:22px;backdrop-filter:blur(1.5px) saturate(1.02) !important;}
-.lipstick-root .solid-panel{background: linear-gradient(180deg, rgba(255,214,229,.14), rgba(255,235,244,.10)) !important; border: 1px solid rgba(238,153,190,.55) !important; box-shadow: 0 16px 34px rgba(150,74,108,.08), inset 0 0 0 1px rgba(255,255,255,.22) !important; border-radius:var(--radius);padding:22px;backdrop-filter:blur(1.5px) saturate(1.02) !important;}
+.lipstick-root .icon{width:42px;height:42px;border-radius:16px;border: 1px solid rgba(236,146,184,.62) !important; background: rgba(255,230,240,.75) !important; color:#8c526b;font-weight:950;display:grid;place-items:center;}
+.lipstick-root .glass-panel{background: linear-gradient(180deg, rgba(255,214,229,.35), rgba(255,235,244,.30)) !important; border: 1px solid rgba(238,153,190,.55) !important; box-shadow: 0 16px 34px rgba(150,74,108,.08), inset 0 0 0 1px rgba(255,255,255,.22) !important; border-radius:var(--radius);padding:22px;}
+.lipstick-root .solid-panel{background: linear-gradient(180deg, rgba(255,214,229,.35), rgba(255,235,244,.30)) !important; border: 1px solid rgba(238,153,190,.55) !important; box-shadow: 0 16px 34px rgba(150,74,108,.08), inset 0 0 0 1px rgba(255,255,255,.22) !important; border-radius:var(--radius);padding:22px;}
 
 .lipstick-root .eyebrow{font-size:12px;letter-spacing:.08em !important;text-transform:uppercase;color: #ad4b77 !important; text-shadow: 0 1px 0 rgba(255,255,255,.44) !important; font-weight: 900 !important; margin:0 0 8px}
 .lipstick-root .muted{color: #51404c !important; text-shadow: 0 1px 0 rgba(255,255,255,.40) !important; font-weight: 650 !important;}
@@ -69,11 +89,11 @@
 .lipstick-root p, .lipstick-root li{line-height:1.62; color: #51404c !important; text-shadow: 0 1px 0 rgba(255,255,255,.40) !important; font-weight: 650 !important;}
 
 .lipstick-root .hero{display:grid;grid-template-columns:1fr;gap:16px;margin:18px 0}
-.lipstick-root .story-grid, .lipstick-root .room-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.lipstick-root .story-grid, .lipstick-root .room-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;overflow-anchor:none !important;}
 
-.lipstick-root .profile-card{background: linear-gradient(180deg, rgba(255,214,229,.14), rgba(255,235,244,.10)) !important; border: 1px solid rgba(238,153,190,.55) !important; box-shadow: 0 16px 34px rgba(150,74,108,.08), inset 0 0 0 1px rgba(255,255,255,.22) !important; border-radius:32px;overflow:hidden;transition:.18s;backdrop-filter:blur(1.5px) saturate(1.02) !important;}
+.lipstick-root .profile-card{background: linear-gradient(180deg, rgba(255,214,229,.35), rgba(255,235,244,.30)) !important; border: 1px solid rgba(238,153,190,.55) !important; box-shadow: 0 16px 34px rgba(150,74,108,.08), inset 0 0 0 1px rgba(255,255,255,.22) !important; border-radius:32px;overflow:hidden;transition:transform .18s ease, box-shadow .18s ease;overflow-anchor:none !important;}
 .lipstick-root .profile-card:hover{transform:translateY(-3px);box-shadow:0 20px 52px rgba(118,58,92,.16)}
-.lipstick-root .profile-cover{height:175px;position:relative;overflow:hidden;background:linear-gradient(135deg,#ffddea,#eef8ff 55%,#ffe9f1); z-index: 1;}
+.lipstick-root .profile-cover{height:175px;min-height:175px;position:relative;overflow:hidden;background:linear-gradient(135deg,#ffddea,#eef8ff 55%,#ffe9f1); z-index: 1;overflow-anchor:none !important;contain:layout size;}
 .lipstick-root .profile-cover > div:not(.avatar), .lipstick-root .profile-cover > img { z-index: 1; }
 .lipstick-root .profile-cover img{width:100%;height:100%;object-fit:cover;display:block; opacity: 1 !important;}
 .lipstick-root .profile-cover:after{content:"";position:absolute;inset:0;background: linear-gradient(180deg, transparent 68%, rgba(255,235,244,.12)) !important; pointer-events:none; z-index: 2 !important;}
@@ -96,28 +116,28 @@
 .lipstick-root .preset img{width:100%;height:100%;object-fit:cover;display:block}
 .lipstick-root .preset button{position:absolute;right:8px;bottom:8px}
 
-.lipstick-root .drawer-mask{position:fixed;inset:0;z-index:90;background:rgba(51,40,49,.32);backdrop-filter:blur(3px);display:none}
+.lipstick-root .drawer-mask{position:fixed;inset:0;z-index:90;background:rgba(51,40,49,.32);display:none}
 .lipstick-root .drawer-mask.show{display:block}
-.lipstick-root .drawer{position:fixed;z-index:100;top:0;right:0;bottom:0;width:min(430px,94vw);background:rgba(255,248,251,.80);box-shadow:-18px 0 55px rgba(70,45,58,.18);padding:16px;overflow:auto;transform:translateX(110%);transition:.22s;backdrop-filter:blur(6px)}
+.lipstick-root .drawer{position:fixed;z-index:100;top:0;right:0;bottom:0;width:min(430px,94vw);background:rgba(255,248,251,.95);box-shadow:-18px 0 55px rgba(70,45,58,.18);padding:16px;overflow:auto;transform:translateX(110%);transition:.22s;overflow-anchor:none !important;}
 .lipstick-root .drawer.show{transform:translateX(0)}
 .lipstick-root .drawer .room-grid{grid-template-columns:1fr}
 .lipstick-root .drawer .profile-cover{height:125px}
 .lipstick-root .drawer .profile-body{padding:48px 14px 14px}
 
-.lipstick-root .room-stage{min-height:100vh;margin:-16px clamp(-28px,-3vw,-12px) -72px;padding:16px clamp(12px,3vw,28px) 72px;background-size:contain;background-position:top center;background-repeat:no-repeat;background-color:rgba(255,248,251,.15);position:relative; isolation: isolate;}
+.lipstick-root .room-stage{min-height:100vh;margin:-16px clamp(-28px,-3vw,-12px) -72px;padding:16px clamp(12px,3vw,28px) 72px;background-size:cover !important;background-position:center !important;background-repeat:no-repeat !important;background-color:#fcf8fa;position:relative; isolation: isolate;}
 .lipstick-root .room-stage:before{content:"";position:absolute;inset:0;background: linear-gradient(180deg, rgba(255,255,255,.01), rgba(255,255,255,.02)) !important; pointer-events:none}
 .lipstick-root .room-stage>*{position:relative;z-index:1}
 
-.lipstick-root .room-header{background: linear-gradient(180deg, rgba(255,214,229,.14), rgba(255,235,244,.10)) !important; border: 1px solid rgba(238,153,190,.55) !important; border-radius:32px;box-shadow: 0 16px 34px rgba(150,74,108,.08), inset 0 0 0 1px rgba(255,255,255,.22) !important; backdrop-filter:blur(1.5px) saturate(1.02) !important; overflow:hidden;margin:18px 0 14px; background-blend-mode: screen;}
+.lipstick-root .room-header{background: linear-gradient(180deg, rgba(255,214,229,.35), rgba(255,235,244,.30)) !important; border: 1px solid rgba(238,153,190,.55) !important; border-radius:32px;box-shadow: 0 16px 34px rgba(150,74,108,.08), inset 0 0 0 1px rgba(255,255,255,.22) !important; overflow:hidden;margin:18px 0 14px; background-blend-mode: screen;}
 .lipstick-root .room-hero-cover{height:320px;position:relative;background:linear-gradient(135deg,#ffddea,#eef8ff 55%,#ffe5ef);overflow:hidden; background-size: cover; background-position: center; z-index: 1;}
 .lipstick-root .room-hero-cover img{width:100%;height:100%;object-fit:contain !important;display:block; opacity: 1 !important; background: rgba(255,248,251,.10);}
 .lipstick-root .room-hero-cover > div:not(.room-avatar), .lipstick-root .room-hero-cover > img { z-index: 1; }
 .lipstick-root .room-hero-cover:after{content:"";position:absolute;inset:0;background: linear-gradient(180deg, transparent 68%, rgba(255,235,244,.08)) !important; pointer-events:none; z-index: 2 !important;}
 
-.lipstick-root .room-avatar{position:absolute;left:28px !important;bottom:18px !important;width:112px !important;height:112px !important;border-radius:50%;border: 6px solid rgba(255,255,255,.94) !important; background: rgba(255,243,248,.62) !important; display:grid;place-items:center;overflow:hidden;box-shadow: 0 18px 38px rgba(80,42,62,.22), 0 0 0 1px rgba(232,106,153,.22) !important; z-index: 20 !important; pointer-events: auto !important; isolation: isolate !important; backdrop-filter: blur(2px) !important;}
+.lipstick-root .room-avatar{position:absolute;left:28px !important;bottom:18px !important;width:112px !important;height:112px !important;border-radius:50%;border: 6px solid rgba(255,255,255,.94) !important; background: rgba(255,243,248,.88) !important; display:grid;place-items:center;overflow:hidden;box-shadow: 0 18px 38px rgba(80,42,62,.22), 0 0 0 1px rgba(232,106,153,.22) !important; z-index: 20 !important; pointer-events: auto !important; isolation: isolate !important;}
 .lipstick-root .room-avatar img{width:100% !important;height:100% !important;object-fit:cover !important; position: relative !important; z-index: 21 !important;}
 
-.lipstick-root .room-info{padding:18px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px; position: relative !important; z-index: 5 !important; background: rgba(255,224,236,.08) !important; border-top: 1px solid rgba(238,153,190,.58) !important;}
+.lipstick-root .room-info{padding:18px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px; position: relative !important; z-index: 5 !important; background: rgba(255,224,236,.18) !important; border-top: 1px solid rgba(238,153,190,.58) !important;}
 .lipstick-root .room-info h1{font-size:clamp(28px,5vw,50px)}
 .lipstick-root .room-info p{margin:6px 0 0;color: #51404c !important;}
 .lipstick-root .room-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:520px}
@@ -125,27 +145,27 @@
 .lipstick-root .progress{height:9px;border-radius:999px;background:#f1dce7;overflow:hidden;margin-top:13px; width: 100%;}
 .lipstick-root .progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,#ef86b1,#a7d6f6);border-radius:999px;transition:.2s}
 
-.lipstick-root .block{background: linear-gradient(180deg, rgba(255,214,229,.14), rgba(255,235,244,.10)) !important; border: 1px solid rgba(238,153,190,.55) !important; box-shadow: 0 16px 34px rgba(150,74,108,.08), inset 0 0 0 1px rgba(255,255,255,.22) !important; border-radius:30px;padding:16px;margin-bottom:14px;backdrop-filter:blur(1.5px) saturate(1.02) !important; background-blend-mode: screen;}
+.lipstick-root .block{background: linear-gradient(180deg, rgba(255,214,229,.35), rgba(255,235,244,.30)) !important; border: 1px solid rgba(238,153,190,.55) !important; box-shadow: 0 16px 34px rgba(150,74,108,.08), inset 0 0 0 1px rgba(255,255,255,.22) !important; border-radius:30px;padding:16px;margin-bottom:14px; background-blend-mode: screen;}
 .lipstick-root .block-title{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
 
-.lipstick-root .upload-hero{border: 1px solid rgba(238,153,190,.58) !important; background: rgba(255,224,236,.08) !important; border-radius:24px;padding:14px; overflow: hidden !important;}
+.lipstick-root .upload-hero{border: 1px solid rgba(238,153,190,.58) !important; background: rgba(255,224,236,.18) !important; border-radius:24px;padding:14px; overflow: hidden !important;}
 .lipstick-root .file-native{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
 .lipstick-root .file-label{display:inline-flex;align-items:center;gap:8px;border-radius:999px;background:linear-gradient(135deg,#ffa0bf,#e86a99);color:white !important;font-weight:900;padding:10px 14px;box-shadow:0 10px 24px rgba(232,106,153,.24);cursor: pointer;}
 .lipstick-root .file-label:before{content:"＋";font-weight:950}
 
 .lipstick-root .rail-controls{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 2px;}
-.lipstick-root .rail-controls .rail-hint{flex:1;text-align:center;font-size:12px;font-weight:850;color:#8c6475;background: rgba(255,230,240,.22) !important; border: 1px solid rgba(236,146,184,.62) !important; border-radius:999px;padding:7px 10px;}
-.lipstick-root .rail-btn{width:42px;height:42px;border:1px solid rgba(255,255,255,.65);border-radius:50%;background:rgba(255,226,238,.32);color:#9f2f62;font-size:22px;font-weight:950;display:grid;place-items:center;box-shadow:0 8px 20px rgba(118,58,92,.10);backdrop-filter:blur(4px);}
+.lipstick-root .rail-controls .rail-hint{flex:1;text-align:center;font-size:12px;font-weight:850;color:#8c6475;background: rgba(255,230,240,.75) !important; border: 1px solid rgba(236,146,184,.62) !important; border-radius:999px;padding:7px 10px;}
+.lipstick-root .rail-btn{width:42px;height:42px;border:1px solid rgba(255,255,255,.65);border-radius:50%;background:rgba(255,226,238,.75);color:#9f2f62;font-size:22px;font-weight:950;display:grid;place-items:center;box-shadow:0 8px 20px rgba(118,58,92,.10);}
 .lipstick-root .rail-btn:active{transform:scale(.94);}
 
 .lipstick-root .image-rail{width:100% !important;max-width:100% !important;overflow-x:scroll !important;overflow-y:hidden !important;display:flex !important;flex-wrap:nowrap !important;gap:14px !important;scroll-snap-type:x mandatory !important;scroll-behavior:smooth !important;-webkit-overflow-scrolling:touch !important;touch-action:pan-x !important;overscroll-behavior-x:contain !important;padding:12px 8px 14px !important;scrollbar-width:thin;}
 .lipstick-root .image-rail::-webkit-scrollbar{height:8px}
 .lipstick-root .image-rail::-webkit-scrollbar-thumb{background:#ffd3e5;border-radius:999px}
 
-.lipstick-root .photo-card{flex:0 0 min(82vw,560px) !important;width:min(82vw,560px) !important;min-width:min(82vw,560px) !important;max-width:min(82vw,560px) !important;scroll-snap-align:center !important; height:340px;border-radius:26px;border: 1px solid rgba(238,153,190,.58) !important; background: rgba(255,224,236,.08) !important; position:relative; overflow: hidden;}
+.lipstick-root .photo-card{flex:0 0 min(82vw,560px) !important;width:min(82vw,560px) !important;min-width:min(82vw,560px) !important;max-width:min(82vw,560px) !important;scroll-snap-align:center !important; height:340px;border-radius:26px;border: 1px solid rgba(238,153,190,.58) !important; background: rgba(255,224,236,.18) !important; position:relative; overflow: hidden;}
 .lipstick-root .photo-card img{width:100%;height:100%;object-fit:cover;display:block; box-shadow: none !important;}
-.lipstick-root .photo-card span{position:absolute;left:12px;bottom:12px;right:12px;background:rgba(255,255,255,.78);border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-size:12px;color:#7d5365;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:850;backdrop-filter:blur(8px)}
-.lipstick-root .photo-card .delete-btn {position:absolute;top:12px;right:12px;background:rgba(255,255,255,.78);border-radius:50%;width:32px;height:32px;display:grid;place-items:center;color:red;font-weight:bold;cursor:pointer;border:1px solid var(--line);backdrop-filter:blur(8px);font-size:18px;line-height:1;}
+.lipstick-root .photo-card span{position:absolute;left:12px;bottom:12px;right:12px;background:rgba(255,255,255,.90);border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-size:12px;color:#7d5365;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:850;}
+.lipstick-root .photo-card .delete-btn {position:absolute;top:12px;right:12px;background:rgba(255,255,255,.90);border-radius:50%;width:32px;height:32px;display:grid;place-items:center;color:red;font-weight:bold;cursor:pointer;border:1px solid var(--line);font-size:18px;line-height:1;}
 .lipstick-root .empty-photo{display:grid;place-items:center;text-align:center;color: #8e6678 !important; background: rgba(255,224,236,.08) !important; border: 1px solid rgba(238,153,190,.58) !important;}
 .lipstick-root .empty-photo b{font-size:18px}
 .lipstick-root .analysis-status {position:absolute;top:12px;left:12px;background:rgba(255,255,255,.8);padding:4px 8px;border-radius:8px;font-size:11px;font-weight:bold;}
@@ -196,8 +216,8 @@
 .lipstick-root .target-option.active{background: rgba(255,188,216,.46) !important; border-color: rgba(225,95,150,.90) !important; color: #8e2f5b !important;}
 .lipstick-root .target-note{margin-top:10px;background: rgba(255,224,236,.08) !important; border: 1px solid rgba(238,153,190,.58) !important; border-radius:18px;padding:10px 12px;color:#7e5b6a;font-size:13px;line-height:1.45}
 
-.lipstick-root .modal{position:fixed;inset:0;z-index:120;background:rgba(51,40,49,.35);backdrop-filter:blur(10px);padding:18px;overflow:auto;display:flex;align-items:center;justify-content:center;}
-.lipstick-root .modal-card{width:100%;max-width:980px;background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:34px;box-shadow:var(--shadow);padding:22px;backdrop-filter:blur(14px); margin: auto; max-height: 90vh; overflow-y: auto;}
+.lipstick-root .modal{position:fixed;inset:0;z-index:120;background:rgba(51,40,49,.45);padding:18px;overflow:auto;display:flex;align-items:center;justify-content:center;}
+.lipstick-root .modal-card{width:100%;max-width:980px;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:34px;box-shadow:var(--shadow);padding:22px; margin: auto; max-height: 90vh; overflow-y: auto;}
 .lipstick-root .modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:14px}
 .lipstick-root .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .lipstick-root .form-grid .wide{grid-column:1/-1}
@@ -247,4 +267,98 @@
 .lipstick-root.is-api-running .block {
   content-visibility: auto;
   contain-intrinsic-size: 450px;
+}
+
+/* Nút trái tim/bông hoa vẽ bằng code CSS (không dùng emoji) bật tắt thẻ trắng đầu phòng */
+.room-heart-toggle {
+  position: fixed;
+  right: 18px;
+  top: 92px;
+  z-index: 999;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(236,146,184,.62);
+  background: rgba(255,230,240,.90);
+  box-shadow: 0 10px 24px rgba(150,74,108,.16);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.25s ease;
+}
+
+.room-heart-toggle:hover {
+  transform: scale(1.08);
+  background: rgba(255,230,240,.95);
+  box-shadow: 0 14px 28px rgba(210,58,115,0.25);
+}
+
+.room-heart-toggle:active {
+  transform: scale(0.95);
+}
+
+.room-heart-toggle .heart-shape {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  margin: 3px auto 0;
+  transform: rotate(-45deg);
+  background: #f56da2;
+  transition: all 0.25s ease;
+}
+
+.room-heart-toggle .heart-shape::before,
+.room-heart-toggle .heart-shape::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #f56da2;
+  transition: all 0.25s ease;
+}
+
+.room-heart-toggle .heart-shape::before {
+  top: -9px;
+  left: 0;
+}
+
+.room-heart-toggle .heart-shape::after {
+  top: 0;
+  left: 9px;
+}
+
+.room-header-card.collapsed {
+  display: none !important;
+}
+
+/* Lớp thẻ màu hồng trong suốt kính lọc (pink filter tint) nhìn xuyên hình nền 2 chiều */
+.lipstick-root .room-stage .glass-panel,
+.lipstick-root .room-stage .work-card,
+.lipstick-root .room-stage .pink-transparent-card {
+  background: linear-gradient(135deg, rgba(255, 182, 215, 0.44), rgba(255, 212, 236, 0.36)) !important;
+  border: 1.5px solid rgba(255, 145, 195, 0.75) !important;
+  box-shadow: 0 12px 36px rgba(200, 70, 130, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.45) !important;
+  background-blend-mode: normal !important;
+}
+
+.lipstick-root .room-stage .work-head {
+  background: rgba(255, 195, 225, 0.35) !important;
+  border-bottom: 1px solid rgba(255, 150, 190, 0.55) !important;
+}
+
+.lipstick-root .room-stage .guide {
+  background: rgba(255, 255, 255, 0.4) !important;
+  border: 1px solid rgba(255, 160, 200, 0.55) !important;
+  color: #3e333e !important;
+}
+
+.lipstick-root .room-stage pre,
+.lipstick-root .room-stage .history-item,
+.lipstick-root .room-stage .target-selector-card,
+.lipstick-root .room-stage .upload-hero {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border-color: rgba(255, 160, 200, 0.55) !important;
 }

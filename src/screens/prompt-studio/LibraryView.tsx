@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Story, CharProfile } from "../../lib/prompt-context-db";
+import { compressImageFile } from "../../utils/imageCompressor";
 
 type Props = {
   stories: Story[];
@@ -18,23 +19,86 @@ type Props = {
 export default function LibraryView({
   stories, activeStory, time, battery, onSelect, onCreate, onDuplicate, onDelete, onUpdateStory, onWallpaperChange, onOpenStudio
 }: Props) {
+  const [localStory, setLocalStory] = useState<Story>(activeStory);
+
+  useEffect(() => {
+    setLocalStory(activeStory);
+  }, [activeStory.id]);
+
+  useEffect(() => {
+    if (!localStory || !activeStory) return;
+    if (localStory.id !== activeStory.id) return;
+    
+    const timer = setTimeout(() => {
+      if (JSON.stringify(localStory) !== JSON.stringify(activeStory)) {
+        onUpdateStory({
+          ...localStory,
+          updatedAt: Date.now()
+        });
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [localStory, activeStory, onUpdateStory]);
   
-  const handleDetailChange = (field: keyof Story["detail"], val: string) => {
-    onUpdateStory({
-      ...activeStory,
-      detail: { ...activeStory.detail, [field]: val }
-    });
+  const handleDetailMultiChange = (val: string) => {
+    setLocalStory(prev => ({
+      ...prev,
+      detail: {
+        ...prev.detail,
+        storyWorld: val,
+        storyLogline: val,
+        storyTimeline: val,
+        storyCanonDeep: val,
+        storyGoal: val,
+        storyMustHave: val
+      }
+    }));
+  };
+
+  const handleAltTitleChange = (val: string) => {
+    setLocalStory(prev => ({
+      ...prev,
+      detail: {
+        ...prev.detail,
+        storyAltTitle: val,
+        storyStatus: val
+      }
+    }));
+  };
+
+  const handleSubGenreChange = (val: string) => {
+    setLocalStory(prev => ({
+      ...prev,
+      detail: {
+        ...prev.detail,
+        storySubGenre: val,
+        storyRoute: val
+      }
+    }));
   };
 
   const handleUserChange = (field: keyof Story["userProfileSingle"], val: string) => {
-    onUpdateStory({
-      ...activeStory,
-      userProfileSingle: { ...activeStory.userProfileSingle, [field]: val }
-    });
+    setLocalStory(prev => ({
+      ...prev,
+      userProfileSingle: { ...prev.userProfileSingle, [field]: val }
+    }));
+  };
+
+  const handleUserMultiChange = (val: string) => {
+    setLocalStory(prev => ({
+      ...prev,
+      userProfileSingle: {
+        ...prev.userProfileSingle,
+        publicInfo: val,
+        privateInfo: val,
+        agency: val,
+        style: val
+      }
+    }));
   };
 
   const handleAddChar = () => {
-    const chars = activeStory.characters || [];
+    const chars = localStory.characters || [];
     const newChar: CharProfile = {
       id: "botchar_" + Date.now() + "_" + Math.random().toString(16).slice(2),
       profileGroup: "bot_char",
@@ -49,36 +113,76 @@ export default function LibraryView({
       canon: "",
       avatar: ""
     };
-    onUpdateStory({ ...activeStory, characters: [...chars, newChar] });
+    const nextStory = { ...localStory, characters: [...chars, newChar] };
+    setLocalStory(nextStory);
+    onUpdateStory(nextStory);
   };
 
-  const handleUpdateChar = (id: string, field: keyof CharProfile, val: string) => {
-    const chars = activeStory.characters || [];
-    onUpdateStory({
-      ...activeStory,
-      characters: chars.map(c => c.id === id ? { ...c, [field]: val } : c)
-    });
+  const handleCharNameChange = (id: string, val: string) => {
+    setLocalStory(prev => ({
+      ...prev,
+      characters: (prev.characters || []).map(c => 
+        c.id === id ? { ...c, name: val, role: val } : c
+      )
+    }));
+  };
+
+  const handleCharIdentityChange = (id: string, val: string) => {
+    setLocalStory(prev => ({
+      ...prev,
+      characters: (prev.characters || []).map(c => 
+        c.id === id ? { ...c, identity: val, status: val } : c
+      )
+    }));
+  };
+
+  const handleCharPersonalityChange = (id: string, val: string) => {
+    setLocalStory(prev => ({
+      ...prev,
+      characters: (prev.characters || []).map(c => 
+        c.id === id ? {
+          ...c,
+          personality: val,
+          appearance: val,
+          relationship: val,
+          voiceDNA: val,
+          canon: val
+        } : c
+      )
+    }));
   };
 
   const handleDeleteChar = (id: string) => {
-    const chars = activeStory.characters || [];
-    onUpdateStory({
-      ...activeStory,
+    const chars = localStory.characters || [];
+    const nextStory = {
+      ...localStory,
       characters: chars.filter(c => c.id !== id)
-    });
+    };
+    setLocalStory(nextStory);
+    onUpdateStory(nextStory);
   };
 
-  const readFile = (f: File): Promise<string> => new Promise(res => {
-    const r = new FileReader();
-    r.onload = () => res(r.result as string);
-    r.readAsDataURL(f);
-  });
+  const readFile = async (f: File): Promise<string> => {
+    return await compressImageFile(f, 1024, 1024, 0.82);
+  };
 
   const handleImageChange = async (field: "cover" | "background" | "avatar", e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
     const b64 = await readFile(f);
-    onUpdateStory({ ...activeStory, [field]: b64 });
+    const nextStory = { ...localStory, [field]: b64 };
+    setLocalStory(nextStory);
+    onUpdateStory(nextStory);
+  };
+
+  const handleCharAvatarChange = async (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const b64 = await readFile(f);
+    const nextChars = (localStory.characters || []).map(c => c.id === id ? { ...c, avatar: b64 } : c);
+    const nextStory = { ...localStory, characters: nextChars };
+    setLocalStory(nextStory);
+    onUpdateStory(nextStory);
   };
 
   return (
@@ -97,7 +201,7 @@ export default function LibraryView({
           </div>
           <div className="storyList">
             {stories.map((s, i) => (
-              <button key={s.id} className={`storyCard ${s.id === activeStory.id ? 'active' : ''}`} onClick={() => onSelect(s.id)}>
+              <button key={s.id} className={`storyCard ${s.id === activeStory.id ? 'active' : ''}`} onClick={() => { if (s.id !== activeStory.id) onUpdateStory(localStory); onSelect(s.id); }}>
                 <span className="storyCover" style={s.cover ? { backgroundImage: `url(${s.cover})` } : {}}>
                   {!s.cover && String(i + 1).padStart(2, "0")}
                 </span>
@@ -115,21 +219,21 @@ export default function LibraryView({
           <header className="head">
             <div><span className="eyebrow">Selected story controls</span><h2>Trang trưng bày truyện</h2></div>
             <div className="headBtns">
-              <button className="btn soft" onClick={onDuplicate}>Nhân bản truyện</button>
+              <button className="btn soft" onClick={() => { onUpdateStory(localStory); onDuplicate(); }}>Nhân bản truyện</button>
               <button className="btn warn" onClick={onDelete}>Xóa truyện đang chọn</button>
-              <button className="btn blue" onClick={onOpenStudio}>Mở Prompt Studio</button>
+              <button className="btn blue" onClick={() => { onUpdateStory(localStory); onOpenStudio(); }}>Mở Prompt Studio</button>
             </div>
           </header>
           <div className="mainScroll">
             <article className="notice">
-              <h3>{activeStory.title || "Chưa đặt tên"}</h3>
-              <p>{activeStory.summary || "Đây là kho riêng của câu chuyện đang chọn."}</p>
+              <h3>{localStory.title || "Chưa đặt tên"}</h3>
+              <p>{localStory.summary || "Đây là kho riêng của câu chuyện đang chọn."}</p>
             </article>
 
             <section className="workspaceGrid">
-              <div className="field"><label>Tên câu chuyện</label><input value={activeStory.title} onChange={e => onUpdateStory({...activeStory, title: e.target.value})} placeholder="Tên truyện / dự án" /></div>
-              <div className="field"><label>Thể loại / vibe</label><input value={activeStory.genre} onChange={e => onUpdateStory({...activeStory, genre: e.target.value})} placeholder="GL, BL, fantasy, học đường, dark romance..." /></div>
-              <div className="field big"><label>Mô tả ngắn cho trang trưng bày</label><textarea value={activeStory.summary} onChange={e => onUpdateStory({...activeStory, summary: e.target.value})} placeholder="Mô tả ngắn để nhận diện câu chuyện này trong kho."></textarea></div>
+              <div className="field"><label>Tên câu chuyện</label><input value={localStory.title} onChange={e => setLocalStory(prev => ({...prev, title: e.target.value}))} placeholder="Tên truyện / dự án" /></div>
+              <div className="field"><label>Thể loại / vibe</label><input value={localStory.genre} onChange={e => setLocalStory(prev => ({...prev, genre: e.target.value}))} placeholder="GL, BL, fantasy, học đường, dark romance..." /></div>
+              <div className="field big"><label>Mô tả ngắn cho trang trưng bày</label><textarea value={localStory.summary} onChange={e => setLocalStory(prev => ({...prev, summary: e.target.value}))} placeholder="Mô tả ngắn để nhận diện câu chuyện này trong kho."></textarea></div>
             </section>
 
             <section className="storySetup">
@@ -143,19 +247,19 @@ export default function LibraryView({
                 </div>
                 <div className="setupBody">
                   <div className="mediaGrid">
-                    <label className={`mediaPicker ${activeStory.cover ? 'hasImage' : ''}`}>
+                    <label className={`mediaPicker ${localStory.cover ? 'hasImage' : ''}`}>
                       <input type="file" accept="image/*" onChange={e => handleImageChange("cover", e)} />
-                      {activeStory.cover && <img className="mediaPreview" src={activeStory.cover} alt="" />}
+                      {localStory.cover && <img className="mediaPreview" src={localStory.cover} alt="" />}
                       <span className="mediaPickText"><b>Chọn ảnh bìa</b><span>Dùng cho thẻ truyện.</span></span>
                     </label>
-                    <label className={`mediaPicker ${activeStory.background ? 'hasImage' : ''}`}>
+                    <label className={`mediaPicker ${localStory.background ? 'hasImage' : ''}`}>
                       <input type="file" accept="image/*" onChange={e => handleImageChange("background", e)} />
-                      {activeStory.background && <img className="mediaPreview" src={activeStory.background} alt="" />}
+                      {localStory.background && <img className="mediaPreview" src={localStory.background} alt="" />}
                       <span className="mediaPickText"><b>Chọn ảnh nền</b><span>Nền tự đổi theo truyện.</span></span>
                     </label>
-                    <label className={`mediaPicker ${activeStory.avatar ? 'hasImage' : ''}`}>
+                    <label className={`mediaPicker ${localStory.avatar ? 'hasImage' : ''}`}>
                       <input type="file" accept="image/*" onChange={e => handleImageChange("avatar", e)} />
-                      {activeStory.avatar && <img className="mediaPreview" src={activeStory.avatar} alt="" />}
+                      {localStory.avatar && <img className="mediaPreview" src={localStory.avatar} alt="" />}
                       <span className="mediaPickText"><b>Chọn avatar</b><span>Trang trí nhận diện.</span></span>
                     </label>
                   </div>
@@ -175,24 +279,16 @@ export default function LibraryView({
                     <div className="field">
                       <label>Tên khác & Trạng thái</label>
                       <input 
-                        value={activeStory.detail.storyAltTitle || ""}
-                        onChange={e => {
-                          const val = e.target.value;
-                          handleDetailChange("storyAltTitle", val);
-                          handleDetailChange("storyStatus", val);
-                        }}
+                        value={localStory.detail.storyAltTitle || ""}
+                        onChange={e => handleAltTitleChange(e.target.value)}
                         placeholder="Tên khác / Trạng thái truyện..." 
                       />
                     </div>
                     <div className="field">
                       <label>Thể loại & Route</label>
                       <input 
-                        value={activeStory.detail.storySubGenre || ""}
-                        onChange={e => {
-                          const val = e.target.value;
-                          handleDetailChange("storySubGenre", val);
-                          handleDetailChange("storyRoute", val);
-                        }}
+                        value={localStory.detail.storySubGenre || ""}
+                        onChange={e => handleSubGenreChange(e.target.value)}
                         placeholder="GL, BL, Ngôn tình, Route A..." 
                       />
                     </div>
@@ -200,16 +296,8 @@ export default function LibraryView({
                   <div className="field big" style={{ height: '380px' }}>
                     <label>Nội dung cốt truyện · Bối cảnh thế giới · Timeline · Canon · Mục tiêu · Yêu cầu bắt buộc</label>
                     <textarea 
-                      value={activeStory.detail.storyWorld} 
-                      onChange={e => {
-                        const val = e.target.value;
-                        handleDetailChange("storyWorld", val);
-                        handleDetailChange("storyLogline", val);
-                        handleDetailChange("storyTimeline", val);
-                        handleDetailChange("storyCanonDeep", val);
-                        handleDetailChange("storyGoal", val);
-                        handleDetailChange("storyMustHave", val);
-                      }}
+                      value={localStory.detail.storyWorld} 
+                      onChange={e => handleDetailMultiChange(e.target.value)}
                       placeholder="Vợ hãy nhập toàn bộ câu chuyện, bối cảnh, timeline, canon quan trọng và yêu cầu vào 1 ô lớn này cho tiện nhé..."
                       style={{ height: '100%', minHeight: '320px', fontSize: '14px', lineHeight: '1.6' }}
                     ></textarea>
@@ -235,7 +323,7 @@ export default function LibraryView({
                         <div className="field">
                           <label>Tên {"{{user}}"}</label>
                           <input 
-                            value={activeStory.userProfileSingle.name || ""}
+                            value={localStory.userProfileSingle.name || ""}
                             onChange={e => handleUserChange("name", e.target.value)} 
                             placeholder="Tên {{user}}..."
                           />
@@ -243,7 +331,7 @@ export default function LibraryView({
                         <div className="field">
                           <label>Quan hệ với Bot Char</label>
                           <input 
-                            value={activeStory.userProfileSingle.relation || ""}
+                            value={localStory.userProfileSingle.relation || ""}
                             onChange={e => handleUserChange("relation", e.target.value)} 
                             placeholder="Người yêu, đối thủ, bạn thân..."
                           />
@@ -252,14 +340,8 @@ export default function LibraryView({
                       <div className="field big" style={{ height: '260px' }}>
                         <label>Toàn bộ thông tin công khai · bí mật · agency boundary · phong cách vai của {"{{user}}"}</label>
                         <textarea 
-                          value={activeStory.userProfileSingle.publicInfo} 
-                          onChange={e => {
-                            const val = e.target.value;
-                            handleUserChange("publicInfo", val);
-                            handleUserChange("privateInfo", val);
-                            handleUserChange("agency", val);
-                            handleUserChange("style", val);
-                          }}
+                          value={localStory.userProfileSingle.publicInfo} 
+                          onChange={e => handleUserMultiChange(e.target.value)}
                           placeholder="Điền tất cả thông tin hồ sơ, tính cách, bí mật và phong cách của {{user}} vào đây..."
                           style={{ height: '100%', minHeight: '200px', fontSize: '14px', lineHeight: '1.6' }}
                         ></textarea>
@@ -286,10 +368,10 @@ export default function LibraryView({
                     <button className="btn pink" onClick={handleAddChar}>+ Thêm Bot Char</button>
                   </div>
                   <div className="characterCards">
-                    {(!activeStory.characters || activeStory.characters.length === 0) && (
+                    {(!localStory.characters || localStory.characters.length === 0) && (
                       <div className="storyRequiredNote">Chưa có thẻ nhân vật. Bấm "+ Thêm Bot Char".</div>
                     )}
-                    {activeStory.characters?.map((c, i) => (
+                    {localStory.characters?.map((c, i) => (
                       <div key={c.id} className="characterCard">
                         <div className="characterCardHead">
                           <div style={{display:'flex', gap:'12px', alignItems:'center'}}>
@@ -300,13 +382,7 @@ export default function LibraryView({
                           </div>
                           <div className="charActions">
                             <label className="btn ghost">
-                               <input type="file" accept="image/*" onChange={async (e) => {
-                                  const f = e.target.files?.[0];
-                                  if (f) {
-                                      const b64 = await readFile(f);
-                                      handleUpdateChar(c.id, "avatar", b64);
-                                  }
-                               }} />Avatar
+                               <input type="file" accept="image/*" onChange={(e) => handleCharAvatarChange(c.id, e)} />Avatar
                             </label>
                             <button className="btn warn" onClick={() => handleDeleteChar(c.id)}>Xóa</button>
                           </div>
@@ -317,11 +393,7 @@ export default function LibraryView({
                               <label>Tên nhân vật & Vai trò</label>
                               <input 
                                 value={c.name || ""}
-                                onChange={e => {
-                                  const val = e.target.value;
-                                  handleUpdateChar(c.id, "name", val);
-                                  handleUpdateChar(c.id, "role", val);
-                                }}
+                                onChange={e => handleCharNameChange(c.id, e.target.value)}
                                 placeholder="Tên nhân vật..."
                               />
                             </div>
@@ -329,11 +401,7 @@ export default function LibraryView({
                               <label>Tuổi / Xưng hô / Nghề nghiệp</label>
                               <input 
                                 value={c.identity || ""}
-                                onChange={e => {
-                                  const val = e.target.value;
-                                  handleUpdateChar(c.id, "identity", val);
-                                  handleUpdateChar(c.id, "status", val);
-                                }}
+                                onChange={e => handleCharIdentityChange(c.id, e.target.value)}
                                 placeholder="Tuổi, xưng hô, nghề nghiệp..."
                               />
                             </div>
@@ -342,14 +410,7 @@ export default function LibraryView({
                             <label>Toàn bộ hồ sơ nhân vật (Ngoại hình · Tính cách/tâm lý · Quan hệ · Voice DNA · Canon lock riêng)</label>
                             <textarea 
                               value={c.personality} 
-                              onChange={e => {
-                                const val = e.target.value;
-                                handleUpdateChar(c.id, "personality", val);
-                                handleUpdateChar(c.id, "appearance", val);
-                                handleUpdateChar(c.id, "relationship", val);
-                                handleUpdateChar(c.id, "voiceDNA", val);
-                                handleUpdateChar(c.id, "canon", val);
-                              }}
+                              onChange={e => handleCharPersonalityChange(c.id, e.target.value)}
                               placeholder="Vợ nhập toàn bộ ngoại hình, tính cách, tâm lý, voice DNA, quan hệ và canon lock của nhân vật này vào 1 ô lớn ở đây nhé..."
                               style={{ height: '100%', minHeight: '260px', fontSize: '14px', lineHeight: '1.6' }}
                             ></textarea>
@@ -364,9 +425,9 @@ export default function LibraryView({
             </section>
 
             <div className="btnRow3" style={{marginTop: "14px"}}>
-              <button className="btn pink" onClick={() => onUpdateStory(activeStory)}>Lưu thông tin truyện</button>
-              <button className="btn soft" onClick={() => { onCreate(); onOpenStudio(); }}>Tạo mới & mở</button>
-              <button className="btn blue" onClick={onOpenStudio}>Vào viết prompt</button>
+              <button className="btn pink" onClick={() => onUpdateStory(localStory)}>Lưu thông tin truyện</button>
+              <button className="btn soft" onClick={() => { onUpdateStory(localStory); onCreate(); onOpenStudio(); }}>Tạo mới & mở</button>
+              <button className="btn blue" onClick={() => { onUpdateStory(localStory); onOpenStudio(); }}>Vào viết prompt</button>
             </div>
             
             <div className="vault">
@@ -383,3 +444,4 @@ Không dùng chung localStorage key toàn cục cho nội dung truyện.</pre>
     </section>
   );
 }
+

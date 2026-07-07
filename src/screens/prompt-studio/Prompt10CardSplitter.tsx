@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { copyToClipboardSafe } from "../../lib/clipboard";
 
 type Props = {
   text: string;
@@ -99,7 +100,7 @@ export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast }: 
   }, [text]);
 
   const handleCopyChunk = (idx: number, content: string) => {
-    navigator.clipboard.writeText(content);
+    copyToClipboardSafe(content);
     setCopiedIndex(idx);
     if (onToast) {
       onToast(`💖 Đã sao chép Đoạn ${idx + 1} / 10 cho Vợ yêu!`);
@@ -110,7 +111,7 @@ export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast }: 
   };
 
   const handleCopyAll = () => {
-    navigator.clipboard.writeText(text);
+    copyToClipboardSafe(text);
     setCopiedAll(true);
     if (onToast) {
       onToast("💖 Đã sao chép toàn bộ Prompt cho Vợ yêu!");

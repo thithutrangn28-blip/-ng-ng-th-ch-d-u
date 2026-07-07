@@ -32,6 +32,14 @@ export default function PromptMarkdownSmartContextScreen({ active, onHome }: Pro
   const [batteryLevel, setBatteryLevel] = useState(100);
 
   useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    } catch (e) {}
+  }, [view, currentRoom]);
+
+  useEffect(() => {
     const tick = () => {
       const d = new Date();
       setTime(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`);
@@ -345,7 +353,7 @@ The feature is designed for:
 
 You are not a casual chat assistant.
 You are a Professional Prompt Architect.
-You must write strict, complete, copy-ready Prompt Markdown.
+You must write strict, complete, production-ready Prompt Markdown.
 You must not greet the user.
 You must not introduce yourself.
 You must not explain what the user asked.
@@ -436,7 +444,7 @@ Your job is to produce the final finished prompt.
 
 Use the selected story context and selected room task catalog internally as construction material.
 
-Transform all relevant instructions into a clean copy-ready Prompt Markdown module.
+Transform all relevant instructions into a clean production-ready Prompt Markdown module.
 
 Do not output:
 - Purpose
@@ -452,13 +460,13 @@ Do not output:
 
 Default output must be the finished prompt only.\n`;
     } else if (outputMode === "audit") {
-      modeContract = `\nOUTPUT MODE: AUDIT MODE\nYou MUST produce the finished copy-ready Prompt Markdown module AND explain which tasks were used and how they affected the prompt rules.\n`;
+      modeContract = `\nOUTPUT MODE: AUDIT MODE\nYou MUST produce the finished production-ready Prompt Markdown module AND explain which tasks were used and how they affected the prompt rules.\n`;
     } else if (outputMode === "debug") {
       modeContract = `\nOUTPUT MODE: DEBUG TASK CATALOG MODE\nYou MUST explicitly print task metadata including task IDs, Purpose, Detailed Instruction, Input Sources, Output Effect, Prevents Error, and Validation Rule.\n`;
     }
 
     return `# OUTPUT CONTRACT${modeContract}
-The output must be a copy-ready Prompt Markdown module that the user can copy into another AI/bot system.
+The output must be a production-ready Prompt Markdown module that the user can copy into another AI/bot system.
 Do not instruct the AI to write a narrative response or roleplay scene.
 The output must be final usable content.
 Do not greet.
@@ -469,7 +477,7 @@ Do not write a tutorial.
 Do not say "Here is".
 Do not say "I will".
 Do not include meta-commentary.
-Start directly with the final copy-ready Prompt Markdown module.
+Start directly with the final production-ready Prompt Markdown module.
 
 When generating Prompt Markdown:
 - use clear headings (H1, H2, H3)
@@ -477,7 +485,7 @@ When generating Prompt Markdown:
 - preserve syntax for {{user}} and {{char}} without hardcoding fixed names
 - include constraints and boundary rules
 - include forbidden behaviors and required actions
-- make it 100% copy-ready for AI engines
+- make it 100% production-ready for AI engines
 
 When running API test:
 - return only the test confirmation
@@ -639,7 +647,7 @@ You are not a prompt auditor.
 You are not a task-list narrator.
 You are not explaining the user’s setup.
 You are not repeating the Context Window.
-Your job is to use the selected story context, parsed file content, character profiles, canon, timeline, and selected room tasks to produce the final copy-ready ${fmtLabel} for the user.
+Your job is to use the selected story context, parsed file content, character profiles, canon, timeline, and selected room tasks to produce the final production-ready ${fmtLabel} for the user.
 All internal setup is for your work only.
 Do not repeat internal setup back to the user.
 
@@ -823,7 +831,7 @@ Task: ${requestText}
 🌐 MANDATORY PROMPT LANGUAGE: ${langStr}. You MUST write all instructions, explanations, and rules in ${langStr}!
 
 🚨 MANDATORY ROMANCE ROLEPLAY DIRECTIVE (BẤT KHẢ XÂM PHẠM TỪ VỢ YÊU ĐƯỜNG ĐƯỜNG):
-1. READY-TO-USE ROLEPLAY PROMPT ONLY: You are building a professional, copy-ready Romance Roleplay System Prompt (Hệ thống Chỉ lệnh Nhập vai Tình yêu thực chiến) for an AI Bot Character (to be pasted directly into SillyTavern, JanitorAI, Character.AI, or AI Studio Bot).
+1. READY-TO-USE ROLEPLAY PROMPT ONLY: You are building a professional, production-ready Romance Roleplay System Prompt (Hệ thống Chỉ lệnh Nhập vai Tình yêu thực chiến) for an AI Bot Character (to be pasted directly into SillyTavern, JanitorAI, Character.AI, or AI Studio Bot).
 2. ZERO AI ASSISTANT PERSONA & FULL IMMERSION (CẤM TƯ CÁCH TRỢ LÝ AI): The AI plays the role of the Bot Character(s) in the story. NEVER refer to the AI as an "assistant", "language model", or "helpful bot". The AI must strip away all artificiality and EMBODY the Bot Character 100%, living and breathing in a cinematic, sensory-rich realistic world to generate captivating content for {{user}}/Player!
 3. MANDATORY THIRD-PERSON NARRATION (BẮT BUỘC VIẾT NGÔI THỨ BA): Explicitly command and enforce that all character actions, body language, facial expressions, internal psychology, and scene descriptions MUST be written in THIRD-PERSON (using the character's name, he/she/they, chàng/nàng/hắn/y...). Third-person narration delivers cinematic realism and eliminates the robotic chatbot feel!
 4. STRICTLY NO STORY OUTLINING (CẤM LẬP DÀN Ý CÂU CHUYỆN): DO NOT write a story outline, plot summary, or chapter plan! Transform ALL ${tasks.length} task requirements provided in Section 6 into DIRECT OPERATIONAL BEHAVIORAL DIRECTIVES FOR THE BOT CHARACTER when interacting with {{user}}/Player!
@@ -913,9 +921,9 @@ Task: ${requestText}
       : " MANDATORY OUTPUT LANGUAGE: VIETNAMESE (Tiếng Việt). Write the entire prompt and all instructions in professional Vietnamese!";
     const antiHallucinationMandate = " STRICT MANDATE: You must strictly adhere to the provided story workspace and imported file contents. DO NOT hallucinate or invent plot points, world rules, trade routes, slavery, taxes, supernatural creatures, or historical details outside the provided file/story text. You must process ALL selected tasks in this single response without skipping, summarizing, cutting off early, or splitting into multiple runs. Keep generating until every single task is fully transformed into rules." + langMandate;
     if (outputMode === "final") {
-      return `You are a professional Romance Roleplay Prompt Architect (Chuyên gia Kiến trúc sư Prompt Nhập vai Tình yêu). Your job is to produce an exhaustive, copy-ready Romance Roleplay System Prompt in ${fmtLabel} format that the user can paste directly into an AI character chatbot (SillyTavern, JanitorAI, Character.AI, etc.) to start roleplaying immediately! STRICTLY FORBIDDEN: Do NOT refer to the AI as an assistant or helper! The AI must embody the Bot Character(s) 100% and narrate actions, thoughts, and emotions in THIRD-PERSON (Ngôi thứ ba). Do NOT write a story outline, plot summary, or chapter plan! Transform every task into direct operational behavioral rules for the Bot Character (how it speaks, acts, emotes, breathes, and reacts to {{user}} in a cinematic realistic world). 🚨 MANDATORY COUNTING HACK & DEPTH: You MUST count and number every single item from 1 to the total count (e.g., [Ý 1], [Ý 2], ...) so you do not skip or compress any rules! Organize into rich architectural sections with extensive behavioral constraints, vocabulary styles, dos and don'ts, and strict continuity rules. Never settle for shallow bullet points! Do not print internal developer metadata, file extensions (.docx, .pdf), parser rules, or error guard descriptions. Silently and rigorously apply all rules into rich, professional roleplay prompt instructions.` + antiHallucinationMandate;
+      return `You are a professional Romance Roleplay Prompt Architect (Chuyên gia Kiến trúc sư Prompt Nhập vai Tình yêu). Your job is to produce an exhaustive, production-ready Romance Roleplay System Prompt in ${fmtLabel} format that the user can paste directly into an AI character chatbot (SillyTavern, JanitorAI, Character.AI, etc.) to start roleplaying immediately! STRICTLY FORBIDDEN: Do NOT refer to the AI as an assistant or helper! The AI must embody the Bot Character(s) 100% and narrate actions, thoughts, and emotions in THIRD-PERSON (Ngôi thứ ba). Do NOT write a story outline, plot summary, or chapter plan! Transform every task into direct operational behavioral rules for the Bot Character (how it speaks, acts, emotes, breathes, and reacts to {{user}} in a cinematic realistic world). 🚨 MANDATORY COUNTING HACK & DEPTH: You MUST count and number every single item from 1 to the total count (e.g., [Ý 1], [Ý 2], ...) so you do not skip or compress any rules! Organize into rich architectural sections with extensive behavioral constraints, vocabulary styles, dos and don'ts, and strict continuity rules. Never settle for shallow bullet points! Do not print internal developer metadata, file extensions (.docx, .pdf), parser rules, or error guard descriptions. Silently and rigorously apply all rules into rich, professional roleplay prompt instructions.` + antiHallucinationMandate;
     } else if (outputMode === "audit") {
-      return `You are a prompt architect. Output the finished copy-ready ${fmtLabel} module AND explain which tasks were used and how they affected the prompt rules.` + antiHallucinationMandate;
+      return `You are a prompt architect. Output the finished production-ready ${fmtLabel} module AND explain which tasks were used and how they affected the prompt rules.` + antiHallucinationMandate;
     } else {
       return `You are a prompt architect in Debug Mode. Output the ${fmtLabel} module and explicitly print task metadata including task IDs, Purpose, Detailed Instruction, Input Sources, Output Effect, Prevents Error, and Validation Rule.` + antiHallucinationMandate;
     }
@@ -924,6 +932,8 @@ Task: ${requestText}
   const callProxy = async (all = false, roomNote = "", format = "markdown", strict = "cold-technical", selectedTasksList: typeof rooms[0][] = [], setRoomOutput?: (s: string) => void) => {
     await checkApi();
     const out = setRoomOutput || setHomeOutput;
+    out("⏳ Đang kết nối API Proxy & kiểm tra Quality Gate... Đang chờ tín hiệu đường truyền...");
+    await new Promise(resolve => setTimeout(resolve, 30));
 
     // Quality Gate Check
     const qualityErrors = validateContextQuality(activeStory, currentRoom, selectedTasksList, all);
@@ -1028,7 +1038,8 @@ Task: ${requestText}
     const abort = new AbortController();
     setAbortController(abort);
     
-    out('Đang gọi API Proxy qua /api/ai-stream...\n\n[Đang chờ token đầu tiên]');
+    out('Đang kết nối API Proxy qua /api/ai-stream... Đang chờ tín hiệu đường truyền...\n\n[Đang chờ token đầu tiên]');
+    await new Promise(resolve => setTimeout(resolve, 30));
 
     let full = "";
     try {
@@ -1083,6 +1094,8 @@ Task: ${requestText}
   };
 
   const handleTestApi = async () => {
+    setHomeOutput("⏳ Đang kết nối API Proxy... Đang chờ tín hiệu đường truyền...");
+    await new Promise(resolve => setTimeout(resolve, 30));
     await checkApi();
     
     const requestText = `This is a quick API Proxy test from Prompt Markdown Smart Context Studio.
@@ -1111,7 +1124,8 @@ Received:
     const abort = new AbortController();
     setAbortController(abort);
     
-    setHomeOutput('Đã gửi request tới API Proxy...\n\n[Đang chờ token đầu tiên]');
+    setHomeOutput('Đang kết nối API Proxy... Đang chờ tín hiệu đường truyền...\n\n[Đang chờ token đầu tiên]');
+    await new Promise(resolve => setTimeout(resolve, 30));
 
     let full = "";
     try {

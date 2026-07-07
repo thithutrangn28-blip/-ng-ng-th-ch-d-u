@@ -1,13 +1,361 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
+
+interface SecurityStore {
+  allowedEmail: string;
+  allowedPhone: string;
+  allowedName: string;
+  approvedDeviceId: string | null;
+  deviceHistory: Array<{
+    deviceId: string;
+    deviceName: string;
+    approvedAt: string;
+    userAgent: string;
+  }>;
+  activeSessions: Record<string, {
+    email: string;
+    deviceId: string;
+    createdAt: string;
+    expiresAt: string;
+  }>;
+}
+
+const STORE_PATH = path.join(process.cwd(), "security-store.json");
+
+function loadSecurityStore(): SecurityStore {
+  try {
+    if (fs.existsSync(STORE_PATH)) {
+      return JSON.parse(fs.readFileSync(STORE_PATH, "utf-8"));
+    }
+  } catch (e) {
+    console.error("Lỗi đọc file security-store.json, dùng mặc định:", e);
+  }
+  return {
+    allowedEmail: "thithutrangn28@gmail.com",
+    allowedPhone: "0981267115",
+    allowedName: "Nguyễn Thị Thu Trang",
+    approvedDeviceId: null,
+    deviceHistory: [],
+    activeSessions: {}
+  };
+}
+
+function saveSecurityStore(store: SecurityStore) {
+  try {
+    fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Lỗi ghi file security-store.json:", e);
+  }
+}
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  app.use(express.json({ limit: "200mb" }));
+  app.use(express.urlencoded({ limit: "200mb", extended: true }));
+
+  // Middleware bảo mật tối mật ở backend - Chặn tất cả request API ngoại trừ các API xác thực công khai
+  const securityMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.originalUrl.startsWith("/api/auth/")) {
+      return next();
+    }
+
+    const token = req.headers["authorization"]?.toString().replace("Bearer ", "").trim();
+    const deviceId = req.headers["x-device-id"]?.toString().trim();
+
+    if (!token || !deviceId) {
+      return res.status(401).json({ 
+        ok: false, 
+        error: "Thiếu thông tin xác thực bảo mật tối mật (Token hoặc Device ID) để truy cập hệ thống! 🔒" 
+      });
+    }
+
+    const store = loadSecurityStore();
+    const session = store.activeSessions[token];
+
+    if (!session) {
+      return res.status(401).json({ 
+        ok: false, 
+        error: "Phiên làm việc không hợp lệ hoặc đã hết hạn rồi vợ yêu ơi, đăng nhập lại nhé! 🔑" 
+      });
+    }
+
+    if (session.deviceId !== deviceId || store.approvedDeviceId !== deviceId) {
+      return res.status(403).json({ 
+        ok: false, 
+        error: "Thiết bị này chưa được liên kết hoặc đã bị thu hồi quyền truy cập rồi vợ yêu ơi! 🔒" 
+      });
+    }
+
+    // Kiểm tra thời gian hết hạn
+    if (new Date(session.expiresAt).getTime() < Date.now()) {
+      delete store.activeSessions[token];
+      saveSecurityStore(store);
+      return res.status(401).json({ 
+        ok: false, 
+        error: "Phiên đăng nhập bảo mật của vợ đã hết hạn rồi nha! 🔒" 
+      });
+    }
+
+    next();
+  };
+
+  app.use("/api", securityMiddleware);
+
+  // --- CÁC ENDPOINT AUTH XÁC THỰC CÔNG KHAI ---
+
+  // 1. Lấy thông tin allowlist và trạng thái liên kết
+  app.get("/api/auth/config", (req, res) => {
+    const store = loadSecurityStore();
+    res.json({
+      ok: true,
+      allowedEmail: store.allowedEmail,
+      allowedPhone: store.allowedPhone,
+      allowedName: store.allowedName,
+      hasApprovedDevice: !!store.approvedDeviceId
+    });
+  });
+
+  // 2. Xác thực thông tin Google Sign-In và kiểm tra Allowlist + Device Binding
+  app.post("/api/auth/google-verify", async (req, res) => {
+    try {
+      const { idToken, deviceId, deviceName, userAgent } = req.body;
+      if (!idToken || !deviceId) {
+        return res.status(400).json({ ok: false, error: "Vợ yêu ơi, thiếu thông tin ID Token hoặc Mã Thiết Bị rồi nha! 🔒" });
+      }
+
+      // Đọc cấu hình Firebase từ file config để lấy API Key
+      const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf-8"));
+      const apiKey = firebaseConfig.apiKey;
+
+      // Xác thực ID Token trực tiếp với Google Firebase Auth REST API
+      const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken })
+      });
+
+      if (!verifyRes.ok) {
+        const errText = await verifyRes.text();
+        console.error("Lỗi xác thực ID Token từ Google/Firebase:", errText);
+        return res.status(401).json({
+          ok: false,
+          error: "Xác thực mã đăng nhập Google thất bại hoặc phiên đã hết hạn. Vợ yêu hãy thử đăng nhập lại nhé! 🔒"
+        });
+      }
+
+      const verifyData = (await verifyRes.json()) as { users?: Array<{ email?: string; emailVerified?: boolean; displayName?: string }> };
+      const googleUser = verifyData.users?.[0];
+
+      if (!googleUser || !googleUser.email) {
+        return res.status(401).json({
+          ok: false,
+          error: "Không tìm thấy thông tin tài khoản Google của vợ yêu từ ID Token! 🔒"
+        });
+      }
+
+      const email = googleUser.email.trim().toLowerCase();
+      const store = loadSecurityStore();
+      const allowedEmail = store.allowedEmail.trim().toLowerCase();
+
+      // KIỂM TRA ALLOWLIST NGAY TRÊN BACKEND DỰA TRÊN EMAIL THẬT TỪ TOKEN
+      if (email !== allowedEmail) {
+        return res.status(403).json({
+          ok: false,
+          error: `Hệ Thống Từ Chối! Tài khoản Google '${email}' không nằm trong Allowlist ủy quyền. Chỉ duy nhất Nguyễn Thị Thu Trang mới được vào ứng dụng! 🔒`
+        });
+      }
+
+      // Nếu là thiết bị đầu tiên, tự động liên kết (binding)
+      if (!store.approvedDeviceId) {
+        store.approvedDeviceId = deviceId;
+        store.deviceHistory.push({
+          deviceId,
+          deviceName: deviceName || "Thiết bị đầu tiên của Trang",
+          approvedAt: new Date().toISOString(),
+          userAgent: userAgent || ""
+        });
+        saveSecurityStore(store);
+      }
+
+      // Kiểm tra Device Binding
+      if (store.approvedDeviceId !== deviceId) {
+        const prevDevice = store.deviceHistory.find(d => d.deviceId === store.approvedDeviceId);
+        return res.json({
+          ok: true,
+          needsDeviceBindingApproval: true,
+          previousDeviceName: prevDevice ? prevDevice.deviceName : "Thiết bị cũ"
+        });
+      }
+
+      // Khớp thiết bị -> Cấp Session Token 30 ngày
+      const sessionToken = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      store.activeSessions[sessionToken] = {
+        email: email,
+        deviceId,
+        createdAt: new Date().toISOString(),
+        expiresAt
+      };
+      saveSecurityStore(store);
+
+      res.json({
+        ok: true,
+        needsDeviceBindingApproval: false,
+        sessionToken,
+        user: {
+          name: store.allowedName,
+          email: store.allowedEmail,
+          phone: store.allowedPhone
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // 3. Phê duyệt thiết bị mới và thu hồi thiết bị cũ
+  app.post("/api/auth/approve-new-device", async (req, res) => {
+    try {
+      const { idToken, deviceId, deviceName, userAgent } = req.body;
+      if (!idToken || !deviceId) {
+        return res.status(400).json({ ok: false, error: "Thiếu thông tin mã ID Token hoặc thiết bị phê duyệt mới! 🔒" });
+      }
+
+      // Đọc cấu hình Firebase từ file config để lấy API Key
+      const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf-8"));
+      const apiKey = firebaseConfig.apiKey;
+
+      // Xác thực ID Token trực tiếp với Google Firebase Auth REST API
+      const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken })
+      });
+
+      if (!verifyRes.ok) {
+        const errText = await verifyRes.text();
+        console.error("Lỗi xác thực ID Token khi phê duyệt thiết bị:", errText);
+        return res.status(401).json({
+          ok: false,
+          error: "Xác thực mã đăng nhập Google thất bại hoặc phiên đã hết hạn. Vợ yêu hãy thử đăng nhập lại nhé! 🔒"
+        });
+      }
+
+      const verifyData = (await verifyRes.json()) as { users?: Array<{ email?: string }> };
+      const googleUser = verifyData.users?.[0];
+
+      if (!googleUser || !googleUser.email) {
+        return res.status(401).json({
+          ok: false,
+          error: "Không tìm thấy thông tin tài khoản Google của vợ yêu từ ID Token! 🔒"
+        });
+      }
+
+      const email = googleUser.email.trim().toLowerCase();
+      const store = loadSecurityStore();
+      const allowedEmail = store.allowedEmail.trim().toLowerCase();
+
+      if (email !== allowedEmail) {
+        return res.status(403).json({ ok: false, error: "Hành động bị cấm! Tài khoản Google không trùng khớp với danh sách ủy quyền." });
+      }
+
+      // Thu hồi toàn bộ phiên hoạt động của thiết bị cũ để bảo mật an toàn tuyệt đối!
+      store.activeSessions = {};
+
+      // Liên kết thiết bị mới
+      store.approvedDeviceId = deviceId;
+      store.deviceHistory.push({
+        deviceId,
+        deviceName: deviceName || "Thiết bị mới của Trang",
+        approvedAt: new Date().toISOString(),
+        userAgent: userAgent || ""
+      });
+
+      // Cấp session mới cho thiết bị vừa kích hoạt
+      const sessionToken = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      store.activeSessions[sessionToken] = {
+        email: email,
+        deviceId,
+        createdAt: new Date().toISOString(),
+        expiresAt
+      };
+
+      saveSecurityStore(store);
+
+      res.json({
+        ok: true,
+        sessionToken,
+        user: {
+          name: store.allowedName,
+          email: store.allowedEmail,
+          phone: store.allowedPhone
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // 4. Xác thực tự động Session khi mở lại app
+  app.post("/api/auth/verify-session", (req, res) => {
+    try {
+      const { sessionToken, deviceId } = req.body;
+      if (!sessionToken || !deviceId) {
+        return res.status(400).json({ ok: false, error: "Thiếu mã phiên hoặc mã thiết bị!" });
+      }
+
+      const store = loadSecurityStore();
+      const session = store.activeSessions[sessionToken];
+
+      if (!session) {
+        return res.json({ ok: false, error: "Phiên đăng nhập đã hết hạn hoặc không hợp lệ!" });
+      }
+
+      if (session.deviceId !== deviceId || store.approvedDeviceId !== deviceId) {
+        return res.json({ ok: false, error: "Thiết bị chưa được liên kết hoặc đã bị thu hồi quyền truy cập!" });
+      }
+
+      // Kiểm tra hết hạn
+      if (new Date(session.expiresAt).getTime() < Date.now()) {
+        delete store.activeSessions[sessionToken];
+        saveSecurityStore(store);
+        return res.json({ ok: false, error: "Phiên đăng nhập đã hết hạn!" });
+      }
+
+      res.json({
+        ok: true,
+        user: {
+          name: store.allowedName,
+          email: store.allowedEmail,
+          phone: store.allowedPhone
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // 5. Đăng xuất và thu hồi phiên
+  app.post("/api/auth/logout", (req, res) => {
+    try {
+      const { sessionToken } = req.body;
+      if (sessionToken) {
+        const store = loadSecurityStore();
+        delete store.activeSessions[sessionToken];
+        saveSecurityStore(store);
+      }
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
 
   // /api/test-proxy
   app.post("/api/test-proxy", async (req, res) => {
@@ -130,11 +478,12 @@ async function startServer() {
         method: "POST",
         headers,
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(300000), // 300s timeout cho text
+        signal: AbortSignal.timeout(3600000), // 3600s (60 phút) timeout cho text bám trụ bất tận
       });
 
       const dataText = await response.text();
       if (!response.ok) {
+        console.error(`[/api/ai-text Upstream Error] ❌ HTTP ${response.status}\nFull Untruncated Response Body:\n${dataText}`);
         return res.status(response.status).json({ ok: false, error: `Upstream error: ${response.status}\n${dataText}` });
       }
 
@@ -261,8 +610,8 @@ async function startServer() {
         max_tokens: req.body.maxTokensOverride || profile.maxTokens || 65536,
       };
 
-      // PHẦN 1: KẾT NỐI - Gửi ngay headers SSE và nhịp tim keep-alive mỗi 2s trước khi gọi AI model
-      // Ngăn chặn tuyệt đối Nginx/trình duyệt ngắt kết nối sau 17s/30s/39s/60s khi AI model đang suy nghĩ context dài!
+      // PHẦN 1: KẾT NỐI & STREAMING - Gửi ngay headers SSE và nhịp tim keep-alive mỗi 2s suốt toàn bộ chu kỳ!
+      // Ngăn chặn tuyệt đối Nginx/Cloud Run/trình duyệt ngắt kết nối sau 17s/30s/39s/60s khi AI model đang suy nghĩ context dài!
       res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-transform");
       res.setHeader("Connection", "keep-alive");
@@ -271,7 +620,7 @@ async function startServer() {
 
       keepAliveInterval = setInterval(() => {
         if (!res.writableEnded) {
-          res.write(": keep-alive - phase 1 connecting & ai model thinking...\n\n");
+          res.write(": keep-alive - ai model thinking & streaming...\n\n");
         }
       }, 2000);
 
@@ -284,7 +633,11 @@ async function startServer() {
 
       if (!response.ok) {
         const errText = await response.text();
-        if (keepAliveInterval) clearInterval(keepAliveInterval);
+        console.error(`[/api/ai-stream Upstream Error] ❌ HTTP ${response.status}\nFull Untruncated Response Body:\n${errText}`);
+        if (keepAliveInterval) {
+          clearInterval(keepAliveInterval);
+          keepAliveInterval = null;
+        }
         if (!res.writableEnded) {
           res.write(`data: ${JSON.stringify({ error: `Upstream error ${response.status}: ${errText}` })}\n\n`);
           res.end();

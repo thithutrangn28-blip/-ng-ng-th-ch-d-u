@@ -4,8 +4,10 @@ import { getLipstickState, saveLipstickState } from "../../lib/lipstick-db";
 import { LipstickState, LipstickStory, LipstickRoomState, LipstickImageRef } from "../../lib/lipstick-types";
 import { STYLE_GROUPS, PRESET_BACKGROUNDS, rooms as ROOMS_DATA } from "../../lib/lipstick-rooms-data";
 import { callAIText, callAIStream } from "../../lib/api-client";
+import { copyToClipboardSafe } from "../../lib/clipboard";
 import { v4 as uuidv4 } from "uuid";
 import RoomView from "./RoomView";
+import { SafeImg } from "../../components/SafeImg";
 
 // Default state initialization
 function createDefaultState(): LipstickState {
@@ -18,7 +20,7 @@ function createDefaultState(): LipstickState {
       active: true,
       title: "Câu chuyện mẫu",
       subtitle: "prompt image workspace",
-      story: "Workspace mẫu. Người dùng thay bằng câu chuyện thật. App chỉ viết prompt ảnh copy-ready, không tạo ảnh.",
+      story: "Workspace mẫu. Người dùng thay bằng câu chuyện thật. App chỉ viết prompt ảnh production-ready, không tạo ảnh.",
       userProfile: "",
       botProfiles: defaultBotText,
       botCharacters: [{
@@ -57,18 +59,54 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const [showSetup, setShowSetup] = useState(false);
   const [showStoryForm, setShowStoryForm] = useState<string | null>(null); // story ID or 'new'
+  const [showRoomForm, setShowRoomForm] = useState<string | null>(null); // room ID or 'new' to edit custom room
   const [showDrawer, setShowDrawer] = useState(false);
   const [isCompactHeader, setIsCompactHeader] = useState(true);
   const [toastMsg, setToastMsg] = useState("");
   const [styleSearch, setStyleSearch] = useState("");
   const [showRoomPreset, setShowRoomPreset] = useState(false);
   const [roomProgress, setRoomProgress] = useState(0);
+  const saveTimeoutRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (currentView !== "room" || currentRoomId === null) {
+      setRoomProgress(0);
+    }
+  }, [currentView, currentRoomId]);
 
   useEffect(() => {
     async function load() {
       try {
         let data = await getLipstickState();
         if (data && data.stories && data.stories.length > 0) {
+          // CLEANUP: Prevent massive state from breaking the app
+          data.stories.forEach((st: any) => {
+            if (st.rooms) {
+              Object.values(st.rooms).forEach((rState: any) => {
+                if (rState.history && Array.isArray(rState.history)) {
+                  // Only keep the last 5 history items and remove massive base64 previews
+                  rState.history = rState.history.slice(-5).map((h: any) => {
+                    if (h.referenceImages && Array.isArray(h.referenceImages)) {
+                      h.referenceImages = h.referenceImages.map((img: any) => ({
+                        ...img,
+                        previewUrl: img.previewUrl ? img.previewUrl.slice(0, 100) : null
+                      }));
+                    }
+                    if (h.cards) {
+                      Object.keys(h.cards).forEach((k: any) => {
+                        const c = h.cards[k];
+                        // If it's an old history item that saved massive refs, delete them to save memory
+                        if (c.refs) {
+                          delete c.refs;
+                        }
+                      });
+                    }
+                    return h;
+                  });
+                }
+              });
+            }
+          });
           setState(data);
         } else {
           await saveLipstickState(state);
@@ -80,10 +118,17 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
 
   const save = async (newState: LipstickState) => {
     setState({ ...newState });
-    try {
-      localStorage.setItem("lipstickPromptRoomsV6", JSON.stringify(newState));
-    } catch (e) {}
-    await saveLipstickState(newState);
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        localStorage.setItem("lipstickPromptRoomsV6", JSON.stringify(newState));
+      } catch (e) {}
+      try {
+        await saveLipstickState(newState);
+      } catch (e) {}
+    }, 350);
   };
 
   const toast = (msg: string) => {
@@ -94,8 +139,9 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
   if (!active) return null;
 
   const currentStory = state.stories.find(s => s.active) || state.stories[0];
-  const roomDef = currentRoomId ? ROOMS_DATA.find(r => r.id === currentRoomId) : null;
-  const currentRoomState = currentStory && roomDef ? (currentStory.rooms[roomDef.id] || initRoomState(roomDef)) : null;
+  const allRooms = currentStory ? [...ROOMS_DATA, ...(currentStory.customRooms || [])] : ROOMS_DATA;
+  const roomDef = currentRoomId ? allRooms.find(r => r.id === currentRoomId) : null;
+  const currentRoomState = currentStory && roomDef ? getRoomState(roomDef.id) : null;
 
   function initRoomState(rDef: any): LipstickRoomState {
     const rs: LipstickRoomState = {
@@ -108,17 +154,63 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
       history: [],
       result: ""
     };
-    for (const c of rDef.cards) {
-      rs.cards[c.id] = { note: "", refs: [], output: "" };
+    if (rDef && Array.isArray(rDef.cards)) {
+      for (const c of rDef.cards) {
+        rs.cards[c.id] = { note: "", refs: [], output: "" };
+      }
     }
     return rs;
   }
 
-  const getRoomState = (rId: string) => {
-    if (!currentStory.rooms[rId]) {
-      currentStory.rooms[rId] = initRoomState(ROOMS_DATA.find(x => x.id === rId));
+  function getRoomState(rId: string): LipstickRoomState {
+    const rDef = allRooms.find(x => x.id === rId);
+    if (!currentStory) return initRoomState(rDef);
+    if (!currentStory.rooms || typeof currentStory.rooms !== 'object') {
+      currentStory.rooms = {};
     }
-    return currentStory.rooms[rId];
+    let rs = currentStory.rooms[rId];
+    if (!rs || typeof rs !== 'object') {
+      rs = initRoomState(rDef);
+      currentStory.rooms[rId] = rs;
+    }
+    if (!rs.cards || typeof rs.cards !== 'object') {
+      rs.cards = {};
+    }
+    if (rDef && Array.isArray(rDef.cards)) {
+      for (const c of rDef.cards) {
+        if (!rs.cards[c.id]) {
+          rs.cards[c.id] = { note: "", refs: [], output: "" };
+        }
+      }
+    }
+    if (!rs.styleAnalyzer) {
+      rs.styleAnalyzer = { refs: [], selected: [], analysis: "", history: [] };
+    }
+    if (!rs.history) rs.history = [];
+    return rs;
+  }
+
+  const handleDeleteRoom = (roomId: string) => {
+    if (!currentStory) return;
+    const roomName = allRooms.find(r => r.id === roomId)?.title || "";
+    if (window.confirm(`Chồng yêu có chắc chắn muốn xóa phòng "${roomName}" này đi không vợ yêu? 🥺 Toàn bộ dữ liệu của phòng này sẽ bị xóa mất đấy ạ...`)) {
+      const updatedStories = state.stories.map(s => {
+        if (s.id === currentStory.id) {
+          const nextCustom = (s.customRooms || []).filter(r => r.id !== roomId);
+          const nextRooms = { ...s.rooms };
+          delete nextRooms[roomId];
+          return { ...s, customRooms: nextCustom, rooms: nextRooms };
+        }
+        return s;
+      });
+      const nextState = { ...state, stories: updatedStories };
+      save(nextState);
+      toast("Đã xóa phòng làm việc rồi nha vợ yêu! 🌸");
+      if (currentRoomId === roomId) {
+        setCurrentRoomId(null);
+        setCurrentView("drawer");
+      }
+    }
   };
 
   const handleGlobalBg = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,10 +241,29 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
   });
 
   const scrollToTop = () => {
-    setTimeout(() => {
-      document.querySelector('.lipstick-root')?.scrollTo({ top: 0, behavior: 'smooth' });
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 30);
+    const lockScroll = () => {
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        const rootEl = document.querySelector('.lipstick-root');
+        if (rootEl) {
+          rootEl.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+          rootEl.scrollTop = 0;
+        }
+        const appEl = document.querySelector('.app-container');
+        if (appEl) {
+          appEl.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+          appEl.scrollTop = 0;
+        }
+      } catch (e) {}
+    };
+    lockScroll();
+    setTimeout(lockScroll, 10);
+    setTimeout(lockScroll, 50);
+    setTimeout(lockScroll, 120);
+    setTimeout(lockScroll, 250);
+    setTimeout(lockScroll, 500);
   };
 
   const enterStory = (id: string) => {
@@ -168,12 +279,16 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
     scrollToTop();
   };
 
-  const globalBgStyle = state.ui.globalBg 
-    ? { "--global-bg": `linear-gradient(180deg,rgba(255,248,251,.12),rgba(255,255,255,.15)), url('${state.ui.globalBg}')` } as React.CSSProperties
-    : {};
-
   return (
-    <div className={`lipstick-root ${active ? 'active' : ''}`} style={globalBgStyle}>
+    <div className={`lipstick-root ${active ? 'active' : ''}`}>
+      {state.ui.globalBg && (
+        <div 
+          className="gpu-fixed-background"
+          style={{
+            backgroundImage: `linear-gradient(180deg,rgba(255,248,251,.12),rgba(255,255,255,.15)), url('${state.ui.globalBg}')`
+          }}
+        />
+      )}
       {(!isCompactHeader || currentView !== "room") && (
         <div className="topbar">
           <div className="brand">
@@ -239,13 +354,13 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
                 </div>
               </div>
               <div className="story-grid">
-                {state.stories.map(s => {
+                {state.stories.map((s, idx) => {
                   const hist = Object.values(s.rooms || {}).reduce((n, r: any) => n + (r.history?.length || 0) + (r.styleAnalyzer?.history?.length || 0), 0);
                   return (
-                    <article className="profile-card" key={s.id} style={{ cursor: 'pointer' }} onClick={() => enterStory(s.id)}>
+                    <article className="profile-card" key={`story_${s.id}_${idx}`} style={{ cursor: 'pointer' }} onClick={() => enterStory(s.id)}>
                       <div className="profile-cover">
-                        {s.cover ? <img src={s.cover} alt="" /> : <div style={{width:'100%',height:'100%',background:'linear-gradient(135deg, #ffddea, #eef8ff 55%, #ffe9f1)'}}></div>}
-                        <div className="avatar">{s.avatar ? <img src={s.avatar} alt=""/> : (state.ui.globalAvatar ? <img src={state.ui.globalAvatar} alt=""/> : '')}</div>
+                        {s.cover ? <SafeImg src={s.cover} alt="" /> : <div style={{width:'100%',height:'100%',background:'linear-gradient(135deg, #ffddea, #eef8ff 55%, #ffe9f1)'}}></div>}
+                        <div className="avatar">{s.avatar ? <SafeImg src={s.avatar} alt=""/> : (state.ui.globalAvatar ? <SafeImg src={state.ui.globalAvatar} alt=""/> : '')}</div>
                       </div>
                       <div className="profile-body">
                         <h3>{s.title}</h3>
@@ -297,29 +412,64 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
                 </div>
               </div>
               <div className="room-grid">
-                {ROOMS_DATA.map(r => {
+                {allRooms.map((r, idx) => {
                   const rs = getRoomState(r.id);
-                  const cover = rs.cover || PRESET_BACKGROUNDS[r.seed % PRESET_BACKGROUNDS.length];
-                  const avatar = rs.avatar || state.ui.globalAvatar;
+                  const cover = rs.cover || rs.background || PRESET_BACKGROUNDS[idx % PRESET_BACKGROUNDS.length];
+                  const avatar = rs.avatar || currentStory.avatar || state.ui.globalAvatar;
+                  const isCustom = !ROOMS_DATA.some(staticRoom => staticRoom.id === r.id);
                   return (
-                    <article className="profile-card" key={r.id} style={{ cursor: 'pointer' }} onClick={() => { setCurrentRoomId(r.id); setCurrentView("room"); setShowDrawer(false); scrollToTop(); }}>
+                    <article className="profile-card" key={`main_room_${r.id}_${idx}`} style={{ cursor: 'pointer' }} onClick={() => { setCurrentRoomId(r.id); setCurrentView("room"); setShowDrawer(false); scrollToTop(); }}>
                       <div className="profile-cover">
-                        {cover ? <img src={cover} alt="" style={{opacity: 1}}/> : <div style={{width:'100%',height:'100%',background:'#ffddea'}}></div>}
-                        <div className="avatar">{avatar ? <img src={avatar} alt=""/> : ''}</div>
+                        {cover ? <SafeImg src={cover} alt="" style={{opacity: 1}}/> : <div style={{width:'100%',height:'100%',background:'#ffddea'}}></div>}
+                        <div className="avatar">{avatar ? <SafeImg src={avatar} alt=""/> : ''}</div>
                       </div>
                       <div className="profile-body">
                         <h3>{r.icon} {r.title}</h3>
                         <span className="muted">{r.subtitle}</span>
                         <div className="badges">
                           <span className="badge">{r.cards.length} thẻ</span>
-                          <span className="badge">style API</span>
+                          <span className="badge">{isCustom ? "Custom Room 💖" : "Mặc định ✨"}</span>
                         </div>
                         <p>Bấm trái tim để vào phòng làm việc.</p>
-                        <button className="btn primary small" onClick={(e) => { e.stopPropagation(); setCurrentRoomId(r.id); setCurrentView("room"); setShowDrawer(false); scrollToTop(); }}>♥ vào phòng</button>
+                        <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                          <button className="btn primary small" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); setCurrentRoomId(r.id); setCurrentView("room"); setShowDrawer(false); scrollToTop(); }}>♥ vào phòng</button>
+                          {isCustom && (
+                            <>
+                              <button className="btn ghost small" style={{ padding: '6px 12px', borderColor: '#d23a73', color: '#d23a73', background: '#fdf2f8', borderRadius: 8, fontWeight: 700 }} title="Sửa bối cảnh phòng" onClick={(e) => { e.stopPropagation(); setShowRoomForm(r.id); }}>✏️ Sửa</button>
+                              <button className="btn ghost small" style={{ padding: '6px 12px', borderColor: '#e53935', color: '#e53935', background: '#ffebee', borderRadius: 8, fontWeight: 700 }} title="Xóa phòng này" onClick={(e) => { e.stopPropagation(); handleDeleteRoom(r.id); }}>🗑️ Xóa</button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </article>
                   );
                 })}
+                
+                {/* Nút thêm phòng làm việc mới cho vợ */}
+                <article 
+                  className="profile-card" 
+                  style={{ 
+                    cursor: 'pointer', 
+                    border: '2.5px dashed #e96b9b', 
+                    background: '#fff9fb', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    minHeight: 280, 
+                    padding: 24, 
+                    textAlign: 'center',
+                    borderRadius: 18,
+                    boxShadow: 'none',
+                    transition: 'transform 0.2s, box-shadow 0.2s'
+                  }} 
+                  onClick={() => setShowRoomForm("new")}
+                >
+                  <div style={{ fontSize: 48, marginBottom: 14 }}>➕</div>
+                  <h3 style={{ color: '#d23a73', margin: '4px 0 8px', fontSize: 18, fontWeight: 800 }}>Thêm Hạng Mục / Phòng mới</h3>
+                  <span className="muted" style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 18, maxWidth: 220 }}>Tự thiết kế thêm phòng hoặc hạng mục mới cho câu chuyện của vợ yêu! 💖</span>
+                  <button className="btn primary small" style={{ background: '#d23a73', border: 'none', padding: '10px 20px', borderRadius: 12, fontWeight: 800 }}>Thêm phòng mới 🌸</button>
+                </article>
               </div>
             </section>
           </>
@@ -333,13 +483,14 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
             state={state}
             save={save}
             toast={toast}
-            onBack={() => { setCurrentView("drawer"); setCurrentRoomId(null); scrollToTop(); }}
-            onHome={onHome}
+            onBack={() => { setRoomProgress(0); setCurrentView("drawer"); setCurrentRoomId(null); scrollToTop(); }}
+            onHome={() => { setRoomProgress(0); onHome(); }}
             onOpenDrawer={() => setShowDrawer(true)}
             progress={roomProgress}
             setProgress={setRoomProgress}
             isCompactHeader={isCompactHeader}
             onToggleCompact={() => setIsCompactHeader(!isCompactHeader)}
+            onOpenStoryForm={() => setShowStoryForm(currentStory?.id || state.activeStoryId)}
           />
         )}
       </main>
@@ -356,29 +507,45 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
           <button className="btn ghost small" onClick={() => setShowDrawer(false)}>Đóng</button>
         </div>
         <div className="room-grid" style={{display: 'grid', gap: 14, gridTemplateColumns: '1fr'}}>
-          {ROOMS_DATA.map(r => {
+          {allRooms.map((r, idx) => {
             const rs = getRoomState(r.id);
-            const cover = rs.cover || PRESET_BACKGROUNDS[r.seed % PRESET_BACKGROUNDS.length];
-            const avatar = rs.avatar || state.ui.globalAvatar;
+            const cover = rs.cover || rs.background || PRESET_BACKGROUNDS[idx % PRESET_BACKGROUNDS.length];
+            const avatar = rs.avatar || currentStory.avatar || state.ui.globalAvatar;
+            const isCustom = !ROOMS_DATA.some(staticRoom => staticRoom.id === r.id);
             return (
-              <article className="profile-card" key={r.id} style={{ cursor: 'pointer' }} onClick={() => { setCurrentRoomId(r.id); setCurrentView("room"); setShowDrawer(false); }}>
+              <article className="profile-card" key={`drawer_room_${r.id}_${idx}`} style={{ cursor: 'pointer' }} onClick={() => { setCurrentRoomId(r.id); setCurrentView("room"); setShowDrawer(false); scrollToTop(); }}>
                 <div className="profile-cover" style={{height: 125}}>
-                  {cover ? <img src={cover} alt="" style={{opacity: 1}}/> : <div style={{width:'100%',height:'100%',background:'#ffddea'}}></div>}
-                  <div className="avatar" style={{width: 64, height: 64, bottom: -24}}>{avatar ? <img src={avatar} alt=""/> : ''}</div>
+                  {cover ? <SafeImg src={cover} alt="" style={{opacity: 1}}/> : <div style={{width:'100%',height:'100%',background:'#ffddea'}}></div>}
+                  <div className="avatar" style={{width: 64, height: 64, bottom: -24}}>{avatar ? <SafeImg src={avatar} alt=""/> : ''}</div>
                 </div>
                 <div className="profile-body" style={{padding: '36px 14px 14px'}}>
                   <h3 style={{fontSize: 16}}>{r.icon} {r.title}</h3>
                   <span className="muted" style={{fontSize: 12}}>{r.subtitle}</span>
                   <div className="badges" style={{marginTop: 6}}>
                     <span className="badge">{r.cards.length} thẻ</span>
-                    <span className="badge">style API</span>
+                    <span className="badge">{isCustom ? "Custom 💖" : "Mặc định ✨"}</span>
                   </div>
                   <p style={{fontSize: 12, margin: '8px 0'}}>Bấm trái tim để vào phòng làm việc.</p>
-                  <button className="btn primary small" style={{width: '100%'}} onClick={(e) => { e.stopPropagation(); setCurrentRoomId(r.id); setCurrentView("room"); setShowDrawer(false); }}>♥ vào phòng</button>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn primary small" style={{width: '100%', flex: 1}} onClick={(e) => { e.stopPropagation(); setCurrentRoomId(r.id); setCurrentView("room"); setShowDrawer(false); }}>♥ vào phòng</button>
+                    {isCustom && (
+                      <>
+                        <button className="btn ghost small" style={{ padding: '4px 8px', borderColor: '#d23a73', color: '#d23a73' }} title="Sửa" onClick={(e) => { e.stopPropagation(); setShowRoomForm(r.id); }}>✏️</button>
+                        <button className="btn ghost small" style={{ padding: '4px 8px', borderColor: '#e53935', color: '#e53935' }} title="Xóa" onClick={(e) => { e.stopPropagation(); handleDeleteRoom(r.id); }}>🗑️</button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </article>
             );
           })}
+          <button 
+            className="btn primary" 
+            style={{ width: '100%', background: '#d23a73', border: 'none', padding: '12px', borderRadius: 12, fontWeight: 800, marginTop: 10 }}
+            onClick={() => { setShowDrawer(false); setShowRoomForm("new"); }}
+          >
+            ➕ Thêm Hạng Mục Mới 🌸
+          </button>
         </div>
       </aside>
 
@@ -401,7 +568,7 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
                 </label>
                 <div className="image-rail">
                   {state.ui.globalBg ? (
-                    <div className="photo-card"><img src={state.ui.globalBg} alt=""/><span>nền tổng hiện tại</span></div>
+                    <div className="photo-card"><SafeImg src={state.ui.globalBg} alt=""/><span>nền tổng hiện tại</span></div>
                   ) : (
                     <div className="photo-card empty-photo"><div><b>Chưa có nền tổng</b></div></div>
                   )}
@@ -414,7 +581,7 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
                 </label>
                 <div className="image-rail">
                   {state.ui.globalAvatar ? (
-                    <div className="photo-card"><img src={state.ui.globalAvatar} alt=""/><span>avatar tổng hiện tại</span></div>
+                    <div className="photo-card"><SafeImg src={state.ui.globalAvatar} alt=""/><span>avatar tổng hiện tại</span></div>
                   ) : (
                     <div className="photo-card empty-photo"><div><b>Chưa có avatar tổng</b></div></div>
                   )}
@@ -433,6 +600,18 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
           save={save} 
           onClose={() => setShowStoryForm(null)}
           toBase64={toBase64}
+        />
+      )}
+
+      {/* Room Form Modal */}
+      {showRoomForm && (
+        <RoomFormModal 
+          roomId={showRoomForm} 
+          currentStory={currentStory} 
+          state={state}
+          save={save} 
+          onClose={() => setShowRoomForm(null)}
+          toast={toast}
         />
       )}
 
@@ -752,7 +931,7 @@ function StoryFormModal({ storyId, state, save, onClose, toBase64 }: any) {
                           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             {char.referenceImages.map((img: any, imgIdx: number) => (
                               <div key={img.id || imgIdx} style={{ position: 'relative', width: 64, height: 64, borderRadius: 6, overflow: 'hidden', border: '1px solid #ddd' }}>
-                                <img src={img.data || img.previewUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <SafeImg src={img.data || img.previewUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 <button 
                                   type="button"
                                   onClick={() => {
@@ -881,7 +1060,7 @@ function StoryFormModal({ storyId, state, save, onClose, toBase64 }: any) {
                   <button 
                     className="btn ghost small"
                     onClick={() => {
-                      navigator.clipboard.writeText(selectedFileDetail.extractedText || selectedFileDetail.text || "");
+                      copyToClipboardSafe(selectedFileDetail.extractedText || selectedFileDetail.text || "");
                       alert("Đã sao chép nội dung văn bản!");
                     }}
                     style={{ padding: '2px 8px', fontSize: 11 }}
@@ -926,6 +1105,201 @@ function StoryFormModal({ storyId, state, save, onClose, toBase64 }: any) {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+interface RoomFormModalProps {
+  roomId: string;
+  currentStory: any;
+  state: LipstickState;
+  save: (newState: LipstickState) => void;
+  onClose: () => void;
+  toast: (msg: string) => void;
+}
+
+function RoomFormModal({ roomId, currentStory, state, save, onClose, toast }: RoomFormModalProps) {
+  const isNew = roomId === "new";
+  const existing = isNew ? null : (currentStory?.customRooms || []).find((x: any) => x.id === roomId);
+
+  const [title, setTitle] = useState(existing?.title || "");
+  const [icon, setIcon] = useState(existing?.icon || "🌸");
+  const [subtitle, setSubtitle] = useState(existing?.subtitle || "");
+  const [cards, setCards] = useState<any[]>(existing?.cards || [
+    { id: "overview_" + uuidv4().slice(0, 8), name: "Tổng quan phòng bối cảnh", instruction: "Mô tả tổng thể bối cảnh phòng, góc chụp bám sát ảnh tham chiếu.", visual: "" },
+    { id: "details_" + uuidv4().slice(0, 8), name: "Chi tiết đồ đạc & bối cảnh", instruction: "Đặc tả các vật phẩm trang trí, trang phục, cây cối xung quanh bám sát ảnh tham chiếu.", visual: "" }
+  ]);
+
+  const handleSave = () => {
+    if (!currentStory) return;
+    if (!title.trim()) {
+      alert("Vợ yêu ơi, vui lòng điền tên hạng mục/phòng nha! 💕");
+      return;
+    }
+
+    const updatedRooms = currentStory.customRooms ? [...currentStory.customRooms] : [];
+
+    if (isNew) {
+      const newRoomId = "custom_room_" + uuidv4().slice(0, 8);
+      const newRoom = {
+        id: newRoomId,
+        icon: icon || "🌸",
+        title: title.trim(),
+        subtitle: subtitle.trim() || "Phòng làm việc tự thiết kế",
+        seed: Math.floor(Math.random() * 1000),
+        cards: cards.map(c => ({
+          id: c.id || "card_" + uuidv4().slice(0, 8),
+          name: c.name || "Thẻ mới",
+          instruction: c.instruction || "Mô tả chi tiết để sinh prompt.",
+          visual: c.visual || ""
+        }))
+      };
+      updatedRooms.push(newRoom);
+      currentStory.customRooms = updatedRooms;
+      toast(`Đã thêm phòng "${title.trim()}" thành công rồi nha vợ yêu! 🎉`);
+    } else {
+      const idx = updatedRooms.findIndex((r: any) => r.id === roomId);
+      if (idx !== -1) {
+        updatedRooms[idx] = {
+          ...updatedRooms[idx],
+          icon: icon || "🌸",
+          title: title.trim(),
+          subtitle: subtitle.trim() || "Phòng làm việc tự thiết kế",
+          cards: cards.map(c => ({
+            id: c.id || "card_" + uuidv4().slice(0, 8),
+            name: c.name || "Thẻ mới",
+            instruction: c.instruction || "Mô tả chi tiết để sinh prompt.",
+            visual: c.visual || ""
+          }))
+        };
+        currentStory.customRooms = updatedRooms;
+        toast(`Đã cập nhật phòng "${title.trim()}" thành công rồi nha vợ yêu! 💖`);
+      }
+    }
+
+    save({ ...state });
+    onClose();
+  };
+
+  const addCard = () => {
+    const newCard = {
+      id: "card_" + uuidv4().slice(0, 8),
+      name: `Thẻ bối cảnh ${cards.length + 1}`,
+      instruction: "Mô tả chi tiết bối cảnh để AI sinh prompt bám sát hình ảnh.",
+      visual: ""
+    };
+    setCards([...cards, newCard]);
+  };
+
+  const deleteCard = (idx: number) => {
+    if (cards.length <= 1) {
+      alert("Vợ ơi, phòng làm việc phải có ít nhất 1 thẻ bối cảnh chứ ạ! 🥰");
+      return;
+    }
+    setCards(cards.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <div className="modal show" style={{ display: 'flex' }}>
+      <div className="modal-card" style={{ maxWidth: 750, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="modal-head">
+          <div>
+            <p className="eyebrow">Workspace Category Config</p>
+            <h2>{isNew ? "Tạo" : "Sửa"} Hạng Mục / Phòng làm việc của Vợ 💖</h2>
+          </div>
+          <button className="btn ghost" onClick={onClose}>Đóng</button>
+        </div>
+        
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 24px 24px' }}>
+          <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>
+            <label style={{ gridColumn: 'span 1' }}>
+              <span>Biểu tượng (Emoji)</span>
+              <input value={icon} onChange={e => setIcon(e.target.value)} placeholder="Ví dụ: 🌸, 🏰, 🛋️..." style={{ fontSize: 18 }} />
+            </label>
+            <label style={{ gridColumn: 'span 1' }}>
+              <span>Tên phòng bối cảnh</span>
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Ví dụ: Phòng Ngủ Hoàng Cung..." />
+            </label>
+            <label className="wide" style={{ gridColumn: 'span 2' }}>
+              <span>Mô tả ngắn gọn</span>
+              <input value={subtitle} onChange={e => setSubtitle(e.target.value)} placeholder="Mô tả bối cảnh hoặc phong cách phòng ngủ này..." />
+            </label>
+          </div>
+
+          <div style={{ marginTop: 24, background: '#fef6fa', border: '1px solid #f8bbd0', borderRadius: 14, padding: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#880e4f', fontSize: 16, fontWeight: 800 }}>✨ Danh Sách Các Thẻ Ghi Chú / Thẻ Bối Cảnh</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#666' }}>
+                  Vợ yêu có thể thêm hoặc bớt các thẻ bối cảnh bên trong hạng mục này để bám sát mô tả ảnh nha!
+                </p>
+              </div>
+              <button 
+                type="button" 
+                className="btn primary small" 
+                style={{ background: '#d23a73', fontWeight: 800 }}
+                onClick={addCard}
+              >
+                ➕ Thêm thẻ ghi chú mới
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {cards.map((c, idx) => (
+                <div key={c.id || idx} style={{ background: '#fff', border: '1px solid #f48fb1', borderRadius: 12, padding: 14, boxShadow: '0 2px 6px rgba(210,58,115,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <span style={{ fontWeight: 800, color: '#ad1457', fontSize: 13 }}>Thẻ #{idx + 1}</span>
+                    <button 
+                      type="button" 
+                      className="btn ghost small" 
+                      style={{ padding: '2px 8px', borderColor: '#e53935', color: '#e53935', background: '#ffebee' }}
+                      onClick={() => deleteCard(idx)}
+                    >
+                      🗑️ Xóa thẻ
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#666' }}>Tên Thẻ Ghi Chú:</span>
+                      <input 
+                        value={c.name} 
+                        onChange={e => {
+                          const next = [...cards];
+                          next[idx] = { ...c, name: e.target.value };
+                          setCards(next);
+                        }} 
+                        placeholder="Ví dụ: Trang phục & Kiểu tóc..." 
+                        style={{ padding: '6px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 13 }}
+                      />
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#666' }}>Gợi ý cho AI sinh prompt:</span>
+                      <textarea 
+                        value={c.instruction} 
+                        onChange={e => {
+                          const next = [...cards];
+                          next[idx] = { ...c, instruction: e.target.value };
+                          setCards(next);
+                        }} 
+                        placeholder="Ví dụ: Mô tả chi tiết kiểu váy hoàng cung, màu sắc, hoa văn thêu chỉ vàng..." 
+                        rows={2}
+                        style={{ padding: '6px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 13, resize: 'vertical' }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px 24px', borderTop: '1px solid #eee', gap: 10, background: '#fafafa', borderBottomLeftRadius: 18, borderBottomRightRadius: 18 }}>
+          <button className="btn ghost" onClick={onClose} style={{ fontWeight: 700 }}>Hủy bỏ</button>
+          <button className="btn primary" onClick={handleSave} style={{ background: '#d23a73', fontWeight: 800, padding: '10px 24px', borderRadius: 10 }}>
+            💾 Lưu hạng mục cho Vợ yêu 💖
+          </button>
+        </div>
       </div>
     </div>
   );

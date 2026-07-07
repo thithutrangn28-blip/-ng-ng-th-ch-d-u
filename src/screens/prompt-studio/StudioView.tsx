@@ -5,6 +5,7 @@ import { rooms } from "../../lib/prompt-rooms";
 import { ApiProfile } from "../../lib/api-client";
 import { reparseFileItem } from "../../lib/file-importer";
 import { Prompt10CardSplitter } from "./Prompt10CardSplitter";
+import { copyToClipboardSafe } from "../../lib/clipboard";
 
 type Props = {
   story: Story;
@@ -74,11 +75,11 @@ export default function StudioView({
   };
 
   const handleCopyOut = () => {
-    navigator.clipboard.writeText(homeOutput);
+    copyToClipboardSafe(homeOutput);
   };
 
   const handleCopyCtx = () => {
-    navigator.clipboard.writeText(story.context.mergedContext);
+    copyToClipboardSafe(story.context.mergedContext);
   };
 
   const handleShowDirectoryPicker = async () => {
