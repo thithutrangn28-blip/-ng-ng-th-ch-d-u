@@ -154,17 +154,21 @@ export default function PromptMarkdownSmartContextScreen({ active, onHome }: Pro
     }
   };
 
-  const handleWallpaperChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleWallpaperChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    const r = new FileReader();
-    r.onload = () => {
-      const res = r.result as string;
+    try {
+      const { compressImageFile } = await import("../../utils/imageCompressor");
+      const res = await compressImageFile(f, 1024, 1024, 0.82);
       localStorage.setItem("pmsl_wallpaper", res);
       window.dispatchEvent(new Event("storage"));
       showToast("Đã bật hình nền.");
-    };
-    r.readAsDataURL(f);
+    } catch (err) {
+      console.error(err);
+      showToast("Lỗi khi đặt hình nền (ảnh quá lớn hoặc không hợp lệ).");
+    } finally {
+      e.target.value = "";
+    }
   };
 
   const [wallpaper, setWallpaper] = useState(localStorage.getItem("pmsl_wallpaper") || "");
@@ -946,11 +950,11 @@ Task: ${requestText}
 
     // Queue All Rooms Mode (for all = true)
     if (all || contextMode === "queue") {
-      out("🚀 Đang khởi chạy Queue All Rooms Mode: Gọi nối tiếp 12 phòng qua API Proxy (mỗi phòng 100 task chuyên sâu) để bảo đảm chiều sâu tuyệt đối mà không vượt token limit...\n");
+      out(`🚀 Đang khởi chạy Queue All Rooms Mode: Gọi nối tiếp ${rooms.length} phòng qua API Proxy (mỗi phòng 100 task chuyên sâu) để bảo đảm chiều sâu tuyệt đối mà không vượt token limit...\n`);
       
       const parentNo = runs.length + 1;
-      const parentRun = await createRun("all", "Queue All Rooms Mode - 12 child runs", "running", "Đang chạy nối tiếp 12 phòng...");
-      let combinedContent = `# MASTER PROMPT MARKDOWN MODULE — TOÀN BỘ 12 PHÒNG\nTruyện: ${activeStory.title}\nThời gian tạo: ${new Date().toLocaleString()}\nChế độ: QUEUE ALL ROOMS MODE (12 Child Runs)\n\n`;
+      const parentRun = await createRun("all", `Queue All Rooms Mode - ${rooms.length} child runs`, "running", `Đang chạy nối tiếp ${rooms.length} phòng...`);
+      let combinedContent = `# MASTER PROMPT MARKDOWN MODULE — TOÀN BỘ ${rooms.length} PHÒNG\nTruyện: ${activeStory.title}\nThời gian tạo: ${new Date().toLocaleString()}\nChế độ: QUEUE ALL ROOMS MODE (${rooms.length} Child Runs)\n\n`;
       
       const abort = new AbortController();
       setAbortController(abort);
@@ -959,10 +963,10 @@ Task: ${requestText}
         for (let i = 0; i < rooms.length; i++) {
           if (abort.signal.aborted) break;
           const rCat = getRoomCatalog(i);
-          out(`⏳ [Queue Progress: Phòng ${i + 1}/12] Đang xử lý phòng: "${rCat.roomName}"...\n\n${combinedContent}`);
+          out(`⏳ [Queue Progress: Phòng ${i + 1}/${rooms.length}] Đang xử lý phòng: "${rCat.roomName}"...\n\n${combinedContent}`);
           
           const roomPrompt = buildFinalContextWindow("room_generation", `Tạo Prompt Markdown chuyên sâu cho phòng ${rCat.roomName}`, activeStory, false, roomNote, format, strict, rCat.tasks, i);
-          const childRun = await createRun("room", roomPrompt, "running", `[Queue Child ${i+1}/12] Đang chờ API Proxy...`);
+          const childRun = await createRun("room", roomPrompt, "running", `[Queue Child ${i+1}/${rooms.length}] Đang chờ API Proxy...`);
           
           if (!apiProfile) {
             const fallback = `### PHÒNG ${String(i+1).padStart(2, "0")}: ${rCat.roomName.toUpperCase()}\n[Chưa cấu hình API Proxy — Bản dựng prompt chuẩn]:\n\n${roomPrompt}\n\n`;
@@ -982,7 +986,7 @@ Task: ${requestText}
               onToken: (chunk) => {
                 roomStreamText += chunk;
                 const cleanedStream = cleanGeneratedPromptText(roomStreamText);
-                out(`⏳ [Queue Progress: Phòng ${i + 1}/12] Đang stream "${rCat.roomName}"...\n\n` + combinedContent + `\n\n---\n\n## PHÒNG ${String(i+1).padStart(2, "0")}: ${rCat.roomName.toUpperCase()}\n\n` + cleanedStream);
+                out(`⏳ [Queue Progress: Phòng ${i + 1}/${rooms.length}] Đang stream "${rCat.roomName}"...\n\n` + combinedContent + `\n\n---\n\n## PHÒNG ${String(i+1).padStart(2, "0")}: ${rCat.roomName.toUpperCase()}\n\n` + cleanedStream);
                 if (roomStreamText.length % 250 < chunk.length) {
                   updateRun(childRun.id, { content: cleanedStream, status: "streaming" });
                 }
@@ -1004,7 +1008,7 @@ Task: ${requestText}
         }
         
         const cleanedMaster = cleanGeneratedPromptText(combinedContent);
-        out("✅ Đã hoàn tất Queue All Rooms Mode cho toàn bộ 12 phòng!\n\n" + cleanedMaster);
+        out(`✅ Đã hoàn tất Queue All Rooms Mode cho toàn bộ ${rooms.length} phòng!\n\n` + cleanedMaster);
         updateRun(parentRun.id, { content: cleanedMaster, status: "done" });
       } catch (e: any) {
         if (e.name === "AbortError" || abort.signal.aborted) {
@@ -1204,6 +1208,7 @@ Received:
              onUpdateStory={handleUpdateStory}
              onWallpaperChange={handleWallpaperChange}
              onOpenStudio={() => setView("studio")}
+             showToast={showToast}
            />
         )}
         
@@ -1255,7 +1260,8 @@ Received:
                setPromptLanguage(lang);
                showToast(`Đã chọn ngôn ngữ Prompt: ${lang.toUpperCase()}`);
              }}
-           />
+           showToast={showToast}
+            />
         )}
         
         {view === "room" && (
@@ -1309,7 +1315,8 @@ Received:
                setPromptLanguage(lang);
                showToast(`Đã chọn ngôn ngữ Prompt: ${lang.toUpperCase()}`);
              }}
-           />
+           showToast={showToast}
+            />
         )}
       </div>
 

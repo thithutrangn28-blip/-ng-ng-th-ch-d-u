@@ -23,12 +23,13 @@ type Props = {
   onUpdateCustomTasks?: (tasks: RoomTask[]) => void;
   promptLanguage?: "vi" | "en" | "zh";
   onPromptLanguageChange?: (lang: "vi" | "en" | "zh") => void;
+  showToast: (msg: string) => void;
 };
 
 export default function PromptMarkdownRoomScreen({
   story, roomIndex, runs, onBack, onCallRoom, onPreview, onAbort, onCreateBlankRun, timeLabel,
   outputMode = "final", onOutputModeChange, customTasks, onUpdateCustomTasks,
-  promptLanguage = "vi", onPromptLanguageChange
+  promptLanguage = "vi", onPromptLanguageChange, showToast
 }: Props) {
   
   const room = rooms[roomIndex];
@@ -286,9 +287,9 @@ Bắt đầu ngay khối đầu tiên với ---TASK---:`;
               onUpdateCustomTasks(tasks);
             }
             setSelectedTasks(new Set(tasks.map((_, idx) => idx)));
-            alert(`Chồng đã đổi mới thành công 100% (${tasks.length} hạng mục) cho Phòng ${roomIndex + 1} theo đúng cốt truyện "${storyTitle}" của Vợ yêu! Toàn bộ các ý cũ đã được thay thế hoàn toàn.`);
+            showToast(`🌸 Chồng đã đổi mới thành công 100% (${tasks.length} hạng mục) cho Phòng ${roomIndex + 1} theo đúng cốt truyện "${storyTitle}" của Vợ yêu!`);
           } else {
-            alert("Vợ yêu ơi, AI có trả về văn bản nhưng chưa phân khối đúng. Vợ xem lại hoặc thử lại giúp chồng nhé!");
+            showToast("⚠️ Vợ yêu ơi, AI có trả về văn bản nhưng chưa phân khối đúng nhen.");
           }
         },
         onError: (err) => {
@@ -368,7 +369,7 @@ Bắt đầu ngay khối đầu tiên với ---TASK---:`;
 
   const handleSaveTask = () => {
     if (!editForm.title.trim() || !editForm.desc.trim()) {
-      alert("Vợ yêu ơi, vui lòng nhập đầy đủ Tên ý và Nội dung quy tắc nha!");
+      showToast("⚠️ Vợ yêu ơi, vui lòng nhập đầy đủ Tên ý và Nội dung quy tắc nha!");
       return;
     }
     const nextTasks = [...allTasks];

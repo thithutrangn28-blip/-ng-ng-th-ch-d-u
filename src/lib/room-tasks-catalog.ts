@@ -1,4 +1,4 @@
-import { getRealTasksForRoom } from "./room-tasks-catalogs-data";
+import { getRealTasksForRoom, ROOM_META_INFO } from "./room-tasks-catalogs-data";
 
 export interface RoomTask {
   id: string;
@@ -28,7 +28,7 @@ export interface RoomCatalog {
   tasks: RoomTask[];
 }
 
-const roomMetadata = [
+const baseRoomMetadata = [
   {
     id: "SWI",
     name: "Story Workspace Intake",
@@ -136,8 +136,148 @@ const roomMetadata = [
     deps: ["All Room Contexts", "Story Must-Have Requirements", "Runtime Settings"],
     forbidden: ["Cấm trả về lời chào hỏi hay giải thích phụ trợ (No greeting/meta)", "Cấm đóng vai nhân vật trả lời cốt truyện (Not narrative RP)", "Cấm bớt xén các khối quy tắc đã được yêu cầu"],
     contract: "Prompt Markdown module tối hậu, sẵn sàng để người dùng sao chép vào bất kỳ bot/AI engine nào."
+  },
+  {
+    id: "ACP",
+    name: "Active Presence",
+    purpose: "Sự hiện diện chủ động của nhân vật trong từng cảnh, phát sinh tương tác nhỏ với môi trường.",
+    goal: "Tạo module hướng dẫn AI quản lý sự hiện diện chủ động của nhân vật, không thụ động chờ đợi hành động.",
+    deps: ["Bot Char Profiles", "Story World Scene Context"],
+    forbidden: ["Cấm nhân vật thụ động không có phản ứng vật lý", "Không bỏ quên tương tác môi trường xung quanh", "Không bị động chờ user bắt chuyện"],
+    contract: "Prompt Markdown module quy định tính chủ động nhập cảnh, quan sát bối cảnh và tương tác vật lý của nhân vật."
+  },
+  {
+    id: "IMO",
+    name: "Immediate Objectives",
+    purpose: "Mục tiêu tức thời chi phối hành động hiện tại, xác lập ham muốn trước mắt của Bot.",
+    goal: "Tạo bệ phóng động cơ giúp nhân vật hành xử hướng đích, rõ ràng trong từng lượt thoại.",
+    deps: ["Bot Char Objectives", "Current Turn Goal"],
+    forbidden: ["Không để nhân vật nói thoại vu vơ vô nghĩa", "Cấm bỏ quên mong muốn thúc đẩy tức thời của Bot", "Không hành động mâu thuẫn với động cơ hiện tại"],
+    contract: "Prompt Markdown module xác lập hệ thống động cơ tức thời chi phối lời thoại và cử chỉ nhân vật."
+  },
+  {
+    id: "OSD",
+    name: "On-the-Spot Decisions",
+    purpose: "Quyết định tại chỗ dựa trên dữ kiện đang có, sự do dự và quyết đoán tại chỗ.",
+    goal: "Học cách đưa ra quyết định phi toàn tri tại hiện trường, dựa trên dữ kiện thực tế tức thời.",
+    deps: ["Bot Character Invariants", "Direct Sensory Input"],
+    forbidden: ["Cấm lỗi toàn tri biết trước diễn biến tương lai", "Không để nhân vật đưa ra quyết định quá dễ dàng", "Không mâu thuẫn với dữ kiện trực quan xung quanh"],
+    contract: "Prompt Markdown module xác định quy trình đánh giá và ra quyết định khẩn cấp theo cá tính nhân vật."
+  },
+  {
+    id: "NAF",
+    name: "Natural Reflexes",
+    purpose: "Phản xạ tự nhiên trước diễn biến bất ngờ, cơ chế tự vệ bản năng khi bị kích động.",
+    goal: "Bổ sung các phản xạ sinh lý, biểu cảm ngẫu hứng và cơ chế tự vệ tức thì cho Bot.",
+    deps: ["Bot Char Physiology", "Sensory Triggers"],
+    forbidden: ["Không để nhân vật dửng dưng trước biến cố bất ngờ", "Cấm phản ứng lời thoại rập khuôn thiếu cảm xúc", "Không bỏ qua phản xạ vô thức tự nhiên của cơ thể"],
+    contract: "Prompt Markdown module kiểm soát phản xạ bộc phát, nhịp thở và nhịp tim nhân vật."
+  },
+  {
+    id: "OIM",
+    name: "Original Identity Maintenance",
+    purpose: "Bản sắc gốc được duy trì trong mọi tương tác, khóa chặt cốt lõi nhân cách bất biến.",
+    goal: "Bảo toàn nghiêm ngặt thế giới quan, cách xưng hô, thái độ và lòng tự trọng nhân vật.",
+    deps: ["Bot Core Invariants", "Original Identity Blueprint"],
+    forbidden: ["Cấm nhân vật bị đồng hóa văn phong bởi {{user}}", "Không lơi lỏng giới hạn đạo đức nhân vật", "Không làm phai mờ khuyết điểm gốc"],
+    contract: "Prompt Markdown module khóa chặt nhân cách cốt lõi bất biến trước mọi tác động ngoại cảnh."
+  },
+  {
+    id: "CBV",
+    name: "Contextual Behavior Variation",
+    purpose: "Biến thiên hành vi theo hoàn cảnh mà không OOC, phản ứng linh hoạt theo bối cảnh.",
+    goal: "Giúp nhân vật thích nghi linh hoạt khi thay đổi địa vị xã hội, thời tiết hay bối cảnh đám đông.",
+    deps: ["Bot Character Profile", "Environmental Factors"],
+    forbidden: ["Cấm nhân vật cư xử OOC phá vỡ hình tượng", "Không để nhân vật bỏ qua tác động ngoại cảnh hay thương tích", "Không lặp lại hành vi một màu bất chấp hoàn cảnh"],
+    contract: "Prompt Markdown module điều phối cách nhân vật điều chỉnh thái độ phù hợp với không gian và thời gian."
+  },
+  {
+    id: "AVD",
+    name: "Accurate Voice Dialogue",
+    purpose: "Lời thoại đúng giọng, đúng lúc và đúng mức độ, khóa chặt từ điển thoại Dialogue Lexicon.",
+    goal: "Chuẩn hóa giọng thoại của từng nhân vật với từ vựng đặc trưng, nhịp điệu và xưng hô chuẩn xác.",
+    deps: ["Bot Voice DNA", "Relationship Status"],
+    forbidden: ["Cấm dùng từ ngữ hiện đại trong bối cảnh cổ xưa", "Không để các nhân vật nói chuyện chung một giọng điệu", "Không nói thoại lê thê dài dòng thiếu chọn lọc"],
+    contract: "Prompt Markdown module thiết lập Dialogue Lexicon, thói quen ngắt nghỉ và tông giọng cho nhân vật."
+  },
+  {
+    id: "SAS",
+    name: "Subtext & Silence",
+    purpose: "Hàm ý, khoảng dừng và những điều không nói thành lời, nghệ thuật nói giảm nói tránh.",
+    goal: "Tạo chiều sâu tâm lý thông qua các ngập ngừng, khoảng lặng biểu cảm và ánh mắt ẩn ý.",
+    deps: ["Bot Psychological Logic", "Status & Subtext Relation"],
+    forbidden: ["Cấm nhân vật nói huỵch toẹt cảm xúc thật ra ngoài", "Không để cuộc đối thoại diễn ra trơn tru thiếu khoảng ngắt nghỉ", "Không để nhân vật nói dối vụng về thiếu tính tế"],
+    contract: "Prompt Markdown module điều phối nghệ thuật nói giảm nói tránh và sự im lặng có chủ đích."
+  },
+  {
+    id: "BLG",
+    name: "Body Language & Gesture",
+    purpose: "Ngôn ngữ cơ thể song hành cùng lời thoại, cử chỉ tay và chuyển động vi mô.",
+    goal: "Tăng cường miêu tả cử chỉ tay, ánh mắt và tiếp xúc vật lý tương thích với lời thoại.",
+    deps: ["Bot Character Gestures", "Physical Proximity Matrix"],
+    forbidden: ["Không để nhân vật nói thoại như một pho tượng bất động", "Cấm mô tả cử chỉ mâu thuẫn với tông giọng lời thoại", "Không bỏ qua thói quen nhỏ và biểu cảm cơ mặt"],
+    contract: "Prompt Markdown module hướng dẫn kết hợp động tác tay, ánh mắt và vị trí không gian sống động."
+  },
+  {
+    id: "SDT",
+    name: "Show, Don't Tell Action",
+    purpose: "Hành động thực tế thay cho việc giải thích (Show, Don't Tell), tả hành động biểu lộ tình cảm ngầm.",
+    goal: "Áp dụng triệt để Show Don't Tell bằng cách mô tả hiện tượng vật lý, vết sẹo hoặc cử chỉ thay vì kể lể tính từ.",
+    deps: ["Bot Character Actions", "Sensory Output Requirements"],
+    forbidden: ["Cấm dùng tính từ áp đặt cảm xúc chủ quan vô căn cứ", "Không để lộ quá khứ bằng cách tự thoại kể lể dài dòng", "Không dùng văn phong giải thích tâm lý kiểu lý thuyết lâm sàng"],
+    contract: "Prompt Markdown module định hình cách phác họa câu chuyện qua hành vi thực tế và phản ứng môi trường."
   }
 ];
+
+const mappedKeys = new Set([
+  "story_workspace_intake",
+  "zero_puppeteering",
+  "character_psychology",
+  "canon_consistency_lock",
+  "knowledge_boundary",
+  "narrator_pov_scope",
+  "pacing_continuity",
+  "common_rp_writing_errors",
+  "full_character_profile_builder",
+  "character_voice_dna",
+  "subtext_silence_status_speech",
+  "final_output_contract",
+  "active_presence",
+  "immediate_objectives",
+  "spot_decisions",
+  "natural_reflexes",
+  "original_identity",
+  "contextual_behavior",
+  "accurate_voice",
+  "subtext_silence_room",
+  "body_language",
+  "show_dont_tell_room"
+]);
+
+export const roomMetadata: {
+  id: string;
+  name: string;
+  purpose: string;
+  goal: string;
+  deps: string[];
+  forbidden: string[];
+  contract: string;
+}[] = [...baseRoomMetadata];
+
+// Dynamically populate remaining rooms
+Object.entries(ROOM_META_INFO).forEach(([key, info]) => {
+  if (!mappedKeys.has(key)) {
+    roomMetadata.push({
+      id: key,
+      name: info.title,
+      purpose: info.purpose,
+      goal: `Dựng module hướng dẫn AI quản lý chuẩn chỉnh ${info.title} theo quy tắc đã chọn.`,
+      deps: ["Story Workspace Text", "Character Profiles", "Canon & Settings"],
+      forbidden: ["Không vi phạm quy chuẩn thiết lập phòng", "Không tự ý biến đổi logic bối cảnh"],
+      contract: `Prompt Markdown module đảm bảo thực thi đầy đủ các quy tắc ${info.title} đã cấu hình.`
+    });
+  }
+});
 
 // Helper to generate 100 deep, unique, non-repeating tasks for each room
 function generate100UniqueTasks(roomIdx: number): RoomTask[] {

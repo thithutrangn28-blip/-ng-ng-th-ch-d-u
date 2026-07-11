@@ -67,18 +67,22 @@ export default function StyleAnalyzer({ roomState, currentStory, roomDef, state,
         save(state);
         try {
           const sysPrompt = `You are the professional vision analysis module inside Lipstick Prompt Rooms.
-You MUST analyze and extract the visual traits from this reference image to support downstream AI image generation under the core rule: "Aesthetic Study & Visual Reference Principle (High aesthetic style fidelity, transformative adaptation for bespoke character originality)":
-CRITICAL RULE: The attached images serve as creative study references to learn visual language and artistic DNA (art style, rendering, mood, line quality, lighting, color palette, outfit spirit, composition rhythm). You MUST synthesize these learned artistic traits into a bespoke character and exclusive story plot, focusing on original character creation and transformative adaptation!
+You MUST analyze and extract the visual traits from this reference image to support downstream AI image generation under the core rule: "SUPREME MANDATE: Story Fidelity & Character Soul (Cốt truyện và Nhân vật là linh hồn - Ảnh tham chiếu là tư liệu)":
+
+CRITICAL RULE: The core goal of this app is to draw the characters from the user's specific story plot. The attached images serve ONLY as visual DNA references to learn the artistic language (art style, rendering, mood, line quality, lighting, color palette, outfit spirit, composition rhythm). YOU ARE STRICTLY FORBIDDEN FROM FOCUSING ON THE FACE/IDENTITY/GENDER OF THE PERSON IN THE REFERENCE. Instead, you must extract the aesthetic DNA and analyze how it can be TRANSFORMATIVELY ADAPTED to perfectly represent the user's original character in their story!
 
 You MUST analyze and extract these mandatory layers:
-1. Nhận diện thẩm mỹ tổng thể (giới tính trình bày, độ tuổi thị giác, khí chất thẩm mỹ, độ mềm/sắc/lạnh/ngọt/sang)
-2. Phong cách vẽ & Chất cọ / texture / rendering (watercolor, manhua fantasy, soft ink-wash, oil painting, digital anime..., độ mềm của line, độ loang màu, độ trong mờ)
+1. Nhận diện Aesthetic DNA tổng thể (khí chất thẩm mỹ, độ mềm/sắc/lạnh/ngọt/sang, vibe nghệ thuật)
+2. Phong cách vẽ & Chất cọ / texture / rendering (watercolor, manhua fantasy, soft ink-wash, digital anime..., độ mềm của line, độ loang màu, độ trong mờ)
 3. Bảng màu chính & Ánh sáng (nhiệt độ màu, độ bão hòa, độ tương phản, ánh sáng, pastel / dark / ethereal / warm)
 4. Mood / Khí chất / Không khí thị giác (ethereal, poetic, dreamy, quiet, floral, regal, retro, dark...)
-5. Motif hình ảnh (hoa, sen, nước, ruy băng, khung trang trí, thiên nhiên, gió, khói...)
+5. Phân tích Khả năng Tự sự / Visual Storytelling Potential: Phân tích xem các yếu tố trong ảnh tham chiếu (ánh sáng, vật thể, bố cục) có thể giúp kể câu chuyện của người dùng như thế nào.
+6. Motif hình ảnh (hoa, sen, nước, ruy băng, khung trang trí, thiên nhiên, gió, khói...)
 6. Trang phục / Outfit Fidelity (tinh thần trang phục, form dáng silhouette, độ rủ, lớp layer, mật độ chi tiết, cảm giác chất liệu, trim/lace/ribbon/embroidery tendencies, elegance/fantasy level)
-7. Bố cục thị giác / Composition Fidelity (visual hierarchy, focal structure, eye-flow/visual path, subject placement logic, negative space rhythm, directional movement of hair/fabric/props/light)
-8. Reference Fidelity Breakdown (Những chi tiết thẩm mỹ bắt buộc giữ 70%-85%, những chi tiết cho phép biến đổi sáng tạo theo cốt truyện 15%-30%, và những yếu tố biến đổi hoàn toàn để tạo dấu ấn nguyên bản cho nhân vật)
+7. Bố cục thị giác / Composition Fidelity (visual hierarchy, focal structure, eye-flow/visual path, subject placement logic, negative space rhythm, directional movement of hair/fabric/props/light).
+8. Đặc tả Tóc / Hair Design (Học hỏi cấu trúc lọn tóc, độ tơi, vật lý và rendering từ ảnh tham chiếu để áp dụng cho nhân vật trong truyện).
+9. Đặc tả Mắt (Eye Rendering): Cấu trúc đồng tử, độ sâu, ánh sáng phản chiếu, kỹ thuật vẽ mắt.
+10. Transformation Guidance: Chỉ rõ những chi tiết thẩm mỹ (nét vẽ, màu sắc, bố cục) bắt buộc giữ lại, và những yếu tố (nhân dạng, pose, bối cảnh) cần biến đổi hoàn toàn để khớp với hồ sơ nhân vật gốc của vợ yêu.
 
 Return ONLY valid JSON with this exact schema:
 {

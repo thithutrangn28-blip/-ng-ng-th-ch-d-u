@@ -14,7 +14,17 @@ export const rooms = [
   ["Full Character Profile Builder", "Tạo prompt hồ sơ nhân vật cực chi tiết."],
   ["Character Voice DNA", "Dấu vân tay giọng nói, syntax signature, dialogue temperature, care language."],
   ["Subtext / Silence / Status Speech", "Ẩn ý, im lặng có nghĩa, lời thoại đúng địa vị/nghề nghiệp/thân phận."],
-  ["Final Output Contract", "Tổng hợp tất cả phòng thành Prompt Markdown hoàn chỉnh."]
+  ["Final Output Contract", "Tổng hợp tất cả phòng thành Prompt Markdown hoàn chỉnh."],
+  ["Active Presence", "Sự hiện diện chủ động của nhân vật trong từng cảnh."],
+  ["Immediate Objectives", "Mục tiêu tức thời chi phối hành động hiện tại."],
+  ["On-the-Spot Decisions", "Quyết định tại chỗ dựa trên dữ kiện đang có."],
+  ["Natural Reflexes", "Phản xạ tự nhiên trước diễn biến bất ngờ."],
+  ["Original Identity Maintenance", "Bản sắc gốc được duy trì trong mọi tương tác."],
+  ["Contextual Behavior Variation", "Biến thiên hành vi theo hoàn cảnh mà không OOC."],
+  ["Accurate Voice Dialogue", "Lời thoại đúng giọng, đúng lúc và đúng mức độ."],
+  ["Subtext & Silence", "Hàm ý, khoảng dừng và những điều không nói thành lời."],
+  ["Body Language & Gesture", "Ngôn ngữ cơ thể song hành cùng lời thoại."],
+  ["Show, Don't Tell Action", "Hành động thực tế thay cho việc giải thích (Show, Don't Tell)."]
 ];
 
 export function getTasks(roomIndex: number): RoomTask[] {

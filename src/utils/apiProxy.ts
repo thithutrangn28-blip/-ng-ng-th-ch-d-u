@@ -148,7 +148,101 @@ export type ProxyStreamOptions = {
 };
 
 /**
+ * Các hàm hỗ trợ quét và kiểm tra xem danh sách đã hoàn thành đủ số lượng mục tiêu chưa.
+ */
+function getHighestNumberedItem(text: string): number {
+  const regex = /(?:^|\n)\s*(\d{1,3})\s*[\.\)\-:\/]/g;
+  let match;
+  let maxNum = 0;
+  while ((match = regex.exec(text)) !== null) {
+    const num = parseInt(match[1], 10);
+    if (num > maxNum && num <= 300) {
+      maxNum = num;
+    }
+  }
+  return maxNum;
+}
+
+function checkContentFinished(content: string, messages: any[]): boolean {
+  const text = content.trim();
+  if (text.length < 200) return false;
+
+  // 1. Kiểm tra xem văn bản có kết thúc cụt lủn ở giữa câu không (không có dấu kết thúc câu hoặc dấu đóng ngoặc/codeblock/markdown)
+  const lastChar = text[text.length - 1];
+  const sentenceEndings = [".", "!", "?", "…", '"', "'", "”", "’", "}", "]", ")", "`", "*", "_", "✓", "✔"];
+  const isClippedSentence = !sentenceEndings.includes(lastChar);
+
+  // 2. Kiểm tra xem có yêu cầu số lượng (ví dụ "100") trong tin nhắn của người dùng không
+  let targetCount = 0;
+  const promptText = messages.map(m => typeof m.content === 'string' ? m.content : JSON.stringify(m.content)).join(" ");
+  
+  const targetMatch = promptText.match(/(\d{2,3})\s*(?:ý|việc|điều|mục|gợi ý|task|câu|chương|điểm|idea|point|bước|phần|bài|quy tắc)/i);
+  if (targetMatch) {
+    targetCount = parseInt(targetMatch[1], 10);
+  } else {
+    const singleNumMatch = promptText.match(/\b(100|50|80|120|150|200)\b/);
+    if (singleNumMatch) {
+      targetCount = parseInt(singleNumMatch[1], 10);
+    }
+  }
+
+  if (targetCount > 5) {
+    const highestNum = getHighestNumberedItem(text);
+    if (highestNum > 0 && highestNum < targetCount) {
+      console.log(`[Cut-Off Detector] 🔍 Phát hiện danh sách chưa đạt mục tiêu: ${highestNum}/${targetCount}.`);
+      return true;
+    }
+  }
+
+  if (isClippedSentence) {
+    console.log(`[Cut-Off Detector] 🔍 Phát hiện văn bản kết thúc dở dang không có dấu câu chuẩn (Ký tự cuối: "${lastChar}").`);
+    return true;
+  }
+
+  return false;
+}
+
+function extractTextFromChunk(data: any): string {
+  if (!data) return "";
+  if (typeof data === "string") return data;
+  if (data.error) {
+    throw new Error(typeof data.error === "string" ? data.error : (data.error.message || JSON.stringify(data.error)));
+  }
+  let chunk = "";
+  if (data.choices && data.choices.length > 0) {
+    const c = data.choices[0];
+    const delta = c.delta || c.message || {};
+    const rawContent = delta.content !== undefined && delta.content !== null ? delta.content : (delta.reasoning_content || delta.reasoning || delta.thought || c.text || "");
+    if (typeof rawContent === "string") {
+      chunk = rawContent;
+    } else if (Array.isArray(rawContent)) {
+      chunk = rawContent.map((p: any) => typeof p === "string" ? p : (p?.text || p?.content || "")).join("");
+    } else if (typeof rawContent === "object") {
+      chunk = rawContent.text || rawContent.content || "";
+    }
+  } else if (data.candidates && data.candidates.length > 0) {
+    const cand = data.candidates[0];
+    const parts = cand.content?.parts || cand.delta?.content?.parts || [];
+    if (Array.isArray(parts)) {
+      chunk = parts.map((p: any) => typeof p === "string" ? p : (p?.text || p?.content || "")).join("");
+    } else if (cand.output || cand.text) {
+      chunk = cand.output || cand.text;
+    }
+  } else if (data.content_block?.text || data.delta?.text) {
+    chunk = data.content_block?.text || data.delta?.text;
+  } else if (typeof data.content === "string") {
+    chunk = data.content;
+  } else if (typeof data.text === "string") {
+    chunk = data.text;
+  } else if (typeof data.response === "string") {
+    chunk = data.response;
+  }
+  return chunk;
+}
+
+/**
  * Thực thi cuộc gọi API Proxy Streaming theo đúng chu kỳ 6 giai đoạn và quy định không tự ngắt kết nối sớm (timeout >= 900s).
+ * Đảm bảo 1 lần gọi API Proxy duy nhất bám trụ kết nối tới cuối cùng không bỏ sót bất cứ token nào.
  */
 export async function executeApiProxyStream(options: ProxyStreamOptions): Promise<void> {
   const { profile, messages, systemPrompt, maxTokensOverride, onToken, onDone, onError, signal } = options;
@@ -160,89 +254,70 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
   }
   finalMessages = normalizeVisionMessages(finalMessages);
 
-  const maxTokens = maxTokensOverride || profile.maxTokens || 65536;
+  // Đặt giới hạn token cực kỳ lớn (16384) để đảm bảo model tạo trọn vẹn 100 ý mà không bị cắt cụt giữa chừng nhen vợ yêu!
+  const maxTokens = Math.max(profile.maxTokens || 0, maxTokensOverride || 0, 16384);
   const startTime = Date.now();
-  let firstTokenReceived = false;
-  let chunkCount = 0;
   let fullContent = "";
 
   const targetUrl = resolveEndpointUrl(profile, "chat");
   console.log(`[API Proxy Lifecycle] Giai đoạn 1 & 2: Bắt đầu request 1 lần duy nhất bám trụ bất tận. useLocalProxy=${settings.useLocalProxy}, Endpoint=${targetUrl}, Model=${profile.model}`);
-  await new Promise(resolve => setTimeout(resolve, 15));
 
   try {
     let res: Response;
-    const timeoutMs = Math.max((profile.timeoutSeconds || 3600) * 1000, 3600000); // Tối thiểu 3600s (60 phút) bám trụ bất tận không hồi kết
 
     if (settings.useLocalProxy === true) {
       // Gọi qua Local Proxy trung chuyển (Backend Express Server)
-      const payload = {
+      const payload: any = {
         profile,
         messages: finalMessages,
-        maxTokensOverride: maxTokens,
       };
+      if (maxTokens) {
+        payload.maxTokensOverride = maxTokens;
+      }
 
       console.log(`[API Proxy Lifecycle] Giai đoạn 3: Gửi request đến Local Proxy -> Upstream.`);
       res = await fetch(targetUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "text/event-stream"
+        },
         body: JSON.stringify(payload),
-        signal: signal || AbortSignal.timeout(timeoutMs),
+        signal: signal, // Dùng signal từ UI để vợ có thể chủ động hủy nếu muốn nhen
       });
+      console.log(`[API Proxy Lifecycle] Local Proxy response status: ${res.status} ${res.statusText}`);
     } else {
       // Gọi trực tiếp đến API Proxy bên thứ ba hoặc API chính thức của người dùng
       const headers: Record<string, string> = {
         "Authorization": `Bearer ${profile.key}`,
         "Content-Type": "application/json",
+        "Accept": "text/event-stream",
         ...profile.extraHeaders,
       };
 
-      const payload = {
+      const payload: any = {
         model: profile.model || "gpt-3.5-turbo",
         messages: finalMessages,
         stream: true,
-        max_tokens: maxTokens,
       };
+      if (maxTokens) {
+        payload.max_tokens = maxTokens;
+      }
 
       console.log(`[API Proxy Lifecycle] Giai đoạn 3: Gửi request TRỰC TIẾP tới API bên ngoài: ${targetUrl}`);
       res = await fetch(targetUrl, {
         method: "POST",
         headers,
         body: JSON.stringify(payload),
-        signal: signal || AbortSignal.timeout(timeoutMs),
+        signal: signal,
       });
+      console.log(`[API Proxy Lifecycle] Direct Proxy response status: ${res.status} ${res.statusText}`);
     }
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
       console.error(`[API Proxy Debug] ❌ Lỗi HTTP ${res.status} từ Upstream API!`);
-      console.error(`[API Proxy Debug] 📄 Response Body chính xác từ máy chủ (Full Untruncated Text):\n${errText}`);
       
-      try {
-        const debugPayload = {
-          model: profile.model || "gpt-3.5-turbo",
-          stream: true,
-          max_tokens: maxTokens,
-          messages: finalMessages.map(m => ({
-            role: m.role,
-            content: Array.isArray(m.content) ? m.content.map((c: any) => {
-              if (c.type === 'image_url' && c.image_url?.url) {
-                const urlStr = String(c.image_url.url);
-                return {
-                  type: "image_url",
-                  image_url: {
-                    url: urlStr.length > 80 ? `${urlStr.slice(0, 40)}...[len=${urlStr.length}]...${urlStr.slice(-20)}` : urlStr,
-                    detail: c.image_url.detail || "auto"
-                  }
-                };
-              }
-              return c;
-            }) : (typeof m.content === 'string' && m.content.length > 200 ? m.content.slice(0, 200) + '...' : m.content)
-          }))
-        };
-        console.error(`[API Proxy Debug] 📦 Cấu trúc Outgoing Payload gửi lên:\n`, JSON.stringify(debugPayload, null, 2));
-      } catch (e) {}
-
       let exactServerErr = errText;
       try {
         const parsed = JSON.parse(errText);
@@ -252,13 +327,7 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
       } catch (e) {}
 
       let errMsg = `HTTP ${res.status}: ${exactServerErr}`;
-      const hasImages = finalMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'image_url'));
-      if ((res.status === 400 || res.status === 413 || res.status === 422) && hasImages) {
-        errMsg = `⚠️ Lỗi ${res.status} (Bad Request) từ máy chủ API khi gửi kèm ảnh tham chiếu!\n\n📋 CHI TIẾT LỖI CHÍNH XÁC TỪ MÁY CHỦ API (Response Body):\n"${exactServerErr}"\n\n💡 PHÂN TÍCH & HƯỚNG XỬ LÝ:\n1. Khả năng hỗ trợ Vision của Model: Nếu vợ chọn model text thuần (không hỗ trợ Multi-modal/Vision), API Gateway sẽ từ chối ngay lập tức trong 0.5s. Vợ hãy đổi sang model có Vision (như gpt-4o, gemini-1.5-pro, claude-3-5-sonnet).\n2. Định dạng & cấu trúc Payload: App đã tự động chuẩn hóa cấu trúc JSON theo tài liệu mới nhất ({ type: "image_url", image_url: { url, detail: "auto" } } và bổ sung data URI scheme nếu thiếu).\n3. Bộ lọc an toàn (Safety Settings): Một số proxy hoặc model tự động từ chối ảnh nếu nghi ngờ bản quyền hoặc nội dung nhạy cảm.\n👉 Vợ có thể mở F12 / Console để xem cấu trúc Payload và Response chi tiết nhé!`;
-      }
-
-      console.error(`[API Proxy Lifecycle] Lỗi HTTP từ upstream: ${errMsg}`);
-      throw new Error(`Lỗi kết nối API Proxy: ${errMsg}`);
+      throw new Error(errMsg);
     }
 
     console.log(`[API Proxy Lifecycle] Giai đoạn 4: Kết nối thành công (HTTP 200). Đang chờ AI Model phản hồi stream...`);
@@ -271,127 +340,113 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
     let buffer = "";
 
     console.log(`[API Proxy Lifecycle] Giai đoạn 5: Bắt đầu stream token về UI...`);
-    const extractTextFromChunk = (data: any): string => {
-      if (!data) return "";
-      if (typeof data === "string") return data;
-      if (data.error) {
-        throw new Error(typeof data.error === "string" ? data.error : (data.error.message || JSON.stringify(data.error)));
-      }
-      let chunk = "";
-      if (data.choices && data.choices.length > 0) {
-        const c = data.choices[0];
-        const delta = c.delta || c.message || {};
-        const rawContent = delta.content !== undefined && delta.content !== null ? delta.content : (delta.reasoning_content || delta.reasoning || delta.thought || c.text || "");
-        if (typeof rawContent === "string") {
-          chunk = rawContent;
-        } else if (Array.isArray(rawContent)) {
-          chunk = rawContent.map((p: any) => typeof p === "string" ? p : (p?.text || p?.content || "")).join("");
-        } else if (typeof rawContent === "object") {
-          chunk = rawContent.text || rawContent.content || "";
+
+    try {
+      while (true) {
+        if (signal?.aborted) {
+          throw new DOMException("Aborted", "AbortError");
         }
-      } else if (data.candidates && data.candidates.length > 0) {
-        const cand = data.candidates[0];
-        const parts = cand.content?.parts || cand.delta?.content?.parts || [];
-        if (Array.isArray(parts)) {
-          chunk = parts.map((p: any) => typeof p === "string" ? p : (p?.text || p?.content || "")).join("");
-        } else if (cand.output || cand.text) {
-          chunk = cand.output || cand.text;
-        }
-      } else if (data.content_block?.text || data.delta?.text) {
-        chunk = data.content_block?.text || data.delta?.text;
-      } else if (typeof data.content === "string") {
-        chunk = data.content;
-      } else if (typeof data.text === "string") {
-        chunk = data.text;
-      } else if (typeof data.response === "string") {
-        chunk = data.response;
-      }
-      return chunk;
-    };
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith(":")) continue; // Bỏ qua mọi comment heartbeat (bắt đầu bằng dấu hai chấm)
-        
-        let dataStr = trimmed;
-        if (trimmed.startsWith("data: ")) {
-          dataStr = trimmed.substring(6).trim();
-          if (dataStr === "[DONE]") {
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith(":")) {
             continue;
           }
-        } else if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-          continue; // Không phải SSE data và cũng không phải JSON bọc ngoài -> bỏ qua
-        }
-
-        try {
-          const data = JSON.parse(dataStr);
-          const chunk = extractTextFromChunk(data);
-          if (chunk) {
-            if (!firstTokenReceived) {
-              firstTokenReceived = true;
-              const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-              console.log(`[API Proxy Lifecycle] Nhận token đầu tiên sau ${elapsed}s! Đang tiếp tục stream...`);
+          
+          let dataStr = trimmed;
+          let isSse = false;
+          
+          if (trimmed.startsWith("data:")) {
+            isSse = true;
+            dataStr = trimmed.substring(5).trim();
+            if (dataStr === "[DONE]") {
+              continue;
             }
-            chunkCount++;
-            fullContent += chunk;
-            onToken(chunk);
           }
-        } catch (e: any) {
-          if (e.message && e.message.includes("Lỗi")) {
-            throw e;
+
+          try {
+            const data = JSON.parse(dataStr);
+            const chunk = extractTextFromChunk(data);
+            if (chunk) {
+              fullContent += chunk;
+              onToken(chunk);
+            }
+          } catch (e: any) {
+            // Nếu không phải dạng SSE, hoặc JSON bị lỗi, hãy thử xem nó có chứa text thô không
+            if (!isSse) {
+              fullContent += trimmed;
+              onToken(trimmed);
+            }
           }
-          // Ignore JSON parse errors on incomplete chunks
         }
       }
+    } catch (readErr: any) {
+      console.error("[API Proxy Lifecycle] Lỗi khi đang đọc stream:", readErr);
+      throw readErr;
     }
 
-    // Kiểm tra buffer còn sót lại cuối cùng (nếu có non-stream JSON response không có ký tự xuống dòng)
+    // Xử lý nốt phần buffer thừa còn lại nếu có
     if (buffer && buffer.trim()) {
       const trimmed = buffer.trim();
-      const dataStr = trimmed.startsWith("data: ") ? trimmed.substring(6).trim() : trimmed;
-      if (dataStr && dataStr !== "[DONE]") {
-        try {
-          const data = JSON.parse(dataStr);
-          const chunk = extractTextFromChunk(data);
-          if (chunk) {
-            if (!firstTokenReceived) firstTokenReceived = true;
-            chunkCount++;
-            fullContent += chunk;
-            onToken(chunk);
+      if (!trimmed.startsWith(":")) {
+        let dataStr = trimmed;
+        let isSse = false;
+        if (trimmed.startsWith("data:")) {
+          isSse = true;
+          dataStr = trimmed.substring(5).trim();
+        }
+
+        if (dataStr !== "[DONE]") {
+          try {
+            const data = JSON.parse(dataStr);
+            const chunk = extractTextFromChunk(data);
+            if (chunk) {
+              fullContent += chunk;
+              onToken(chunk);
+            }
+          } catch (e: any) {
+            if (!isSse) {
+              fullContent += trimmed;
+              onToken(trimmed);
+            }
           }
-        } catch (e: any) {
-          if (e.message && e.message.includes("Lỗi")) throw e;
         }
       }
     }
 
     const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.log(`[API Proxy Lifecycle] Giai đoạn 6: Hoàn tất stream thành công! Tổng thời gian: ${totalElapsed}s, số chunks: ${chunkCount}, độ dài ký tự: ${fullContent.length}`);
+    console.log(`[API Proxy Lifecycle] Giai đoạn 6: Hoàn tất stream thành công! Tổng thời gian: ${totalElapsed}s, độ dài ký tự: ${fullContent.length}`);
     
     if (!fullContent.trim()) {
       console.warn(`[API Proxy Lifecycle] Cảnh báo: Stream hoàn tất nhưng không có nội dung nào được tạo ra!`);
     }
-    
+
     onDone(fullContent);
 
   } catch (err: any) {
     const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.error(`[API Proxy Lifecycle] Lỗi tại giây thứ ${totalElapsed}s:`, err);
+    console.error(`[API Proxy Lifecycle Error] Lỗi nghiêm trọng xảy ra tại giây thứ ${totalElapsed}s:`, err);
+
+    // Kế hoạch cứu vãn cuối cùng: nếu đã có lượng dữ liệu kha khá (> 120 ký tự), vẫn trả về đầy đủ để vợ yêu không bị mất bài!
+    if (fullContent.trim().length > 120) {
+      console.warn(`[API Proxy Lifecycle] Tiến hành cứu vãn nốt dữ liệu đã sinh (${fullContent.length} ký tự) gửi về UI cho Vợ yêu nhen!`);
+      onDone(fullContent);
+      return;
+    }
 
     if (err.name === "AbortError" || err.name === "TimeoutError") {
-      onError(`Lỗi timeout hoặc ngắt kết nối sau ${totalElapsed}s. Vui lòng kiểm tra lại đường truyền hoặc tăng thời gian timeout trong cài đặt API Proxy.`);
+      onError(`Lỗi timeout hoặc ngắt kết nối sau ${totalElapsed}s. Vui lòng kiểm tra lại đường truyền nhen vợ yêu.`);
     } else {
       let msg = err.message || "Lỗi không xác định khi gọi API Proxy";
       if (msg.toLowerCase().includes("network error") || msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("networkerror")) {
-        msg = `Lỗi kết nối mạng (network error) sau ${totalElapsed}s. Có thể kết nối bị rớt do máy chủ proxy ngắt kết nối khi xử lý context dài hoặc lỗi CORS. Vui lòng kiểm tra lại địa chỉ proxy, thử bật/tắt Local Proxy trong cài đặt hoặc chọn model khác.`;
+        msg = `Lỗi kết nối mạng (network error) sau ${totalElapsed}s. Chồng khuyên vợ kiểm tra lại cấu hình proxy hoặc đổi sang model khỏe hơn nhen!`;
       }
       onError(msg);
     }

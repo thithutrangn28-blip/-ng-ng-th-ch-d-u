@@ -12,7 +12,7 @@ import { SafeImg } from "../../components/SafeImg";
 // Default state initialization
 function createDefaultState(): LipstickState {
   const id = uuidv4();
-  const defaultBotText = "Bot char là nhân vật trung tâm. Prompt dựa trên hồ sơ, câu chuyện, ảnh tham chiếu khoảng 50%, không sao chép tuyệt đối.";
+  const defaultBotText = "Mệnh lệnh tối cao: Cốt truyện và Hồ sơ nhân vật là linh hồn của bức ảnh. Ảnh tham chiếu chỉ là tư liệu để học hỏi nét vẽ, màu sắc và bố cục, tuyệt đối không được sao chép nhân dạng hay giới tính từ ảnh tham chiếu nếu không khớp với hồ sơ nhân vật gốc.";
   return {
     ui: { globalBg: "", globalAvatar: "" },
     stories: [{
@@ -66,6 +66,7 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
   const [styleSearch, setStyleSearch] = useState("");
   const [showRoomPreset, setShowRoomPreset] = useState(false);
   const [roomProgress, setRoomProgress] = useState(0);
+  const [showPromptGuide, setShowPromptGuide] = useState(false);
   const saveTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
@@ -324,6 +325,7 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
               🏠 Thoát App
             </button>
             <button className="btn ghost" onClick={() => setShowSetup(true)}>Setup</button>
+            <button className="btn primary" onClick={() => setShowPromptGuide(true)} style={{ background: 'linear-gradient(135deg, #d23a73, #e96b9b)', border: 'none', fontWeight: 800 }}>📚 Tài Liệu Prompt 💖</button>
             <button className="btn primary" onClick={() => setShowStoryForm("new")}>+ Story</button>
           </div>
         </div>
@@ -551,8 +553,8 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
 
       {/* Setup Modal */}
       {showSetup && (
-        <div className="modal show">
-          <div className="modal-card">
+        <div className="modal show" style={{ zIndex: 2100 }}>
+          <div className="modal-card" style={{ zIndex: 2101, pointerEvents: 'auto' }}>
             <div className="modal-head">
               <div>
                 <p className="eyebrow">Setup giao diện</p>
@@ -612,6 +614,13 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
           save={save} 
           onClose={() => setShowRoomForm(null)}
           toast={toast}
+        />
+      )}
+
+      {/* Prompt Guide Modal */}
+      {showPromptGuide && (
+        <PromptGuideModal 
+          onClose={() => setShowPromptGuide(false)}
         />
       )}
 
@@ -747,8 +756,8 @@ function StoryFormModal({ storyId, state, save, onClose, toBase64 }: any) {
   };
 
   return (
-    <div className="modal show">
-      <div className="modal-card" style={{ maxWidth: 850 }}>
+    <div className="modal show" style={{ zIndex: 5000, background: 'rgba(10,5,15,0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="modal-card" style={{ maxWidth: 850, zIndex: 5001, pointerEvents: 'auto', position: 'relative' }}>
         <div className="modal-head">
           <div><p className="eyebrow">Story Workspace</p><h2>{isNew ? "Tạo" : "Sửa"} thẻ câu chuyện & Dữ liệu Context</h2></div>
           <button className="btn ghost" onClick={onClose}>Đóng</button>
@@ -959,26 +968,33 @@ function StoryFormModal({ storyId, state, save, onClose, toBase64 }: any) {
           <label className="wide"><span>4. Nhân vật phụ (Side Characters)</span><textarea value={formData.sideCharacters} onChange={e => setFormData({...formData, sideCharacters: e.target.value})} placeholder="Danh sách nhân vật phụ, mối quan hệ, đặc điểm ngoại hình..."></textarea></label>
           <label className="wide"><span>5. Yêu cầu tạo ảnh chung (Image Requirements)</span><textarea value={formData.requirements} onChange={e => setFormData({...formData, requirements: e.target.value})} placeholder="Yêu cầu về ánh sáng, phong cách art, màu chủ đạo, các lỗi cấm..."></textarea></label>
           
-          <label>
-            <span>Avatar story</span>
-            <label className="file-label">Chọn avatar
-              <input className="file-native" type="file" accept="image/*" onChange={async e => {
-                const f = e.target.files?.[0];
-                if (f) setFormData({...formData, avatar: await toBase64(f)});
-              }}/>
-            </label>
-          </label>
-          <label>
-            <span>Ảnh bìa story</span>
-            <label className="file-label">Chọn ảnh bìa
-              <input className="file-native" type="file" accept="image/*" onChange={async e => {
-                const f = e.target.files?.[0];
-                if (f) setFormData({...formData, cover: await toBase64(f)});
-              }}/>
-            </label>
-          </label>
           <label className="wide">
-            <span>6. File tài liệu nhập vào Context Window (.txt, .md, .doc, .docx, .pdf)</span>
+            <span>6. Avatar story & Ảnh bìa story</span>
+            <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
+              <div style={{ flex: 1 }}>
+                <label className="file-label" style={{ width: '100%', justifyContent: 'center' }}>
+                  🌸 Chọn Avatar Story
+                  <input className="file-native" type="file" accept="image/*" onChange={async e => {
+                    const f = e.target.files?.[0];
+                    if (f) setFormData({...formData, avatar: await toBase64(f)});
+                  }}/>
+                </label>
+                {formData.avatar && <div style={{ marginTop: 10, width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', border: '2px solid #f8bbd0' }}><SafeImg src={formData.avatar} alt=""/></div>}
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="file-label" style={{ width: '100%', justifyContent: 'center' }}>
+                  🖼️ Chọn Ảnh Bìa Story
+                  <input className="file-native" type="file" accept="image/*" onChange={async e => {
+                    const f = e.target.files?.[0];
+                    if (f) setFormData({...formData, cover: await toBase64(f)});
+                  }}/>
+                </label>
+                {formData.cover && <div style={{ marginTop: 10, height: 80, borderRadius: 12, overflow: 'hidden', border: '2px solid #f8bbd0' }}><SafeImg src={formData.cover} alt=""/></div>}
+              </div>
+            </div>
+          </label>
+          <label className="wide" style={{ marginTop: 14 }}>
+            <span>7. File tài liệu nhập vào Context Window (.txt, .md, .doc, .docx, .pdf)</span>
             <label className="file-label">📁 Tải file tài liệu lên
               <input className="file-native" type="file" multiple accept=".txt,.md,.doc,.docx,.pdf,.json,.html" onChange={async e => {
                 const files = e.target.files;
@@ -1027,8 +1043,8 @@ function StoryFormModal({ storyId, state, save, onClose, toBase64 }: any) {
 
         {/* Panel File Detail / File Preview */}
         {selectedFileDetail && (
-          <div className="modal show" style={{ zIndex: 1100, background: 'rgba(0,0,0,0.6)' }}>
-            <div className="modal-card" style={{ maxWidth: 700, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+          <div className="modal show" style={{ zIndex: 2200, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}>
+            <div className="modal-card" style={{ maxWidth: 700, maxHeight: '85vh', display: 'flex', flexDirection: 'column', zIndex: 2201, pointerEvents: 'auto' }}>
               <div className="modal-head">
                 <div>
                   <p className="eyebrow">File Detail & Context Extractor</p>
@@ -1201,8 +1217,8 @@ function RoomFormModal({ roomId, currentStory, state, save, onClose, toast }: Ro
   };
 
   return (
-    <div className="modal show" style={{ display: 'flex' }}>
-      <div className="modal-card" style={{ maxWidth: 750, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="modal show" style={{ display: 'flex', zIndex: 6000, background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="modal-card" style={{ maxWidth: 750, maxHeight: '90vh', display: 'flex', flexDirection: 'column', zIndex: 6001, pointerEvents: 'auto', position: 'relative' }}>
         <div className="modal-head">
           <div>
             <p className="eyebrow">Workspace Category Config</p>
@@ -1298,6 +1314,137 @@ function RoomFormModal({ roomId, currentStory, state, save, onClose, toast }: Ro
           <button className="btn ghost" onClick={onClose} style={{ fontWeight: 700 }}>Hủy bỏ</button>
           <button className="btn primary" onClick={handleSave} style={{ background: '#d23a73', fontWeight: 800, padding: '10px 24px', borderRadius: 10 }}>
             💾 Lưu hạng mục cho Vợ yêu 💖
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PromptGuideModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="modal show" style={{ zIndex: 2200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="modal-card" style={{ zIndex: 2201, pointerEvents: 'auto', maxWidth: 850, width: '90%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="modal-head" style={{ borderBottom: '2px solid #fdf2f8', paddingBottom: 16, flexShrink: 0 }}>
+          <div>
+            <p className="eyebrow" style={{ color: '#e96b9b', fontSize: 12, fontWeight: 700, margin: 0 }}>Tài liệu học tập & Sáng tác 🌸</p>
+            <h2 style={{ color: '#d23a73', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 8, fontSize: 20 }}>
+              📚 Hướng Dẫn Kỹ Thuật Prompt & Ảnh Tham Chiếu
+            </h2>
+          </div>
+          <button className="btn ghost" onClick={onClose} style={{ borderRadius: 10, padding: '6px 12px' }}>Đóng</button>
+        </div>
+        <div className="modal-body" style={{ overflowY: 'auto', padding: '24px 20px', lineHeight: 1.6, flexGrow: 1 }}>
+          <p style={{ fontSize: 15, color: '#4a4a4a', marginBottom: 20, textAlign: 'justify' }}>
+            Chào vợ yêu của chồng! 💖 Để giúp vợ tạo ra những bức ảnh đẹp nhất, bám sát từng chi tiết nhỏ nhất trong ảnh tham chiếu (từ nét vẽ, đôi mắt, dáng đứng cho đến những ngón tay hay đường nét bối cảnh), chồng đã tổng hợp tài liệu chuyên sâu này. Vợ và các AI của chúng ta hãy cùng đọc để lấy thêm kiến thức và tạo ra những kiệt tác xuất sắc nhé!
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {/* Section 1 */}
+            <section style={{ padding: 18, background: '#fff0f5', borderRadius: 12, borderLeft: '5px solid #e96b9b' }}>
+              <h3 style={{ color: '#c2185b', marginTop: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+                ✒️ 1. Nét Vẽ & Line Vẽ (Art Style & Linework DNA)
+              </h3>
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#333' }}>
+                Nét vẽ (Line art) quyết định "linh hồn" đồ họa của tác phẩm. AI cần miêu tả rõ cấu trúc nét vẽ để tránh cho ra nét vẽ thô xấu:
+              </p>
+              <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#555', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <li><b>Độ dày nét (Line weight):</b> Sử dụng từ khóa như <i>"ultra-fine hand-drawn lines"</i> (nét vẽ tay cực mảnh), <i>"variable line-weight linework"</i> (nét vẽ có độ dày thanh mảnh linh hoạt) để tạo chiều sâu.</li>
+                <li><b>Chất liệu nét (Linework texture):</b> Chỉ định rõ <i>"clean digital vector line art"</i> (nét line máy sạch sẽ), <i>"textured charcoal sketching lines"</i> (nét phác thảo chì than), hoặc <i>"traditional Japanese ink-brush strokes"</i> (nét cọ mực tàu).</li>
+                <li><b>Sắc độ shading:</b> Miêu tả cách đánh bóng nét vẽ như <i>"soft manga screentone shading"</i> (đánh bóng bằng hạt trame truyện tranh), hoặc <i>"cross-hatching pencil lines"</i> (gạch chéo bằng bút chì).</li>
+              </ul>
+            </section>
+
+            {/* Section 2 */}
+            <section style={{ padding: 18, background: '#fdf2f8', borderRadius: 12, borderLeft: '5px solid #d23a73' }}>
+              <h3 style={{ color: '#b71c1c', marginTop: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+                👁️ 2. Mắt, Mũi & Miệng (Facial Features Precision)
+              </h3>
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#333' }}>
+                Để gương mặt nhân vật không bị biến dạng và bám sát thần thái của ảnh tham chiếu:
+              </p>
+              <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#555', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <li><b>Đôi mắt (Eyes details):</b> Miêu tả hình dáng mi mắt và hàng mi: <i>"thick dramatic eyelashes with heavy eyelid crease"</i> (lông mi dày nổi bật cùng mí mắt sâu), <i>"glistening glossy irises catching volumetric light"</i> (nhãn cầu lấp lánh bắt sáng đa chiều).</li>
+                <li><b>Hướng nhìn (Gaze direction):</b> Hãy chỉ rõ hướng mắt: <i>"focused eye contact looking directly at the camera"</i> (ánh nhìn kiên định hướng về phía máy ảnh) hoặc <i>"subtle downward gaze with introspective expression"</i> (ánh mắt hơi nhìn xuống đầy nội tâm).</li>
+                <li><b>Mũi & Miệng (Nose & Mouth):</b> Miêu tả nét thanh tú: <i>"delicate, sharp outline of the nose bridge"</i> (đường sống mũi thanh tú, sắc sảo), <i>"subtly parted soft lips with natural gloss finish"</i> (đôi môi môi hơi hé mở có độ bóng tự nhiên).</li>
+              </ul>
+            </section>
+
+            {/* Section 3 */}
+            <section style={{ padding: 18, background: '#f5f5f5', borderRadius: 12, borderLeft: '5px solid #757575' }}>
+              <h3 style={{ color: '#212121', marginTop: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+                🤸‍♀️ 3. Pose Dáng & Chi Tiết Ngón Tay (Posture & Finger Articulation)
+              </h3>
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#333' }}>
+                Pose dáng và bàn tay là hai thứ dễ bị AI vẽ sai nhất. Phải ép AI vẽ đúng cấu trúc giải phẫu:
+              </p>
+              <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#555', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <li><b>Pose dáng (Body Stance):</b> Mô tả lực nén và độ nghiêng cơ thể: <i>"elegant dynamic low-angle posture"</i> (tư thế động góc thấp thanh lịch), <i>"head tilted slightly at a 15-degree angle"</i> (đầu hơi nghiêng nhẹ 15 độ).</li>
+                <li><b>Cấu trúc ngón tay (Fingers & Hands):</b> Mô tả chi tiết hành động của từng ngón để chống lỗi dính ngón: <i>"exquisitely detailed hands with long slender fingers"</i> (bàn tay thon thả với các ngón tay dài mảnh dẻ), <i>"five fully articulated fingers gently holding a prop"</i> (năm ngón tay rõ ràng đang cầm nhẹ đạo cụ).</li>
+              </ul>
+            </section>
+
+            {/* Section 4 */}
+            <section style={{ padding: 18, background: '#eef8ff', borderRadius: 12, borderLeft: '5px solid #29b6f6' }}>
+              <h3 style={{ color: '#01579b', marginTop: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+                🎨 4. Màu Sắc & Ánh Sáng (Color Palette & Chiaroscuro)
+              </h3>
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#333' }}>
+                Không khí của bức ảnh phụ thuộc hoàn toàn vào màu sắc và ánh sáng:
+              </p>
+              <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#555', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <li><b>Màu sắc (Colors):</b> Sử dụng bảng màu cụ thể hoặc mã màu hex: <i>"soft pastel pink and muted cream palette"</i>, <i>"crimson red accents popping against a monochrome slate background"</i>.</li>
+                <li><b>Hướng sáng (Lighting):</b> Tạo khối chiều sâu: <i>"dramatic chiaroscuro lighting casting long soft shadows"</i> (ánh sáng tương phản mạnh tạo bóng đổ mềm mại), <i>"glowing rim light accentuating the character's hair silhouette"</i> (ánh sáng ngược viền sáng làm nổi bật phom tóc).</li>
+              </ul>
+            </section>
+
+            {/* Section 5 */}
+            <section style={{ padding: 18, background: '#fffbeb', borderRadius: 12, borderLeft: '5px solid #f59e0b' }}>
+              <h3 style={{ color: '#78350f', marginTop: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+                📸 5. Bố Cục & Đường Thị Giác (Composition & Leading Lines)
+              </h3>
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#333' }}>
+                Bố cục giúp hướng mắt người xem đi đúng dụng ý nghệ thuật của vợ:
+              </p>
+              <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#555', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <li><b>Đường thị giác (Leading lines):</b> Chỉ rõ các đường dẫn hướng: <i>"strong diagonal leading lines created by office blinds"</i> (đường chéo thị giác tạo bởi rèm văn phòng), <i>"vertical composition lines of bookshelves framing the subject"</i>.</li>
+                <li><b>Góc máy (Angles):</b> <i>"Dutch tilt for dramatic tension"</i> (máy nghiêng nghệ thuật), <i>"cinematic low-angle sweeping shot"</i> (góc chụp thấp hoành tráng).</li>
+              </ul>
+            </section>
+
+            {/* Section 6 */}
+            <section style={{ padding: 18, background: '#f0fdf4', borderRadius: 12, borderLeft: '5px solid #22c55e' }}>
+              <h3 style={{ color: '#14532d', marginTop: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+                📱 6. Giao Diện & Thiết Kế Khung Hình (UI & Frame Layouts)
+              </h3>
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: '#333' }}>
+                Dành riêng cho truyện tranh, webtoon hoặc poster:
+              </p>
+              <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#555', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <li><b>Khung tranh (Panels):</b> Mô tả cách dàn trang truyện: <i>"multi-panel layout with dynamic white borders"</i> (giao diện nhiều khung tranh phân tách bằng viền trắng động).</li>
+                <li><b>Giao diện văn bản (Text UI):</b> <i>"subtle translucent chat box with minimal typography"</i> (khung chat mờ cùng chữ tối giản), <i>"clean layout with header titles"</i> (bố cục sạch với tiêu đề đầu trang).</li>
+              </ul>
+            </section>
+
+            {/* Section 7 */}
+            <section style={{ padding: 20, background: 'linear-gradient(135deg, #fff5f8, #fdf2f8)', borderRadius: 16, border: '1.5px solid #ffd1e3', boxShadow: '0 4px 16px rgba(210,58,115,0.06)' }}>
+              <h3 style={{ color: '#d23a73', marginTop: 0, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: 17, fontWeight: 800 }}>
+                💡 7. Cách Dùng Nhiều Ảnh Tham Chiếu (Multi-Reference Synthesis)
+              </h3>
+              <p style={{ margin: '0 0 12px', fontSize: 14, color: '#4a4a4a' }}>
+                Khi bối cảnh truyện có nhiều chi tiết phức tạp, hãy sử dụng tính năng nạp nhiều ảnh tham chiếu của app:
+              </p>
+              <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#555', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <li><b>Phân chia rõ ràng (Domain Isolation):</b> Nạp ảnh tóc vào thẻ Tóc, nạp dáng đứng vào thẻ Pose, nạp trang phục vào thẻ Outfit. Hệ thống sẽ tự động cách ly và phân tích từng thẻ một cách độc lập để AI không bị nhầm lẫn.</li>
+                <li><b>Tổng hợp chất liệu (Synthesis):</b> AI sẽ tự động nhìn nhận tất cả các ảnh tham chiếu trong payload và pha trộn thông minh: lấy nét vẽ từ Style Analyzer, lấy dáng đứng từ Pose Card, lấy quần áo từ Outfit Card để tạo nên tác phẩm hoàn chỉnh đúng ý vợ.</li>
+                <li><b>Bản quyền & Nguyên bản (Originality):</b> AI sẽ lấy 95% chi tiết thị giác từ ảnh tham chiếu, nhưng chỉ biến đổi gương mặt và thần thái theo hồ sơ câu chuyện gốc của vợ yêu để nhân vật luôn là độc quyền của riêng vợ!</li>
+              </ol>
+            </section>
+          </div>
+        </div>
+        <div style={{ padding: '16px 24px', borderTop: '1px solid #fdf2f8', display: 'flex', justifyContent: 'flex-end', background: '#fafafa', borderBottomLeftRadius: 18, borderBottomRightRadius: 18, flexShrink: 0 }}>
+          <button className="btn primary" onClick={onClose} style={{ background: '#d23a73', fontWeight: 800, padding: '10px 24px', borderRadius: 12, border: 'none' }}>
+            Chồng yêu đã giải thích rõ, Cảm ơn Chồng nhé! 🥰
           </button>
         </div>
       </div>

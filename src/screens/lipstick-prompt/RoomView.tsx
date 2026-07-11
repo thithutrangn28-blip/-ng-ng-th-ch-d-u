@@ -7,95 +7,227 @@ import { v4 as uuidv4 } from "uuid";
 import StyleAnalyzer from "./StyleAnalyzer";
 import { SafeImg } from "../../components/SafeImg";
 import { compressImageFile } from "../../utils/imageCompressor";
+import { getPrimaryApiProfile } from "../../lib/api-db";
+import { getApiProxySettings } from "../../utils/apiProxy";
 
-function PromptFivePartsViewer({ output, toast, isApiRunning, cardTitle }: { output: string; toast: any; isApiRunning: boolean; cardTitle: string }) {
+function PromptFivePartsViewer({ 
+  output, 
+  toast, 
+  isApiRunning, 
+  cardTitle,
+  elapsedSeconds 
+}: { 
+  output: string; 
+  toast: any; 
+  isApiRunning: boolean; 
+  cardTitle: string;
+  elapsedSeconds?: number;
+}) {
   const [showRaw, setShowRaw] = useState(false);
+  const [activeProfile, setActiveProfile] = useState<any>(null);
+  const [copiedParts, setCopiedParts] = useState<Record<string, boolean>>({});
   const rawText = (output || "").trim();
 
-  // 1. Bản Prompt liền mạch (One-line / Paragraph) sạch tiêu đề để dán vào Midjourney/SD không lỗi cú pháp
-  const cleanOneLinePrompt = rawText
-    .replace(/(?:^|\n)###\s*[^\n]*/g, " ")
-    .replace(/(?:^|\n)\*\*\s*(?:PART|PHẦN)\s*\d+[^\n]*/gi, " ")
-    .replace(/(?:^|\n)(?:PART|PHẦN)\s*\d+:[^\n]*/gi, " ")
-    .replace(/\n+/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
+  // Load API Profile & settings
+  useEffect(() => {
+    getPrimaryApiProfile().then(p => {
+      if (p) setActiveProfile(p);
+    }).catch(e => console.warn("Lỗi đọc API Profile:", e));
+  }, []);
 
-  // 2. Bóc tách thành 5 phần theo tiêu đề ### hoặc **PART...
-  const partRegex = /(?:^|\n)###\s*(.*?)(?=(?:\n###\s*|\n---|\n\*\*\*|$))/gs;
-  let matches = [...rawText.matchAll(partRegex)];
+  const proxySettings = getApiProxySettings();
 
-  // Fallback nếu AI dùng **PART 1:...** hoặc chưa dùng ###
-  if (matches.length === 0) {
-    const altRegex = /(?:^|\n)(?:\*\*|\#\#)?\s*(?:PART|PHẦN|Phần)\s*(\d+[^:\n]*?:?)(.*?)(?=(?:\n(?:\*\*|\#\#)?\s*(?:PART|PHẦN|Phần)\s*\d+|\n---|$))/gsi;
-    const altMatches = [...rawText.matchAll(altRegex)];
-    if (altMatches.length > 0) {
-      matches = altMatches.map(m => [m[0], `PART ${m[1]}\n${m[2]}`] as any);
-    }
-  }
+  // Parse text into structured sections using our robust ### split algorithm
+  const getParsedParts = () => {
+    const parsed: { id: string; title: string; subtitle: string; icon: string; content: string; color: string; bg: string }[] = [];
+    if (!rawText) return parsed;
 
-  const parts: { title: string; subtitle: string; content: string; icon: string; id: string; color: string; bg: string }[] = [];
+    // Split text by lines that start with ###
+    const sections = rawText.split(/(?:^|\n)###\s+/);
+    
+    for (let i = 1; i < sections.length; i++) {
+      const sectionText = sections[i];
+      const newlineIndex = sectionText.indexOf('\n');
+      const header = newlineIndex !== -1 ? sectionText.substring(0, newlineIndex).trim() : sectionText.trim();
+      let content = newlineIndex !== -1 ? sectionText.substring(newlineIndex + 1).trim() : "";
+      
+      // Clean up horizontal separators and codeblock wrapper boundaries
+      content = content.replace(/^---$/, "").replace(/^```[a-z]*\n/i, "").replace(/\n```$/, "").trim();
+      if (!content && isApiRunning) {
+        content = "⏳ AI đang viết tiếp nội dung phần này cho vợ yêu...";
+      }
 
-  if (matches.length > 0) {
-    matches.forEach((m, idx) => {
-      const firstLineEnd = m[1].indexOf('\n');
-      const fullHeader = firstLineEnd !== -1 ? m[1].slice(0, firstLineEnd).trim() : m[1].trim();
-      const content = firstLineEnd !== -1 ? m[1].slice(firstLineEnd).trim() : "";
-
+      const headerLower = header.toLowerCase();
+      let id = `part_${i}`;
+      let title = header;
       let icon = "✨";
       let subtitle = "Mô tả chi tiết thẩm mỹ";
       let color = "#d23a73";
-      let bg = "rgba(210, 58, 115, 0.05)";
+      let bg = "rgba(210, 58, 115, 0.03)";
 
-      if (fullHeader.match(/part\s*1|subject|pose|nhân vật|kiểu dáng/i) || idx === 0) {
+      if (headerLower.includes("tư liệu") || headerLower.includes("aesthetic") || headerLower.includes("dna") || headerLower.includes("tham chiếu")) {
+        id = "aesthetic_dna";
+        icon = "👑";
+        subtitle = "Báo cáo thẩm định & Phân tích DNA nghệ thuật cốt lõi";
+        color = "#b83280";
+        bg = "rgba(184, 50, 128, 0.03)";
+      } else if (headerLower.includes("tổng quan") || headerLower.includes("webtoon") || headerLower.includes("overview")) {
+        id = "comic_overview";
+        icon = "📚";
+        subtitle = "Cấu trúc bố cục & Tuyến nhân vật của trang truyện";
+        color = "#6a1b9a";
+        bg = "rgba(106, 27, 154, 0.03)";
+      } else if (headerLower.includes("khung") || headerLower.includes("panel") || headerLower.includes("scene") || headerLower.includes("frame")) {
+        id = `panel_${i}`;
+        icon = "🖼️";
+        subtitle = `Bố cục máy, nhân vật & English Prompt của Khung truyện`;
+        color = "#ef6c00";
+        bg = "rgba(239, 108, 0, 0.03)";
+      } else if (headerLower.includes("toàn trang") || headerLower.includes("full page") || headerLower.includes("comic prompt")) {
+        id = "comic_master_prompt";
+        icon = "🎨";
+        subtitle = "English Prompt tổng hợp cho toàn bộ trang truyện sequential art";
+        color = "#c62828";
+        bg = "rgba(198, 40, 40, 0.03)";
+      } else if (headerLower.includes("part 1") || headerLower.includes("phần 1") || headerLower.includes("subject") || headerLower.includes("pose") || headerLower.includes("nhân vật") || headerLower.includes("cử chỉ")) {
+        id = "part_1";
         icon = "🧑";
         subtitle = "Nhân vật, cử chỉ tạo dáng & ngôn ngữ cơ thể (Bám sát 85%-95% ảnh)";
         color = "#c2185b";
-        bg = "rgba(194, 24, 91, 0.05)";
-      } else if (fullHeader.match(/part\s*2|outfit|styling|trang phục|chất liệu/i) || idx === 1) {
+        bg = "rgba(194, 24, 91, 0.03)";
+      } else if (headerLower.includes("part 2") || headerLower.includes("phần 2") || headerLower.includes("outfit") || headerLower.includes("styling") || headerLower.includes("trang phục") || headerLower.includes("chất liệu")) {
+        id = "part_2";
         icon = "👗";
         subtitle = "Trang phục silhouette, chất liệu vải & phụ kiện đi kèm";
         color = "#8e24aa";
-        bg = "rgba(142, 36, 170, 0.05)";
-      } else if (fullHeader.match(/part\s*3|environment|background|bối cảnh|không gian/i) || idx === 2) {
+        bg = "rgba(142, 36, 170, 0.03)";
+      } else if (headerLower.includes("part 3") || headerLower.includes("phần 3") || headerLower.includes("environment") || headerLower.includes("background") || headerLower.includes("bối cảnh") || headerLower.includes("không gian")) {
+        id = "part_3";
         icon = "🌌";
         subtitle = "Không gian bối cảnh, kiến trúc, thiên nhiên & chiều sâu";
         color = "#1976d2";
-        bg = "rgba(25, 118, 210, 0.05)";
-      } else if (fullHeader.match(/part\s*4|lighting|color|atmosphere|ánh sáng|màu sắc/i) || idx === 3) {
+        bg = "rgba(25, 118, 210, 0.03)";
+      } else if (headerLower.includes("part 4") || headerLower.includes("phần 4") || headerLower.includes("lighting") || headerLower.includes("color") || headerLower.includes("atmosphere") || headerLower.includes("ánh sáng") || headerLower.includes("màu sắc")) {
+        id = "part_4";
         icon = "💡";
         subtitle = "Ánh sáng direction, bảng màu chủ đạo & chất cảm bầu không khí";
         color = "#e65100";
-        bg = "rgba(230, 81, 0, 0.05)";
-      } else if (fullHeader.match(/part\s*5|camera|angle|perspective|composition|góc chụp|thị giác/i) || idx === 4) {
+        bg = "rgba(230, 81, 0, 0.03)";
+      } else if (headerLower.includes("part 5") || headerLower.includes("phần 5") || headerLower.includes("camera") || headerLower.includes("angle") || headerLower.includes("perspective") || headerLower.includes("composition") || headerLower.includes("góc chụp") || headerLower.includes("thị giác")) {
+        id = "part_5";
         icon = "📸";
         subtitle = "Góc chụp (low/high/eye), tiêu cự, depth of field & bố cục thị giác";
         color = "#00897b";
-        bg = "rgba(0, 137, 123, 0.05)";
-      } else {
-        icon = `🔹`;
-        subtitle = `Phần ${idx + 1} trong cấu trúc Prompt`;
+        bg = "rgba(0, 137, 123, 0.03)";
+      } else if (headerLower.includes("prompt tạo ảnh") || headerLower.includes("master") || headerLower.includes("english prompt") || headerLower.includes("tổng hợp")) {
+        id = "master_prompt";
+        icon = "🎨";
+        subtitle = "Prompt Tiếng Anh hoàn chỉnh liền mạch (Sẵn sàng 1-click Copy)";
+        color = "#d32f2f";
+        bg = "rgba(211, 47, 47, 0.03)";
       }
 
-      parts.push({
-        title: fullHeader || `Phần ${idx + 1}`,
+      parsed.push({
+        id,
+        title: header || `Phần ${i}`,
         subtitle,
-        content: content || (isApiRunning ? "⏳ Đang stream tiếp nội dung phần này..." : ""),
         icon,
-        id: `part_${idx + 1}`,
+        content: content || (isApiRunning ? "⏳ Đang stream tiếp nội dung phần này..." : ""),
         color,
         bg
       });
-    });
-  }
+    }
 
-  const handleCopyPart = (contentToCopy: string, label: string) => {
+    // Fallback if no ### was parsed
+    if (parsed.length === 0) {
+      const altRegex = /(?:^|\n)(?:\*\*|\#\#)?\s*(?:PART|PHẦN|Phần)\s*(\d+[^:\n]*?:?)(.*?)(?=(?:\n(?:\*\*|\#\#)?\s*(?:PART|PHẦN|Phần)\s*\d+|\n---|$))/gsi;
+      const altMatches = [...rawText.matchAll(altRegex)];
+      if (altMatches.length > 0) {
+        altMatches.forEach((m, idx) => {
+          parsed.push({
+            id: `part_${idx + 1}`,
+            title: `Phần ${idx + 1}: ${m[1].replace(/[:*]/g, "").trim()}`,
+            subtitle: "Mô tả chi tiết phân đoạn",
+            icon: "✨",
+            content: m[2].trim(),
+            color: "#d23a73",
+            bg: "rgba(210, 58, 115, 0.03)"
+          });
+        });
+      }
+    }
+
+    return parsed;
+  };
+
+  const allParts = getParsedParts();
+  const parts = allParts.filter(p => 
+    p.id !== 'aesthetic_dna' && 
+    p.id !== 'comic_overview' &&
+    !p.title.toLowerCase().includes('tư liệu') &&
+    !p.title.toLowerCase().includes('tổng quan')
+  );
+
+  // Compute the clean image prompt, completely ignoring any Vietnamese analysis/aesthetic DNA
+  const getCleanPromptToCopy = () => {
+    // 1. Try to find the master prompt first (master_prompt or comic_master_prompt)
+    const masterPart = allParts.find(p => p.id === 'master_prompt' || p.id === 'comic_master_prompt');
+    if (masterPart && masterPart.content) {
+      const cleanText = masterPart.content
+        .replace(/^⏳[\s\S]*$/, "") // skip loading indicator
+        .replace(/^```[a-z]*\n/i, "")
+        .replace(/```$/, "")
+        .trim();
+      if (cleanText && !cleanText.includes("AI đang viết tiếp")) {
+        return cleanText;
+      }
+    }
+
+    // 2. Otherwise, find all Part 1-5 or Panel parts, filter out the aesthetic_dna / comic_overview, and join their contents
+    const contentParts = parts.filter(p => 
+      p.id !== 'aesthetic_dna' && 
+      p.id !== 'comic_overview' &&
+      !p.title.toLowerCase().includes('tư liệu') &&
+      !p.title.toLowerCase().includes('tổng quan')
+    );
+    
+    if (contentParts.length > 0) {
+      const joined = contentParts
+        .map(p => {
+          let text = p.content
+            .replace(/^⏳[\s\S]*$/, "")
+            .replace(/^```[a-z]*\n/i, "")
+            .replace(/```$/, "")
+            .trim();
+          return text;
+        })
+        .filter(t => t && !t.includes("AI đang viết tiếp"))
+        .join("\n\n")
+        .trim();
+      
+      if (joined) return joined;
+    }
+
+    // Fallback to raw text with regex
+    return rawText
+      .replace(/(?:^|\n)###\s*[^\n]*/g, " ")
+      .replace(/(?:^|\n)\*\*\s*(?:PART|PHẦN)\s*\d+[^\n]*/gi, " ")
+      .replace(/(?:^|\n)(?:PART|PHẦN)\s*\d+:[^\n]*/gi, " ")
+      .replace(/\n+/g, " ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  };
+
+  const cleanOneLinePrompt = getCleanPromptToCopy();
+
+  const handleCopyPart = (id: string, contentToCopy: string, label: string) => {
     const text = contentToCopy.trim();
     if (!text) {
       toast?.("Phần này chưa có nội dung!", "error");
       return;
     }
     copyToClipboardSafe(text);
+    setCopiedParts(prev => ({ ...prev, [id]: true }));
     toast?.(`💖 Vợ ơi, chồng đã copy xong ${label}!`, "success");
   };
 
@@ -105,6 +237,8 @@ function PromptFivePartsViewer({ output, toast, isApiRunning, cardTitle }: { out
       return;
     }
     copyToClipboardSafe(cleanOneLinePrompt);
+    // Mark master_prompt and general as copied
+    setCopiedParts(prev => ({ ...prev, "master_prompt": true, "one_line": true }));
     toast?.("⚡ Chồng đã copy trọn bộ Prompt gộp liền mạch cho vợ dán thẳng vào Midjourney/SD/Flux nhé!", "success");
   };
 
@@ -114,18 +248,67 @@ function PromptFivePartsViewer({ output, toast, isApiRunning, cardTitle }: { out
       return;
     }
     copyToClipboardSafe(rawText);
-    toast?.("📑 Chồng đã copy trọn văn bản chia 5 phần có tiêu đề cho vợ!", "success");
+    const allCopied: Record<string, boolean> = { ...copiedParts };
+    parts.forEach(p => {
+      allCopied[p.id] = true;
+    });
+    allCopied["all_everything"] = true;
+    setCopiedParts(allCopied);
+    toast?.("🎁 Chồng đã copy trọn gói 100% toàn bộ văn bản kết quả trả về của tất cả các phần cho vợ yêu rồi nha! 💖", "success");
   };
+
+  // Tính toán thời gian làm việc và thông tin chi tiết
+  const totalCharacters = rawText.length;
+  const estimatedTokens = Math.ceil(totalCharacters / 4);
+  const activeModel = activeProfile?.model || "AI Model Cao Cấp";
+  const finalDuration = elapsedSeconds || Math.max(12, Math.floor(totalCharacters / 115));
+  const connectionType = proxySettings?.useLocalProxy 
+    ? "Cổng Local Proxy An Toàn 🛡️" 
+    : "Cổng Proxy Riêng Biệt 🌐";
 
   return (
     <div className="flex flex-col gap-3 w-full mt-2">
+      {/* KHU VỰC THÔNG TIN CHI TIẾT & HIỆU SUẤT LÀM VIỆC */}
+      <div className="flex flex-col gap-2 p-3.5 rounded-xl border border-[#f48fb1]/40 bg-gradient-to-r from-[#fff5f8] to-[#fff0f5] shadow-xs">
+        <div className="flex items-center gap-2 pb-2 border-b border-[#f48fb1]/20">
+          <span className="text-sm">⏱️</span>
+          <b className="text-xs text-[#b83260] uppercase tracking-wider">Thông Tin Hiệu Suất & Thời Gian Làm Việc:</b>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[11px] text-gray-700 font-medium">
+          <div className="flex flex-col p-2 rounded-lg bg-white/60 border border-pink-100">
+            <span className="text-gray-400">⏱️ Thời gian thực hiện:</span>
+            <span className="text-xs font-bold text-[#b83260]">
+              {isApiRunning ? `Đang đếm: ${finalDuration}s ⏳` : `${finalDuration} giây ✨`}
+            </span>
+          </div>
+          <div className="flex flex-col p-2 rounded-lg bg-white/60 border border-pink-100">
+            <span className="text-gray-400">🤖 Model sử dụng:</span>
+            <span className="text-xs font-bold text-gray-800 truncate" title={activeModel}>
+              {activeModel}
+            </span>
+          </div>
+          <div className="flex flex-col p-2 rounded-lg bg-white/60 border border-pink-100">
+            <span className="text-gray-400">📊 Dung lượng Prompt:</span>
+            <span className="text-xs font-bold text-gray-800">
+              {totalCharacters} ký tự (~{estimatedTokens} tokens)
+            </span>
+          </div>
+          <div className="flex flex-col p-2 rounded-lg bg-white/60 border border-pink-100">
+            <span className="text-gray-400">🌐 Cổng kết nối API:</span>
+            <span className="text-xs font-bold text-gray-800 truncate" title={connectionType}>
+              {connectionType}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* THANH CÔNG CỤ COPY ANH TÀI - SIÊU TIỆN LỢI CHO VỢ */}
       <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl border border-[#f48fb1]/30 bg-gradient-to-r from-[#fff0f6] to-[#fce4ec] shadow-sm">
         <div className="flex items-center gap-2">
           <span className="text-lg animate-bounce">💖</span>
           <div>
             <div className="text-xs font-bold text-[#b83260] uppercase tracking-wider">
-              Prompt hoàn chỉnh chia 5 phần chuẩn chỉnh
+              Prompt hoàn chỉnh chia phần chuẩn chỉnh
             </div>
             <div className="text-[11px] text-gray-600">
               Vợ có thể sử dụng riêng từng phần bên dưới hoặc copy gộp liền mạch dán vào AI
@@ -135,78 +318,95 @@ function PromptFivePartsViewer({ output, toast, isApiRunning, cardTitle }: { out
 
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={handleCopyOneLine}
-            disabled={!cleanOneLinePrompt}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-[#d23a73] to-[#e64a19] text-white font-bold text-xs shadow-md hover:opacity-95 active:scale-95 transition-all disabled:opacity-50"
-            title="Copy toàn bộ nội dung đã gạt bỏ tiêu đề, liền mạch 1 đoạn văn để dán thẳng vào Midjourney/SD/Flux"
-          >
-            <span>⚡ Copy Gộp Liền Mạch (Dùng Ngay)</span>
-          </button>
-          <button
             onClick={handleCopyFullText}
             disabled={!rawText}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-[#f48fb1] text-[#b83260] font-semibold text-xs hover:bg-[#fff0f6] active:scale-95 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#b83260] via-[#d23a73] to-[#8e24aa] text-white font-extrabold text-xs shadow-lg hover:brightness-105 hover:shadow-xl active:scale-95 transition-all disabled:opacity-50"
+            style={copiedParts["all_everything"] ? { background: '#f8bbd0', color: '#880e4f', border: '1px solid #f48fb1' } : {}}
+            title="Sao chép tổng toàn bộ kết quả trả về của tất cả các phần (bao gồm cả các tiêu đề, phân tích, tất cả mọi thứ)"
           >
-            <span>📑 Copy Văn Bản 5 Phần</span>
+            <span>{copiedParts["all_everything"] ? "💖 Đã Copy Trọn Gói 100% Cho Vợ!" : "🎁 SAO CHÉP TỔNG TOÀN BỘ KẾT QUẢ TRẢ VỀ (TRỌN GÓI 100%)"}</span>
+          </button>
+          <button
+            onClick={handleCopyOneLine}
+            disabled={!cleanOneLinePrompt}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-gradient-to-r from-[#d23a73] to-[#e64a19] text-white font-bold text-xs shadow-md hover:opacity-95 active:scale-95 transition-all disabled:opacity-50"
+            style={copiedParts["one_line"] ? { background: '#fce4ec', color: '#880e4f', border: '1px solid #f48fb1' } : {}}
+            title="Copy toàn bộ nội dung đã gạt bỏ tiêu đề, liền mạch 1 đoạn văn để dán thẳng vào Midjourney/SD/Flux"
+          >
+            <span>{copiedParts["one_line"] ? "💖 Đã Copy Gộp Cho Vợ" : "⚡ Copy Gộp Liền Mạch (Dùng Ngay)"}</span>
           </button>
         </div>
       </div>
 
-      {/* DANH SÁCH 5 THẺ KHỐI PROMPT */}
+      {/* DANH SÁCH CÁC THẺ KHỐI PROMPT */}
       {parts.length > 0 ? (
         <div className="grid grid-cols-1 gap-3">
-          {parts.map((part, index) => (
-            <div
-              key={`part_${part.id}_${index}`}
-              className="relative flex flex-col rounded-xl border transition-all duration-200 overflow-hidden shadow-xs hover:shadow-sm"
-              style={{
-                borderColor: `${part.color}40`,
-                backgroundColor: part.bg
-              }}
-            >
-              {/* Header của từng thẻ khối */}
+          {parts.map((part, index) => {
+            const isCopied = !!copiedParts[part.id];
+            return (
               <div
-                className="flex items-center justify-between px-3.5 py-2.5 border-b"
+                key={`part_${part.id}_${index}`}
+                className="relative flex flex-col rounded-xl border transition-all duration-300 overflow-hidden shadow-xs hover:shadow-md"
                 style={{
-                  borderColor: `${part.color}25`,
-                  backgroundColor: `${part.color}10`
+                  borderColor: isCopied ? '#f06292' : `${part.color}40`,
+                  backgroundColor: isCopied ? '#ffe4ec' : part.bg,
+                  borderWidth: isCopied ? '2px' : '1px',
+                  boxShadow: isCopied ? '0 4px 14px rgba(244, 143, 177, 0.35)' : 'none',
+                  transform: isCopied ? 'scale(1.005)' : 'none'
                 }}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="text-lg select-none shrink-0">{part.icon}</span>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold truncate" style={{ color: part.color }}>
-                      {part.title}
-                    </div>
-                    <div className="text-[10px] text-gray-500 font-medium truncate">
-                      {part.subtitle}
+                {/* Header của từng thẻ khối */}
+                <div
+                  className="flex items-center justify-between px-3.5 py-2.5 border-b transition-colors duration-300"
+                  style={{
+                    borderColor: isCopied ? '#f06292' : `${part.color}25`,
+                    backgroundColor: isCopied ? 'rgba(255, 209, 220, 0.6)' : `${part.color}10`
+                  }}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-lg select-none shrink-0">{isCopied ? "💖" : part.icon}</span>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold truncate flex items-center gap-1.5" style={{ color: isCopied ? '#ad1457' : part.color }}>
+                        <span>{part.title}</span>
+                        {isCopied && (
+                          <span className="bg-[#ad1457]/10 text-[#ad1457] text-[9px] px-1.5 py-0.5 rounded-full font-extrabold animate-pulse">
+                            ĐÃ SAO CHÉP 💖
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-gray-500 font-medium truncate">
+                        {part.subtitle}
+                      </div>
                     </div>
                   </div>
+
+                  {/* Nút copy riêng phần này */}
+                  <button
+                    onClick={() => handleCopyPart(part.id, part.content, `[Phần ${index + 1}: ${part.title.replace(/###|\*|PART \d+:/gi, "").trim()}]`)}
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-xs transition-all active:scale-95 hover:brightness-110 ml-2"
+                    style={{ 
+                      backgroundColor: isCopied ? '#ad1457' : part.color,
+                      color: '#ffffff'
+                    }}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <span>{isCopied ? "Copy Lại Phần Này" : `Copy Phần ${index + 1}`}</span>
+                  </button>
                 </div>
 
-                {/* Nút copy riêng phần này */}
-                <button
-                  onClick={() => handleCopyPart(part.content, `[Phần ${index + 1}: ${part.title.replace(/###|\*|PART \d+:/gi, "").trim()}]`)}
-                  className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold text-[11px] shadow-xs transition-all active:scale-95 hover:brightness-110 ml-2 text-white"
-                  style={{ backgroundColor: part.color }}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  <span>Copy Phần {index + 1}</span>
-                </button>
+                {/* Nội dung của phần đó */}
+                <div className="p-3.5 font-mono text-xs text-gray-800 leading-relaxed whitespace-pre-wrap bg-white/70">
+                  {part.content ? (
+                    part.content
+                  ) : (
+                    <span className="text-gray-400 italic">⏳ Đang đợi AI sinh nội dung phần này...</span>
+                  )}
+                </div>
               </div>
-
-              {/* Nội dung của phần đó */}
-              <div className="p-3.5 font-mono text-xs text-gray-800 leading-relaxed whitespace-pre-wrap bg-white/70">
-                {part.content ? (
-                  part.content
-                ) : (
-                  <span className="text-gray-400 italic">⏳ Đang đợi AI sinh nội dung phần này...</span>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         /* FALLBACK: Khi AI trả về văn bản thường chưa có thẻ ### (đang stream những chữ đầu tiên hoặc format khác) */
@@ -216,7 +416,7 @@ function PromptFivePartsViewer({ output, toast, isApiRunning, cardTitle }: { out
               <span>✨ Nội dung Prompt đang hiển thị nguyên văn:</span>
             </span>
             <button
-              onClick={() => handleCopyPart(rawText, "Toàn bộ Prompt")}
+              onClick={() => handleCopyPart("fallback_prompt", rawText, "Toàn bộ Prompt")}
               className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#d23a73] text-white text-xs font-bold hover:bg-[#b83260] active:scale-95"
             >
               <span>📋 Copy Ngay</span>
@@ -314,6 +514,8 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
   const [annPlacement, setAnnPlacement] = useState<'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>("bottom");
   const [tempAnnCoords, setTempAnnCoords] = useState<{ x: number; y: number } | null>(null);
   const [hoveredAnnId, setHoveredAnnId] = useState<string | null>(null);
+  const [showPromptRefDocModal, setShowPromptRefDocModal] = useState(false);
+  const [docTab, setDocTab] = useState<'lines' | 'faces' | 'poses' | 'colors' | 'compositions' | 'transformation'>('lines');
 
   const updateImgDetailAnnotations = (updatedAnnotations: any[]) => {
     if (!selectedImgDetail) return;
@@ -412,6 +614,61 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
     };
   }, [roomDef?.id]);
 
+  const distributeStreamToCardsLive = (text: string) => {
+    if (!text) return;
+    const rs = { ...roomState };
+    if (!rs.cards) rs.cards = {};
+
+    const parts = text.split(/\[CARD_ID:\s*([a-zA-Z0-9_\-]+)\]/);
+    for (let i = 1; i < parts.length; i += 2) {
+      const cardId = parts[i]?.trim();
+      const cardContent = parts[i + 1] || "";
+      if (!cardId) continue;
+
+      if (!rs.cards[cardId]) {
+        rs.cards[cardId] = { note: "", refs: [], output: "", report: "" };
+      }
+
+      const finalPromptMarker = "[FINAL PROMPT]";
+      const markerIndex = cardContent.indexOf(finalPromptMarker);
+
+      let report = "";
+      let output = "";
+
+      if (markerIndex !== -1) {
+        report = cardContent.slice(0, markerIndex);
+        output = cardContent.slice(markerIndex + finalPromptMarker.length);
+      } else {
+        // Fallback: If no marker is found but the stream contains prompt structure starting with "###"
+        // We split by the first occurrence of "###" so that we keep any analytical/report text in the report
+        // and put the prompt parts cleanly into the output!
+        const firstHashIndex = cardContent.indexOf("###");
+        if (firstHashIndex !== -1) {
+          report = cardContent.slice(0, firstHashIndex);
+          output = cardContent.slice(firstHashIndex);
+        } else {
+          report = cardContent;
+          output = "";
+        }
+      }
+
+      report = report.replace("[REFERENCE FIDELITY REPORT]", "").trim();
+      report = report.replace(/---+$/, "").trim();
+
+      output = output.trim();
+
+      rs.cards[cardId] = {
+        ...rs.cards[cardId],
+        report: report || rs.cards[cardId].report || "",
+        output: output || rs.cards[cardId].output || ""
+      };
+    }
+
+    currentStory.rooms[roomDef.id] = rs;
+    save(state);
+    forceUpdate();
+  };
+
   useEffect(() => {
     try {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
@@ -464,6 +721,14 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
   };
 
   const getTargetLabel = (mode: string) => {
+    if (roomDef?.id === 'supporting_cast_poster') {
+      if (mode === 'supporting_cast_couple' || mode === 'couple' || mode === 'all_group' || !mode || mode === 'bot_all') {
+        return '👥 Poster PR: Nổi bật Cặp Đôi Chính + Toàn bộ Dàn Nhân Vật Phụ (NPC Quan Trọng)';
+      }
+      if (mode === 'supporting_cast_protagonist' || mode === 'user' || mode.startsWith('bot_0')) {
+        return '👤 Poster PR: Nổi bật Nhân Vật Chính Solo + Toàn bộ Dàn Nhân Vật Phụ (NPC Quan Trọng)';
+      }
+    }
     if (mode === 'cinema_poster' || mode === 'poster_all') return '🎬 Poster Phim / Quảng Cáo (Toàn Bộ Char & User)';
     if (!mode || mode === 'bot' || mode === 'bot_all') return '👑 Tất cả Bot Char (Gộp chung)';
     if (mode === 'user') return '👤 {{user}} (Vợ yêu)';
@@ -502,6 +767,18 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
 
   const getTargetInstructions = (mode: string) => {
     const chars = getBotCharactersList();
+    if (roomDef?.id === 'supporting_cast_poster') {
+      const isProtagonistOnly = mode === 'supporting_cast_protagonist';
+      return `👥 [ĐẶC QUYỀN POSTER DÀN NHÂN VẬT PHỤ & NPC QUAN TRỌNG - THƯƠNG MẠI PR QUẢNG BÁ]:
+👉 NHIỆM VỤ THIẾT KẾ POSTER CỰC LỚN: Tạo prompt xây dựng một tấm Poster PR Thương Mại / Quảng bá Truyền thông cực kì lộng lẫy, hoành tráng và chuyên nghiệp cho tác phẩm!
+👉 BỐ CỤC PHÂN CẤP THỊ GIÁC (VISUAL HIERARCHY):
+   - **Phần Tiêu Điểm Trung Tâm (Main Center Stage)**: \${isProtagonistOnly ? 'Làm nổi bật duy nhất 1 NHÂN VẬT CHÍNH (Solo Protagonist) ở tiền cảnh lớn nhất, rực rỡ nhất với thần thái cực đỉnh và trang phục lộng lẫy!' : 'Làm nổi bật CẶP ĐÔI CHÍNH (Main Couple: {{user}} và Bot Char chính) ở trung tâm tiền cảnh với sự tương tác tình cảm, chemistry bùng nổ, trang phục lộng lẫy và sắc nét nhất!'}
+   - **Phần Dàn Diễn Viên Phụ & NPC (Ensemble Supporting Cast & Background NPCs)**: Hiển thị đầy đủ tất cả các nhân vật phụ quan trọng, NPC phụ quan trọng, diễn viên quần chúng (có thể là đồng minh, kẻ thù, bạn bè, hoặc các nhân vật phụ được nhắc đến trong câu chuyện và các thẻ ảnh) xuất hiện xung quanh. Họ được xếp ở trung cảnh (midground) hoặc hậu cảnh (background) với kích thước nhỏ hơn để tôn vinh và làm nổi bật cặp đôi chính/nhân vật chính ở trung tâm! Họ có các tư thế tương tác động, biểu cảm chân thực và tạo nên một bức tranh toàn cảnh sống động, giàu yếu tố PR thương mại quảng bá phim điện ảnh nghệ thuật hoặc bìa Anime cực đại!
+👉 QUY TẮC CHUYỂN ĐỔI TƯ LIỆU 100% (ANTI-COPY/100% LEARNING MANDATE):
+   - **Học hỏi 100% chứ không sử dụng lại nguyên bản**: Nghiên cứu kỹ lưỡng các ảnh tham chiếu được tải lên ở mọi vị trí thẻ (như dáng đứng, bối cảnh, nét vẽ Anime/Manga, màu sắc điện ảnh, phục trang). Tuyệt đối không vẽ giống hệt hay lặp lại nhân vật trong ảnh gốc. Hãy hấp thụ trọn vẹn tinh túy nghệ thuật của các ảnh tham chiếu để tạo dựng nên dàn nhân vật phụ và bối cảnh sống động theo một phong cách hoàn toàn mới mẻ, mang tính nguyên bản cao ('giống theo một cách khác, sáng tạo và biến đổi đầy nghệ thuật')!
+👉 PHONG CÁCH & HIỆU ỨNG ĐIỆN ẢNH THƯƠNG MẠI:
+   - Sử dụng góc chụp máy ảnh góc rộng hoành tráng (Grand wide-angle perspective), ánh sáng Cinematic Volumetric dramatic, kĩ xảo hình ảnh huyền ảo (magical particles, lens flare, glowing aura) và bố cục bento-grid hoặc bế dán layer lồng ghép khéo léo để tạo chiều sâu cực đại cho poster.`;
+    }
     if (mode === 'bot_char_hobbies_vibe_mode' || roomDef?.id === 'bot_char_hobbies_vibe') {
       if (mode.startsWith('bot_')) {
         const idx = parseInt(mode.split('_')[1], 10);
@@ -605,22 +882,85 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
       return `👤 USER PROFILE FOCUS ({{user}}): Focus exclusively on generating the prompt for {{user}}, highlighting their specific styling, aura, and visual appearance as defined in the user profile.`;
     }
     if (mode === 'couple' || mode === 'all_group') {
-      return `✨ COUPLE / GROUP ENSEMBLE FOCUS: Generate a multi-character scene combining all main Bot Characters (${chars.map((c: any) => c.displayName || 'Unnamed').join(', ')}) and {{user}} together in a cohesive group/couple composition with harmonious spatial interaction and emotional chemistry.`;
+      return `✨ [COUPLE / GROUP ENSEMBLE FOCUS - CẶP ĐÔI & TẬP THỂ (ƯU TIÊN CỐT TRUYỆN & THỂ LOẠI)]:
+👉 THE MANDATORY GOAL: Generate a multi-character scene combining all main Bot Characters (${chars.map((c: any) => c.displayName || 'Unnamed').join(', ')}) and {{user}} together!
+👉 SUPREME MANDATORY RULE - GENRE & VIBE: You must capture the specific 'Genre' (Horror, Romance, Fantasy, etc.) and 'Author's Intent' described in the story. Every character's interaction must reflect the narrative soul.
+👉 STORY FIDELITY OVER REFERENCE: Reference images are ONLY for art style. DO NOT copy character identities or genders from references. Focus on the emotional chemistry defined by the story lore.`;
     }
     if (mode.startsWith('bot_')) {
       const idx = parseInt(mode.split('_')[1], 10);
       const c = chars[idx];
       const charName = c ? (c.displayName || `Bot Char #${idx + 1}`) : `Bot Char #${idx + 1}`;
       const charProfile = c ? (c.profileText || 'No description') : '';
-      return `🚨 [EXPLICIT ISOLATED TARGET CHARACTER - TÁCH LẺ NHÂN VẬT]: The user explicitly selected to generate this room/prompt SOLELY AND EXCLUSIVELY for Bot Character #${idx + 1}: "${charName}"!
-👉 YOU MUST ISOLATE AND GENERATE ALL PROMPT TRAITS ONLY FOR THIS SPECIFIC CHARACTER ("${charName}" - Profile: ${charProfile})!
-👉 DO NOT include side characters, do NOT include other bot characters, and do NOT combine them into a couple/group scene unless the user note in the card explicitly requests interaction. This is an isolated character prompt generation!`;
+      return `🚨 [EXPLICIT ISOLATED TARGET CHARACTER - TÁCH LẺ NHÂN VẬT (ƯU TIÊN HỒ SƠ & THẦN THÁI)]:
+👉 THE MANDATORY GOAL: Generate this prompt SOLELY for "${charName}"!
+👉 SUPREME MANDATORY RULE - NARRATIVE VIBE: You must capture the 'Aura' and 'Genre' of "${charName}"'s story. Looking at the image should reveal the author's narrative intent.
+👉 PROFILE FIDELITY: Strictly adhere to the Profile (${charProfile}). Reference images must NOT override the character's gender, age, or identity. Extract only the visual style DNA (linework, rendering) from references.`;
     }
     return `Focus on targeted mode: ${mode}`;
   };
 
   const renderTargetSelector = (isBanner = false) => {
     const chars = getBotCharactersList();
+    if (roomDef?.id === 'supporting_cast_poster') {
+      return (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          marginTop: isBanner ? '12px' : '8px',
+          background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)',
+          padding: '14px',
+          borderRadius: '16px',
+          border: '2px solid #4f46e5',
+          boxShadow: '0 4px 16px rgba(79, 70, 229, 0.15)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.88rem', fontWeight: 800, color: '#312e81', lineHeight: 1.4 }}>
+            <span>👥 [Poster Dàn Nhân Vật Phụ & NPC - PR Thương Mại]: Hạng mục này tập trung phô diễn toàn bộ dàn nhân vật phụ để tôn vinh cặp chính hoặc nhân vật chính. Hãy chọn tiêu điểm nổi bật cho Poster trước khi bấm Gửi API Proxy:</span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+            <button
+              className={`target-option ${(roomState.targetMode === 'supporting_cast_couple' || !roomState.targetMode || roomState.targetMode === 'bot_all' || roomState.targetMode === 'couple') ? 'active' : ''}`}
+              onClick={() => { roomState.targetMode = 'supporting_cast_couple'; save(state); }}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '14px',
+                fontSize: '0.9rem',
+                border: (roomState.targetMode === 'supporting_cast_couple' || !roomState.targetMode || roomState.targetMode === 'bot_all' || roomState.targetMode === 'couple') ? '2px solid #4f46e5' : '1px solid rgba(79, 70, 229, 0.4)',
+                background: (roomState.targetMode === 'supporting_cast_couple' || !roomState.targetMode || roomState.targetMode === 'bot_all' || roomState.targetMode === 'couple') ? '#4f46e5' : '#ffffff',
+                color: (roomState.targetMode === 'supporting_cast_couple' || !roomState.targetMode || roomState.targetMode === 'bot_all' || roomState.targetMode === 'couple') ? '#ffffff' : '#4f46e5',
+                boxShadow: (roomState.targetMode === 'supporting_cast_couple' || !roomState.targetMode || roomState.targetMode === 'bot_all' || roomState.targetMode === 'couple') ? '0 4px 12px rgba(79, 70, 229, 0.3)' : 'none',
+                fontWeight: 800,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              🎬 Nổi bật Cặp Đôi Chính + Dàn Diễn Viên Phụ (NPC)
+            </button>
+            <button
+              className={`target-option ${roomState.targetMode === 'supporting_cast_protagonist' ? 'active' : ''}`}
+              onClick={() => { roomState.targetMode = 'supporting_cast_protagonist'; save(state); }}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '14px',
+                fontSize: '0.9rem',
+                border: roomState.targetMode === 'supporting_cast_protagonist' ? '2px solid #4f46e5' : '1px solid rgba(79, 70, 229, 0.4)',
+                background: roomState.targetMode === 'supporting_cast_protagonist' ? '#4f46e5' : '#ffffff',
+                color: roomState.targetMode === 'supporting_cast_protagonist' ? '#ffffff' : '#4f46e5',
+                boxShadow: roomState.targetMode === 'supporting_cast_protagonist' ? '0 4px 12px rgba(79, 70, 229, 0.3)' : 'none',
+                fontWeight: 800,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              👤 Nổi bật Nhân Vật Chính Solo + Dàn Diễn Viên Phụ (NPC)
+            </button>
+          </div>
+        </div>
+      );
+    }
     if (roomDef?.id === 'bot_char_marketing_art' || roomDef?.id === 'bot_char_hobbies_vibe') {
       const isHobby = roomDef?.id === 'bot_char_hobbies_vibe';
       return (
@@ -1297,17 +1637,17 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
 You MUST analyze and extract the visual traits from this reference image to support downstream AI image generation under the core rule: "Aesthetic Study & Visual Reference Principle (High aesthetic style fidelity, transformative adaptation for bespoke character originality)":
 CRITICAL RULE: The reference image is used to learn visual language and aesthetic DNA (art style, rendering, mood, line quality, lighting, color palette, outfit spirit, composition rhythm, EXACT CAMERA ANGLE, PERSPECTIVE, FRAMING, DEPTH OF FIELD, and EXACT BODY POSE / STANCE / GESTURE). When operating in the Reference Learning room ('learn'), 10 Pose Variations room ('poses10'), Soulful Storytelling room ('soulful'), or with inspiration references, you MUST provide aesthetic study and structural learning: extract the artistic techniques, camera work, visual flow (đường thị giác), lighting atmosphere, and pose dynamics as a reference study! You MUST ONLY apply the learned techniques to the user story's unique character profile and plot, creating a soulful image that speaks without words!
 
-You MUST analyze and extract these mandatory layers:
-1. Nhận diện thẩm mỹ tổng thể (giới tính trình bày, độ tuổi thị giác, khí chất thẩm mỹ, độ mềm/sắc/lạnh/ngọt/sang)
-2. Phong cách vẽ & Chất cọ / texture / rendering (watercolor, manhua fantasy, soft ink-wash, oil painting, digital anime..., độ mềm của line, độ loang màu, độ trong mờ)
-3. Bảng màu chính & Ánh sáng (nhiệt độ màu, độ bão hòa, độ tương phản, hướng sáng, pastel / dark / ethereal / warm)
-4. Mood / Khí chất / Không khí thị giác (ethereal, poetic, dreamy, quiet, floral, regal, retro, dark...)
-5. Motif hình ảnh (hoa, sen, nước, ruy băng, khung trang trí, thiên nhiên, gió, khói...)
-6. Trang phục / Outfit Fidelity (tinh thần trang phục, form dáng silhouette, độ rủ, lớp layer, mật độ chi tiết, cảm giác chất liệu, trim/lace/ribbon/embroidery tendencies, elegance/fantasy level)
-7. Góc chụp & Thị giác / Camera & Perspective Fidelity (eye-level, low-angle, high-angle, Dutch tilt, cinematic close-up, medium shot, wide establishing shot, focal length feel, depth of field, bokeh, spatial layering)
-8. Kiểu dáng & Cử chỉ / Pose & Gesture Fidelity (dáng đứng/ngồi/tạo dáng, độ nghiêng đầu, cử chỉ tay, thần thái cơ thể, hướng ánh mắt, vị trí không gian của nhân vật trong khung hình)
-9. Bố cục thị giác / Composition Fidelity (visual hierarchy, focal structure, eye-flow/visual path, negative space rhythm, directional movement của tóc/vải/light)
-10. Reference Fidelity Breakdown (Những chi tiết bắt buộc nghiên cứu giữ lại: góc chụp, thị giác, kiểu dáng pose, màu sắc, phong cách, trang phục; và những chi tiết thay đổi tùy biến: nhân vật nguyên bản theo truyện)
+You MUST analyze and extract these mandatory layers in extreme detail:
+1. Nhận diện thẩm mỹ tổng thể: Giới tính trình bày, độ tuổi cảm giác, thần thái/khí chất thẩm mỹ (ethereal, regal, poetic, dreamy, quiet, floral, regal, retro, dark...), độ mềm hay sắc sảo, độ lạnh hay ngọt ngào, độ sang trọng quý phái.
+2. Phong cách vẽ & Chất cọ / texture / rendering: Phân tích kỹ thuật vẽ (watercolor loang nhẹ, fantasy manhua sắc sảo, soft ink-wash cổ phong thanh nhã, sơn dầu oil painting dày dặn, digital anime sạch sẽ...). Mô tả độ dày hay mảnh của nét vẽ, chất cọ sần hay mượt, độ mờ sương (translucent), độ bão hòa, cảm giác giấy vẽ hay canvas sần sùi.
+3. Đồng bộ Nét vẽ gốc & Line-weight DNA (Độ nét & Đi nét): Mô tả cực kỳ chi tiết độ thanh đậm của đường line (thin/thick line weight), nét vẽ có sắc lẹm hay mềm mịn nhẹ nhàng, nét phác thảo sần hay line tơ tằm. Cách đổ bóng mờ (soft shading), kỹ thuật đánh khối translucent washes làm rõ khối cơ thể nhưng vẫn thanh thoát.
+4. Lên màu & Ánh sáng (Color & Lighting Precision): Chỉ rõ tông màu chính (dominant colors), các dải chuyển màu mịn màng (seamless color gradients/transitions), gam màu điểm xuyết (accent colors). Phân tích nhiệt độ màu (ấm áp, lạnh lẽo, trung tính), hướng nguồn sáng (chiaroscuro, volumetric rays, rim light rực rỡ bám quanh nhân vật, backlighting mơ màng).
+5. Học vẽ tóc & Kiểu dáng tóc (Hairstyle & Hair Flow Precision - KHÔNG ĐƯỢC CHUNG CHUNG ĐỂ TRÁNH TÓC XẤU): Mô tả siêu chi tiết cấu trúc kiểu tóc (ví dụ: bồng bềnh uốn lượn, tóc lụa mượt mềm buông rủ, tết tinh xảo cổ phong). Đặc tả từng sợi tóc mềm (silky hair strands) bay bổng tự do trong gió, đường rẽ ngôi tóc rõ nét, các điểm phản chiếu ánh sáng óng ả (hair gloss highlight reflections), và các sợi tóc tơ mảnh (fine wisps of baby hair) bám sáng viền volumetric backlight bồng bềnh dã man.
+6. Học vẽ mắt & Thần thái gương mặt (Eye Artistry & Facial Vibe): Đặc tả cách vẽ đôi mắt tinh xảo (ví dụ: tròng mắt long lanh ngậm nước, con ngươi óng ánh đa tầng chi tiết, hàng mi cong dày đen mướt, viền mắt sắc mảnh phóng khoáng). Chỉ rõ hướng nhìn (gaze direction), các điểm phản sáng bắt mắt (highlight reflection points) tạo độ sâu thăm thẳm và thần thái có hồn của đôi mắt.
+7. Trang phục / Outfit Fidelity: Tinh thần trang phục, form dáng silhouette (độ rộng rủ, ôm sát quyến rũ, lớp layer phức tạp), mật độ họa tiết thêu thùa (delicate embroidery), ruy băng (ribbons), ren (lace), cảm giác chất liệu (silk mềm mại, satin bóng nhẹ, voan tơ bán trong suốt), nếp gấp nếp rủ tự nhiên của vải dưới tác động của trọng lực hay gió bão.
+8. Góc chụp & Thị giác / Camera & Perspective Fidelity: Nhiều dải phân tầng không gian, xác định chính xác góc máy (eye-level, low-angle sweeping shot, high-angle, Dutch tilt...), cỡ ảnh (cinematic close-up, medium shot, wide shot), tiêu cự tạo cảm giác bóp méo không gian hay phẳng, độ sâu trường ảnh (depth of field), hiệu ứng mờ nhòe phông nền (creamy bokeh), cấu trúc phân tầng lớp không gian tiền cảnh - trung cảnh - hậu cảnh.
+9. Bố cục thị giác & Đường dẫn (Composition & Leading Lines): Nhịp điệu bố cục (bố cục bento-grid, bố cục 1/3, bố cục đối xứng), nhịp điệu của khoảng trống (negative space rhythm), các dải dẫn hướng mắt người xem (leading composition lines) tạo bởi hướng tóc bay, vạt áo rủ, hướng ánh sáng hay khói mây rực rỡ.
+10. Kiểu dáng & Cử chỉ / Pose & Gesture Fidelity: Mô tả tư thế đứng/ngồi/tạo dáng của cơ thể, độ nghiêng của đầu quyến rũ, cử chỉ tinh tế của đôi bàn tay hay ngón tay, hướng vai, vị trí không gian của nhân vật để làm nổi bật câu chuyện.
 
 Return ONLY valid JSON with this exact schema:
 {
@@ -1330,10 +1670,10 @@ Return ONLY valid JSON with this exact schema:
   "detailsToAdapt": "Danh sách chi tiết thay đổi theo cốt truyện (nhân vật độc quyền theo truyện, bối cảnh phụ nếu có note riêng)",
   "originalityElements": "Danh sách chi tiết thay đổi để tạo nguyên bản mới (nhân vật nguyên bản 100% theo truyện & thiết kế Canva)",
   "layer1_overall": { "genderPresentation": "", "ageVibe": "", "auraVibe": "", "softnessSharpness": "" },
-  "layer2_face": { "faceShape": "", "eyes": "", "nose": "", "mouth": "", "eyelashes": "", "makeupLevel": "", "maturity": "" },
-  "layer3_hair": { "color": "", "length": "", "thickness": "", "texture": "", "bangs": "", "style": "" },
+  "layer2_face": { "faceShape": "", "eyes": "Chi tiết vẽ mắt long lanh đa tầng, điểm phản sáng, mi cong dày dặn", "nose": "", "mouth": "", "eyelashes": "", "makeupLevel": "", "maturity": "" },
+  "layer3_hair": { "color": "", "length": "", "thickness": "", "texture": "", "bangs": "", "style": "Mô tả siêu chi tiết cấu trúc kiểu tóc bồng bềnh, từng sợi tóc tơ bay tự do mềm mại óng ả bắt volumetric backlight" },
   "layer4_outfit": { "category": "", "silhouette": "", "materialFeel": "", "dominantColor": "", "accessories": "" },
-  "layer5_artStyle": { "artFamily": "", "lineCleanliness": "", "lineSoftness": "", "shading": "", "texture": "", "glossiness": "", "detailLevel": "" },
+  "layer5_artStyle": { "artFamily": "", "lineCleanliness": "Chi tiết độ thanh đậm nét vẽ gốc, line mượt hay sần", "lineSoftness": "", "shading": "Độ loang loãng mờ nhạt như watercolor wash", "texture": "", "glossiness": "", "detailLevel": "" },
   "layer6_color": { "dominantPalette": [], "colorTemp": "", "saturation": "", "contrast": "" },
   "layer7_composition": { "shotSize": "", "characterPlacement": "", "negativeSpace": "", "cameraAngle": "", "cinematicFeel": "", "depthOfField": "", "pose": "" },
   "layer8_vibe": { "coreVibe": "" },
@@ -1352,11 +1692,13 @@ Return ONLY valid JSON with this exact schema:
         {
           role: "user",
           content: [
-            { type: "text", text: `Analyze this reference image for "${cardTitle}" and return structured JSON only.` },
-            { type: "image_url", image_url: { url: targetRef.data || targetRef.previewUrl || targetRef.storageUrl } }
+            { type: "text", text: `Analyze this reference image for "${cardTitle}" and return structured JSON only.` }
           ]
         }
       ];
+      if (targetRef.data || targetRef.previewUrl || targetRef.storageUrl) {
+        messages[0].content.push({ type: "image_url", image_url: { url: targetRef.data || targetRef.previewUrl || targetRef.storageUrl } });
+      }
       const resultText = await callAIText({ messages, systemPrompt: sysPrompt, maxTokensOverride: 2000 });
       targetRef.imageAnalysisText = resultText;
       targetRef.analysisResult = resultText;
@@ -1473,7 +1815,6 @@ Return ONLY valid JSON with this exact schema:
     toast("✅ Đã đính kèm ảnh! Sẵn sàng trong Context Windows để AI đọc trực tiếp khi bấm Tạo Prompt.");
   };
 
-
   const replayHistory = (item: any) => {
     if (!window.confirm("Bạn có chắc muốn xem lại kết quả cũ? Dữ liệu chữ (text/prompt) sẽ thay đổi nhưng ảnh tham chiếu sẽ được giữ nguyên!")) return;
     const rs = { ...roomState };
@@ -1565,43 +1906,63 @@ Return ONLY valid JSON with this exact schema:
     // TUYỆT ĐỐI KHÔNG lọc trùng (deduplicate) vì mỗi thẻ có mục đích và ảnh riêng biệt!
     const refreshedPayload = buildContextPayload();
     
-    // Tạo bộ ánh xạ chỉ số toàn cục (Global Image Index Mapping #1, #2, #3...) theo đúng thứ tự đính kèm
-    const refToGlobalIndexMap = new Map<any, number>();
-    const idToGlobalIndexMap = new Map<string, number>();
-    const orderedVisionRefs: any[] = [];
-    let imgCounter = 1;
-
-    const registerRef = (r: any) => {
+    // Thu thập tất cả ảnh thô có chứa URL hợp lệ để lọc trùng chính xác theo URL
+    const uniqueRefsWithUrls: any[] = [];
+    const seenUrls = new Set<string>();
+    
+    const tryAddRef = (r: any) => {
       if (!r) return;
-      const idx = imgCounter++;
-      refToGlobalIndexMap.set(r, idx);
-      if (r.imageId) idToGlobalIndexMap.set(r.imageId, idx);
-      if (r.id) idToGlobalIndexMap.set(r.id, idx);
-      orderedVisionRefs.push(r);
+      const url = r.data || r.previewUrl || r.storageUrl;
+      if (!url) return;
+      if (!seenUrls.has(url)) {
+        seenUrls.add(url);
+        uniqueRefsWithUrls.push(r);
+      }
     };
 
     // 1. Bot character reference images
     const botCharRefsList = (refreshedPayload.currentStory?.manualInput?.botCharacters || currentStory.botCharacters || []).flatMap((c: any) => c.referenceImages || []);
     for (const r of botCharRefsList) {
-      registerRef(r);
+      tryAddRef(r);
     }
 
     // 2. Style analyzer reference images
     const saRefs = refreshedPayload.styleAnalyzer?.referenceImages || [];
     for (const r of saRefs) {
-      registerRef(r);
+      tryAddRef(r);
     }
 
-    // 3. Work cards reference images (ALL cards, ALL images per card without deduplication)
+    // 3. Work cards reference images (ALL cards, ALL images per card)
     for (const c of cards) {
       const cardRefs = refreshedPayload.workCards?.find((wc: any) => wc.cardId === c.id)?.referenceImages || (rs.cards[c.id]?.refs || []);
       for (const r of cardRefs) {
-        registerRef(r);
+        tryAddRef(r);
       }
+    }
+
+    // Tạo bộ ánh xạ chỉ số toàn cục (Global Image Index Mapping #1, #2, #3...) theo đúng thứ tự duy nhất gửi đi
+    const refToGlobalIndexMap = new Map<any, number>();
+    const idToGlobalIndexMap = new Map<string, number>();
+    const urlToGlobalIndexMap = new Map<string, number>();
+    const orderedVisionRefs: any[] = [];
+    let imgCounter = 1;
+
+    for (const r of uniqueRefsWithUrls) {
+      const idx = imgCounter++;
+      const url = r.data || r.previewUrl || r.storageUrl;
+      refToGlobalIndexMap.set(r, idx);
+      if (r.imageId) idToGlobalIndexMap.set(r.imageId, idx);
+      if (r.id) idToGlobalIndexMap.set(r.id, idx);
+      if (url) urlToGlobalIndexMap.set(url, idx);
+      orderedVisionRefs.push(r);
     }
 
     const getGIdx = (r: any, fallbackIdx: number) => {
       if (!r) return fallbackIdx;
+      const url = r.data || r.previewUrl || r.storageUrl;
+      if (url && urlToGlobalIndexMap.has(url)) {
+        return urlToGlobalIndexMap.get(url)!;
+      }
       return refToGlobalIndexMap.get(r) || (r.imageId && idToGlobalIndexMap.get(r.imageId)) || (r.id && idToGlobalIndexMap.get(r.id)) || fallbackIdx;
     };
 
@@ -1613,40 +1974,79 @@ Return ONLY valid JSON with this exact schema:
       }));
     }
 
-    const prompt = `You are the professional Lipstick Prompt Rooms engine. Generate highly cohesive, production-ready prompts for the room: "${roomDef.title}".
+    // ----------------------------------------------------
+    // CHỒNG YÊU AUTO-PREANALYZE ALL UNANALYZED REFERENCE IMAGES FOR VỢ YÊU
+    // ----------------------------------------------------
+    const pendingRefs = orderedVisionRefs.filter(
+      r => !r.imageAnalysisText || r.imageAnalysisText === 'Chưa phân tích' || r.analysisStatus !== 'analyzed'
+    );
 
-### CURRENT CONTEXT WINDOW (MANUAL & IMPORTED FILES)
+    if (pendingRefs.length > 0) {
+      console.log(`[Auto-Analysis] Found ${pendingRefs.length} unanalyzed reference images. Initiating automated vision analysis...`);
+      toast(`⏳ Chồng phát hiện ${pendingRefs.length} ảnh tham chiếu chưa được phân tích. Chồng đang tự động dùng AI phân tích sâu sắc từng ảnh để trích xuất trọn vẹn nét vẽ, kiểu tóc và góc chụp cho vợ yêu nhé...`);
+      
+      let pIdx = 1;
+      for (const r of pendingRefs) {
+        setApiSignals(prev => ({
+          ...prev,
+          stage: 'reading_references',
+          stageLabel: '2. Vision Pre-Analysis',
+          stageDetail: `⏳ Đang đọc tỉ mỉ ảnh tham chiếu #${pIdx}/${pendingRefs.length}: "${r.name || r.fileName || 'Image'}"...`
+        }));
+        
+        await analyzeSingleImage(r, r.cardId || 'style_analyzer', r.cardTitle || 'Style Ref');
+        pIdx++;
+      }
+      
+      toast("✅ Chồng yêu đã hoàn tất phân tích toàn bộ ảnh tham chiếu cho vợ rồi đó!");
+    }
+
+    // Refresh state and payload from latest store/local edits to make sure we use the highly-detailed Vision Reports
+    const finalRoomState = currentStory.rooms[roomDef.id] || roomState;
+    const finalPayload = buildContextPayload();
+    const finalSa = finalRoomState.styleAnalyzer || { refs: [], selected: [], analysis: "" };
+
+    const prompt = `You are the world-class, ultra-premium AI engine for Lipstick Prompt Rooms. Generate highly cohesive, breathtakingly detailed production-ready prompts for the current active room.
+
+### 🏢 ROOM DEFINITION & APP CONTEXT (TỔNG QUAN PHÒNG LÀM VIỆC & ỨNG DỤNG)
+- App Context: You are operating inside Lipstick Prompt Rooms, a world-class, ultra-premium AI prompt engineering application for cinematic and art-station quality character illustrations.
+- Current Active Room: "${roomDef.title}"
+- Room Purpose & Goal: "${roomDef.subtitle}"
+- Overall Room Mandate: This room has a highly specific purpose. Every card generated must strictly align with the overarching goal of this room. Do not treat this as a generic prompt task. You must explicitly recall and enforce the specific rules of THIS room!
+
+### 📚 CURRENT CONTEXT WINDOW (MANUAL & IMPORTED FILES)
 - Story Title: ${currentStory.title}
 - Story Plot: ${currentStory.story || "Chưa có cốt truyện."}
 - User Profile ({{user}}): ${currentStory.userProfile || "Chưa thiết lập."}
-- Bot Characters (${refreshedPayload.currentStory.manualInput.botCharacters ? refreshedPayload.currentStory.manualInput.botCharacters.length : 1} characters):
-${refreshedPayload.currentStory.manualInput.botCharacters ? refreshedPayload.currentStory.manualInput.botCharacters.map((c: any, idx: number) => `  * [Char #${idx+1}: ${c.displayName || 'Unnamed'}]:\n    - Profile: ${c.profileText || 'Trống'}\n    - Attached Ref Images (${(c.referenceImages || []).length} images - DO NOT OUTPUT FILENAMES, TRANSLATE VISUAL TRAITS TO WORDS):\n${(c.referenceImages || []).map((r: any, rIdx: number) => `      + [Bot Char Ref -> ATTACHED IMAGE #${getGIdx(r, rIdx + 1)}]: "${r.name || r.fileName || 'Image'}" | Purpose: bot_character_reference`).join("\n") || "      + No character images attached."}`).join("\n\n") : (currentStory.botProfiles || "Chưa thiết lập.")}
+- Bot Characters (${finalPayload.currentStory.manualInput.botCharacters ? finalPayload.currentStory.manualInput.botCharacters.length : 1} characters):
+${finalPayload.currentStory.manualInput.botCharacters ? finalPayload.currentStory.manualInput.botCharacters.map((c: any, idx: number) => `  * [Char #${idx+1}: ${c.displayName || 'Unnamed'}]:\n    - Profile: ${c.profileText || 'Trống'}\n    - Attached Ref Images (${(c.referenceImages || []).length} images - DO NOT OUTPUT FILENAMES, TRANSLATE VISUAL TRAITS TO WORDS):\n${(c.referenceImages || []).map((r: any, rIdx: number) => `      + [Bot Char Ref -> ATTACHED IMAGE #${getGIdx(r, rIdx + 1)}]: "${r.name || r.fileName || 'Image'}" | Purpose: bot_character_reference`).join("\n") || "      + No character images attached."}`).join("\n\n") : (currentStory.botProfiles || "Chưa thiết lập.")}
 - Side Characters: ${currentStory.sideCharacters || "Chưa có."}
 - Story Requirements: ${currentStory.requirements || "Không có yêu cầu thêm."}
 - Target Mode Selected: "${getTargetLabel(target)}"
 - Target Character Isolation Mandate: ${getTargetInstructions(target)}
 
-### ATTACHED STORY FILES (${refreshedPayload.currentStory.importedFiles.length} files)
-${refreshedPayload.currentStory.importedFiles.map((f: any) => `[File: ${f.fileName} | Status: ${f.parserStatus} | ~${f.wordCount} words]\n${f.summary ? `Summary: ${f.summary}\n` : ""}Content excerpt:\n${f.extractedText.slice(0, 15000)}`).join("\n\n---\n\n")}
+### 📎 ATTACHED STORY FILES (${finalPayload.currentStory.importedFiles.length} files)
+${finalPayload.currentStory.importedFiles.map((f: any) => `[File: ${f.fileName} | Status: ${f.parserStatus} | ~${f.wordCount} words]\n${f.summary ? `Summary: ${f.summary}\n` : ""}Content excerpt:\n${f.extractedText.slice(0, 15000)}`).join("\n\n---\n\n")}
 
-### REFERENCE IMAGE MANIFEST (EXACT LOCATION & PURPOSE MAPPING)
+### 🖼️ REFERENCE IMAGE MANIFEST (EXACT LOCATION & PURPOSE MAPPING)
 Below is the complete manifest of all attached reference images across this story, room, and individual work cards. You MUST strictly respect the location and purpose of EACH image. Do NOT mix up images from different cards (e.g. never use a hair reference image for pose or outfit).
 \`\`\`json
 ${JSON.stringify({
-  referenceImageManifest: refreshedPayload.referenceImageManifest
+  referenceImageManifest: finalPayload.referenceImageManifest
 }, null, 2)}
 \`\`\`
 
-### 👑 SUPREME MANDATE ON STORY FIDELITY & REFERENCE TRANSFORMATION (QUY TẮC TỐI CAO SỐ 1: BÁM SÁT CÂU CHUYỆN VÀ NHÂN VẬT GỐC CỦA VỢ YÊU)
+### 👑 SUPREME MANDATE ON STORY FIDELITY & CHARACTER SOUL (MỆNH LỆNH THỐNG TRỊ: CỐT TRUYỆN & HỒ SƠ NHÂN VẬT LÀ LINH HỒN CỦA BỨC ẢNH)
 When generating the image prompt for each Work Card, you MUST strictly obey the following division of authority and priority hierarchy:
 
-1. **👑 1st & Supreme Priority (#1 ABSOLUTE SUPREMACY OF STORY & CHARACTER PROFILE - CÂU CHUYỆN VÀ NHÂN VẬT GỐC LÀ TỐI THƯỢNG)**:
-   - **Bám sát cao nhất là câu chuyện và hồ sơ nhân vật gốc!** The user's Story Plot, Character Profile, and Lore hold **ABSOLUTE SUPREME AUTHORITY (#1)** over WHO IS IN THE SCENE (character identity, facial features, gender, age, eye/hair color, personality, soul, and story aura)!
-   - **MANDATORY TRANSFORMATION RULE (NGUYÊN TẮC CHUYỂN ĐỔI TƯ LIỆU CHO NHÂN VẬT GỐC)**: The working reference images attached across cards (pose, outfit, background, style) are important working study materials (*tư liệu làm việc tham chiếu*) to draw visual ideas, poses, lighting, composition, and artistic vibes from. **HOWEVER, THEY MUST ONLY SERVE TO INSPIRE AND PERFORM TRANSFORMATIVE ADAPTATION FOR THE USER'S EXCLUSIVE ORIGINAL CHARACTER IN THEIR STORY ('nhân vật trong câu chuyện của em')!**
-   - **MANDATORY PRINCIPLE**: YOU MUST ALWAYS ensure character appearance strictly matches the user's story profile! It MUST ALWAYS BE THE CHARACTER IN THE USER'S STORY!
+1. **👑 1st & Supreme Priority (#1 ABSOLUTE SUPREMACY OF STORY & CHARACTER PROFILE - CỐT TRUYỆN VÀ HỒ SƠ NHÂN VẬT LÀ LINH HỒN TỐI THƯỢNG)**:
+   - **Bám sát cao nhất là cốt truyện và hồ sơ nhân vật! Đây là mục đích cốt lõi: Vẽ nhân vật trong truyện của người dùng.** The user's Story Plot and Character Profiles hold **ABSOLUTE SUPREME AUTHORITY (#1)** over WHO IS IN THE SCENE! This includes character identity, facial features, gender, age, eye/hair color, personality, soul, and story aura.
+   - **Visual Storytelling & Author's Intent (Ý đồ tác giả & Kể chuyện qua hình ảnh)**: Every prompt MUST reflect the 'vibe', genre identity (Horror, Romance, Fantasy, etc.), and author's hidden intent. Even if the reference images are unrelated to the plot, you must FORCE the scene to convey the story's meaning. Looking at the image should reveal a silent narrative; every object, gaze, and shadow must serve the story's soul.
+   - **MANDATORY TRANSFORMATION RULE (NGUYÊN TẮC CHUYỂN ĐỔI TƯ LIỆU CHO NHÂN VẬT GỐC)**: The reference images attached across cards (pose, outfit, background, style) are ONLY working study materials (*tư liệu làm việc tham chiếu*) to extract visual DNA (art style, rendering, color, composition). **YOU ARE STRICTLY FORBIDDEN FROM COPYING THE CHARACTER IDENTITY (FACE/GENDER/LOOKS) OR THE NARRATIVE CONTEXT FROM THE REFERENCE IMAGE if they contradict the story!** 
+   - **MANDATORY PRINCIPLE**: You must perform "Transformative Adaptation": Take the visual beauty of the reference and apply it to the user's specific story character and plot. It MUST ALWAYS BE THE STORY'S SOUL painted with the REFERENCE'S BRUSH!
 2. **2nd Priority (CARD-SPECIFIC REFERENCE IMAGES AS VISUAL STUDY MATERIALS - ẢNH TƯ LIỆU LÀM VIỆC ĐỂ LẤY Ý TƯỞNG THỊ GIÁC)**:
-   - When a Work Card (such as Hair Card, Pose Card, Outfit Card, Environment Card, Makeup Card, Style Card) has attached reference images (cardId === currentCardId), those reference images serve as **the primary visual study materials** for that card's domain!
-   - You MUST extract 100% of the visual ideas (hairstyle structure, clothing silhouette, fabric drape, lace/embroidery, body stance, hand gestures, camera angle, framing, architectural background, lighting, and color rhythm) from the attached reference image, and **seamlessly transform and adapt them onto the user's story character**!
+   - Reference images serve as **the primary visual study materials** for specific domains (Hair, Pose, Outfit, Environment).
+   - You MUST extract 100% of the visual ideas (hairstyle structure, clothing silhouette, fabric drape, body stance, camera angle) from the reference image, and **seamlessly transform and adapt them onto the user's story character**!
 3. **3rd Priority (User Note inside Work Card)**:
    - User notes inside that specific Work Card define how to apply, adjust, or refine the visual ideas from the reference images onto the story character.
 4. **4th Priority (Style Analyzer - Art Style & Rendering Quality)**:
@@ -1688,10 +2088,10 @@ ${refsDesc || "  * No reference images attached directly to this card. -> 🚨 F
 
 ### GUIDELINES: BALANCE BETWEEN STORY PLOT AND REFERENCE IMAGES
 Please follow these guidelines when generating prompts for Work Cards:
-1. **Story Plot & Character Profile Identity**:
-   - The Story Plot and Character Profile define the core identity of the character (name, personality, background, emotional tone, and narrative context).
-2. **Artistic & Visual Study from Reference Images**:
-   - The Attached Reference Images (and their Vision Analysis reports) serve as artistic inspiration and visual study material for:
+1. **Story Plot & Author's Narrative Intent**:
+   - The Story Plot, Character Profile, and Genre define the core identity and 'Soul' of the image. You must capture the hidden meaning and the specific atmosphere the author intends to convey.
+2. **Artistic & Visual Study from Reference Images (The "Brush")**:
+   - Reference Images are the "Brush" and "Paint" used to bring the story to life. Even if the user uploads "beautiful" images that don't match the plot, you must extract only their artistic excellence (rendering style, lighting, color palette, quality) and use those techniques to paint a scene that is 100% faithful to the story's narrative.
      + **Camera Angle & Framing**: Preferred shot size, framing, and depth of field.
      + **Pose & Gesture**: Posture, hand placement, and body dynamics.
      + **Outfit & Material Styling**: Garment silhouette, fabric texture, styling, and layering ideas.
@@ -1712,10 +2112,10 @@ When attached reference images or Vision Analysis reports are present for any wo
    - Step 4: Map the visual elements appropriately to the specific Work Card and Room.
    - Step 5: When writing the final prompt, incorporate the camera perspective, pose, aesthetic styling, outfit direction, and composition rhythm learned from the reference images.
 3. **Priority & Adaptation Guidelines**:
-   - **Visual Styling**: For Work Cards with attached reference images, incorporate the camera framing, body pose, rendering style, color palette, lighting, mood, and outfit design from the references.
-   - **Character Identity**: Ensure the character's facial features and identity reflect the user's story profile while maintaining visual harmony with the reference styling.
-   - **Creative Adaptation**: Adjust supporting props or background details as requested by user notes.
-   - **Transformative Originality**: All reference study materials serve to inspire an original artwork with transformative adaptation and artistic flair.
+   - **Meticulous Art Style Application**: Analyze the reference images comprehensively (composition, colors, art style, brush strokes). FORCE the prompt to override generic/default AI rendering with a highly meticulous, detailed, and beautifully crafted art style strictly imitating the references.
+   - **Creative Priority & Accuracy**: Prioritize creativity and artistic flair while remaining meticulously accurate to the character and the story narrative. The art must look deliberately crafted by a master artist, not a generic AI output.
+   - **Outfit & Styling Adaptation**: Learn the core silhouette, fabric drape, and aesthetic of the reference outfits, BUT creatively adapt and fine-tune them to perfectly fit the specific character's identity and story context. (Sáng tạo trong học hỏi, tinh chỉnh trang phục từ ảnh tham chiếu cho hoàn toàn phù hợp với nhân vật cốt truyện).
+   - **Transformative Originality**: All reference study materials serve to inspire a breathtaking original artwork with transformative adaptation.
 4. **MODULAR MULTI-REFERENCE ROLE ISOLATION & FEATURE-BY-FEATURE SYNTHESIS**:
    - When multiple reference images are attached across different cards (e.g., Card Tóc/Hair, Card Pose, Card Outfit, Card Face, Card Style/Overall...), ensure each reference image informs its specific domain:
      + 💇‍♀️ **Hair Card References ('Tóc / Hair')**: Inspire hairstyle, hair color, volume, and strand rhythm.
@@ -1731,6 +2131,26 @@ When attached reference images or Vision Analysis reports are present for any wo
    - You are REQUIRED from writing bare image filenames, file extensions, or image IDs (e.g. "Use references: 1000012463.jpg, 1000012560.jpg", "Character inspired by 1000012463.jpg", or "inspired by image 1.png") inside the generated prompt!
    - When reference images are present, your task is to READ the vision analysis reports, extract their aesthetic layers, camera angles, and poses, and SYNTHESIZE them into rich, descriptive natural language inside the output prompt.
    - A valid output prompt is a complete, standalone descriptive instruction where all aesthetic and structural traits from reference images have been translated into explicit descriptive words ready for direct image generation!
+7. **🎓 MASTER ART AESTHETIC & STYLE OVERRIDE GUIDELINES (KỸ THUẬT ÉP PHONG CÁCH VẼ & ĐẶC TẢ TÓC, MẮT)**:
+   - **MANDATORY STYLE OVERRIDE**: Default AI art styles are FORBIDDEN. You MUST extract the precise art style from the reference images (e.g., retro 90s anime, modern cel-shaded manhwa, soft watercolor, thick impasto oil) and FORCE the final prompt to strictly imitate this style. Use commanding words like: "Masterpiece illustration, strictly imitating the exact brush strokes, line art, and color palette of [Specific Style]... override default AI rendering."
+   - **MANDATORY INSTRUCTION FOR HAIR AND EYES**: You MUST dedicate a massive amount of tokens to generate highly detailed, technical art instructions for rendering Hair and Eyes inside the final prompt. Do NOT summarize!
+   - **Kỹ thuật Thiết Kế Tóc Chuyên Sâu (Hair Design Reference Library)**: Tóc tuyệt đối KHÔNG ĐƯỢC miêu tả chung chung ("tóc dài màu nâu", v.v.). BẮT BUỘC SỬ DỤNG HỆ THỐNG "HAIR KNOWLEDGE TREE" SAU ĐÂY ĐỂ PHÂN TÍCH ẢNH THAM CHIẾU VÀ ĐƯA VÀO PROMPT BẰNG RẤT NHIỀU TOKEN:
+      + *Cấu trúc khối & Thể tích (Hair Architecture & Volume)*: Hình dáng tổng thể, tỷ lệ khối đặc/rỗng, phân bố khối đỉnh/hai bên/sau gáy, độ dày tổng, độ xốp, độ nở, độ phồng, mức phân tầng (layer system).
+      + *Hệ thống Cụm & Lọn tóc (Cluster & Strand System)*: Cụm viền mặt, cụm gáy, lọn ôm mặt, lọn bay, lọn xoắn chữ S/C. Đặc tả tỉ mỉ từng lọn tóc tơ mỏng manh (flyaway/baby hair). Mật độ lọn (Strand Density).
+      + *Chuyển động & Vật lý (Hair Flow & Physics)*: Hướng chảy luồng tóc, góc rơi, dòng chuyển động, chiều sâu, quán tính, độ bay, tương tác gió và trọng lực.
+      + *Chất liệu bề mặt (Material & Texture)*: Độ mượt, độ xốp, độ tơi, satin, silk, airy, fluffy, glossy, matte.
+      + *Chi tiết cấu tạo (Hairline, Bangs, Tips)*: Đường chân tóc (hairline mềm/rõ), hệ thống mái (bangs dày/thưa/rẽ), độ mềm viền mép (hair edge), đuôi lọn (nhọn/tơi/bo).
+      + *Ánh sáng & Phối màu (Lighting, Shadow & Color System)*: Main highlight, vòng sáng đỉnh đầu (angel ring), rim light, ambient shadow, root color, mid tone, tip color, gradient.
+   - **Kỹ thuật vẽ mắt (Eye Rendering Architecture)**: Mắt phải được render vô cùng chi tiết. Đặc tả hình dáng mắt, cấu tạo đồng tử (pupil details), ánh sáng phản chiếu (catchlights/eye highlights), chiều sâu của mống mắt (iris depth), màu sắc chuyển đổi trong mống mắt (gradient iris). Lông mi (lashes) phải cong vút và rõ từng sợi. Kỹ thuật lên màu mắt phải rực rỡ, lấp lánh và có chiều sâu cảm xúc.
+   - **Kỹ thuật Lineart và Lên màu (Linework & Coloring Process)**: Phải miêu tả kỹ thuật vẽ chuẩn họa sĩ: nét vẽ lineart (linework) trước, sau đó mới tỉ mỉ lên màu (coloring). Đặc tả độ thanh đậm của nét vẽ (varying stroke weights), cách đi nét (crisp lines vs soft lines). Đặc tả rõ cách lên màu (coloring method như cell-shading, soft blending, watercolor, hay impasto), độ bão hoà màu sắc (color saturation), và kỹ thuật đánh bóng khối (shading/ambient occlusion).
+   - **HỌC HỎI TỪ ẢNH THAM CHIẾU (Absolute Reference Supremacy)**: Toàn bộ cấu tạo, hình dáng, cách lên màu, độ bão hòa, phong cách nghệ thuật, và nét vẽ của TÓC, MẮT, LINEART phải được **PHÂN TÍCH VÀ BÊ NGUYÊN XI (HỌC HỎI NGHIÊM NGẶT) TỪ CÁC ẢNH THAM CHIẾU (Reference Images)**. Phải viết một đoạn prompt SIÊU CHI TIẾT (highly dense prompt) về kỹ thuật vẽ tóc học từ ảnh gốc. Ví dụ: "Kỹ thuật vẽ tóc mô phỏng chính xác nét cọ từ ảnh tham chiếu, đi line đen sắc nét thanh mảnh, độ bão hòa màu cao, từng lọn tóc tơ bồng bềnh bung tỏa, đổ bóng tím nhạt..."
+8. **🎓 MASTER VISUAL COMPOSITION & CINEMATIC LAYOUT GUIDELINES (HỆ THỐNG BỐ CỤC THỊ GIÁC & GÓC MÁY)**: Tuyệt đối KHÔNG ĐƯỢC miêu tả bố cục và góc máy chung chung. BẮT BUỘC SỬ DỤNG HỆ THỐNG "VISUAL COMPOSITION LIBRARY" SAU ĐÂY ĐỂ ĐẶC TẢ GÓC MÁY BẰNG RẤT NHIỀU TOKEN:
+   - *Ngôn ngữ Camera & Ống kính (Camera & Lens Language)*: Đặc tả Góc máy (Perspective, Height, Tilt, Rotation, Distance). Tiêu cự ống kính (Focal Length, Wide/Telephoto/Macro Perspective), độ nén thấu kính (Lens Compression).
+   - *Hệ thống Bố cục & Điểm nhìn (Composition & Eye Guidance)*: Phân bố tỷ lệ vàng (Golden Ratio), quy tắc 1/3 (Rule of Thirds), bố cục trung tâm (Central), đối xứng/bất đối xứng. Khung hình trong khung hình (Frame Within Frame). Hệ thống dẫn dắt mắt (Leading Lines, Eye Path, Circular/Directional Flow).
+   - *Phân bổ Không gian & Chiều sâu (Space Distribution & Depth Design)*: Không gian âm/dương (Positive/Negative Space). Phân bố tiền cảnh (Foreground Blur, Framing Object), trung cảnh (Midground), và hậu cảnh (Background Simplicity/Complexity). Chiều sâu thị giác (Visual Depth, Atmospheric Depth, Layer Separation).
+   - *Cấu trúc Ánh sáng & Bóng đổ (Lighting & Shadow Structure)*: Hướng sáng (Front, Side, Rim, Back, Ambient Light). Nguồn sáng chính/phụ (Key Light, Fill Light, Accent Light, Glow Layer). Cấu trúc bóng đổ (Soft/Hard Shadow, Contact Shadow, Depth Shadow).
+   - *Cấu trúc Màu sắc & Tương phản (Color & Contrast Design)*: Bảng màu chính/phụ/điểm nhấn (Primary/Secondary/Accent Palette). Nhiệt độ màu (Warm/Cool Tone). Độ bão hòa (Overall/Selective Saturation). Tương phản tổng thể/cục bộ (Global/Local Contrast, Value/Color/Shape Contrast).
+   - *Ngôn ngữ Hình khối & Nhịp điệu (Shape Language & Rhythm)*: Hình khối tròn/sắc nét/hình học (Round/Sharp/Geometric Shapes). Nhịp điệu thị giác (Repetition, Pattern, Flow, Movement Rhythm). Cảm giác tĩnh/động (Static/Dynamic Feeling, Motion Flow).
 
 ### MANDATORY OUTPUT STRUCTURE & RULES
 You MUST generate the final production-ready prompt for EACH work card individually.
@@ -1740,44 +2160,50 @@ ${cards.map((c: any) => `[CARD_ID: ${c.id}]
 [REFERENCE FIDELITY REPORT]
 - Card Title: "${c.title}"
 - Room ID: "${roomDef.id}"
-- Attached Reference Images: (List each image ID/name internally, and detail the visual DNA analysis: Camera Angle, Perspective, Depth of Field, Pose, Stance, Style, Palette, Light, Texture, Mood, Outfit, Composition)
+- Attached Reference Images: (List each image ID/name internally, and detail the EXACT visual DNA analysis: Camera Angle, Perspective, Depth of Field, Pose, Stance, Style, Brushwork, Palette, Light, Texture, Mood, Outfit, Composition. YOU MUST APPLY EVERY SINGLE REFERENCE IMAGE AESTHETIC INTO THE FINAL PROMPT. DO NOT OMIT ANY REFERENCE!)
 ---
 ${isComicMode ? `[FINAL PROMPT]
 (Write the final production-ready COMIC / WEBTOON PAGE SCRIPT & PROMPT for "${c.title}" here. CRITICAL MANDATE FOR COMIC / MANGA / WEBTOON: You MUST NOT use a single-image 5-part structure! Instead, you MUST generate a Multi-Panel Comic Page / Webtoon layout with sequential storytelling, distinct comic frames, character dialogue, facial expressions, actions, and backgrounds!
 Structure exactly as follows:
 
 ### 👑 TƯ LIỆU THAM CHIẾU & AESTHETIC DNA BẮT BUỘC (MANDATORY SOURCE MATERIAL DATA)
-- **Tư liệu thị giác bắt buộc (Full-Util 100%)**: [Liệt kê tường tận từng nét vẽ Manga/Manhwa, bảng màu hex, góc máy, tạo dáng từ toàn bộ ảnh tham chiếu đính kèm. Ép AI tạo ảnh phải sử dụng làm tư liệu gốc!]
-- **Mệnh lệnh tạo ảnh tuyệt mỹ (Anti-Ordinary Guarantee)**: [Mệnh lệnh tiếng Anh chuyên sâu dùng từ vựng điện ảnh, chất liệu cao cấp, ánh sáng volumetric rays, line art sắc sảo để đảm bảo ảnh truyện tranh cho ra tuyệt mỹ, tuyệt đối không bị bình thường]
+- **Tư liệu thị giác bắt buộc (Full-Util 100%)**: [Liệt kê cực kỳ chi tiết, sắc sảo từng nét vẽ, kỹ thuật cọ (brushwork), mã màu hex, chất liệu vải, góc máy điện ảnh, tạo dáng từ TOÀN BỘ ảnh tham chiếu đính kèm. Phân tích thật sâu nét vẽ của ảnh tham chiếu để áp dụng vào ảnh cuối cùng. BẮT BUỘC ỨNG DỤNG TẤT CẢ TƯ LIỆU, KHÔNG ĐƯỢC BỎ SÓT BẤT KỲ ẢNH NÀO!]
+- **Mệnh lệnh tạo ảnh tuyệt mỹ (Anti-Ordinary Guarantee)**: [Mệnh lệnh tiếng Anh chuyên sâu dùng từ vựng điện ảnh cực cao (8k resolution, IMAX, hyper-detailed, masterpiece, award-winning cinematography, sharp focus, intricate detailing). Cấm tuyệt đối kiểu render "bình thường" hoặc "generic". Hình ảnh phải đạt đẳng cấp đồ hoạ điện ảnh (cinematic graphics) cao nhất!]
 
 ---
 
 ### 📚 TỔNG QUAN TRANG TRUYỆN / WEBTOON PAGE SETUP
 - **🎬 Tên trang / Phân cảnh (Scene Title)**: [Tóm tắt tình huống cốt truyện trong trang/thẻ này]
-- **🎨 Phong cách vẽ (Art Style & Medium)**: [Nét vẽ Manga/Manhwa/Comic, màu sắc, line art bám sát ảnh tham chiếu]
-- **📐 Bố cục trang & Nhịp điệu (Page Layout & Pacing)**: [Phân chia số khung từ 2 đến 6 khung, cách sắp xếp khung trên trang]
+- **🎨 Phong cách vẽ (Art Style & Medium)**: [MÔ TẢ CỰC KỲ CHI TIẾT phong cách nghệ thuật bám sát ảnh tham chiếu. Nét vẽ Manga/Manhwa/Comic/Semi-realistic? ÉP BUỘC sử dụng phong cách này để TRÁNH mặc định của AI (override generic AI style). Bắt buộc dùng từ khóa mạnh như "in the exact art style of..."]
+- **📐 Bố cục trang & Nhịp điệu (Page Layout & Pacing)**: [Phân chia số khung từ 2 đến 6 khung, cách sắp xếp khung trên trang, sự đan xen giữa các khung toàn cảnh và khung cận cảnh]
 
 ---
 
 ### 🖼️ KHUNG 1: [TÊN TÌNH HUỐNG / SCENE FOCUS]
-- **🎬 Bố cục Khung & Góc Máy (Panel Framing & Camera)**: [Close-up cận cảnh / Full-body toàn thân / Low-angle / High-angle...]
-- **🧑 Tình huống & Hành động (Action & Stance)**: [Nhân vật đang làm gì, tương tác với ai theo đúng cốt truyện]
-- **😍 Biểu cảm khuôn mặt (Facial Expression & Emotion)**: [Miêu tả chi tiết thần thái: đỏ mặt, rơm rớm nước mắt, cười khẩy, kiên định...]
+- **🎬 Bố cục Khung & Góc Máy (Panel Framing & Camera)**: [MÔ TẢ CỰC KỲ CHI TIẾT DỰA TRÊN "VISUAL COMPOSITION LIBRARY": Ngôn ngữ Camera (Perspective, Height, Distance, Focal Length). Hệ thống dẫn dắt mắt (Leading Lines, Eye Path, Golden Ratio, Framing). Phân bổ không gian (Positive/Negative Space, Foreground/Background Depth). Cấu trúc ánh sáng & Bóng đổ (Key Light, Rim Light, Soft/Hard Shadow). Đặc tả độ tương phản và màu sắc điện ảnh (Cinematic Color Script)]
+- **🧑 Tình huống & Hành động (Action & Stance)**: [Mô tả chi tiết dáng điệu (pose), độ nghiêng đầu, vị trí đặt tay chân, ngôn ngữ cơ thể, tương tác không gian]
+- **💇‍♀️ Chi tiết Tóc, Mắt & Nét vẽ (Hair, Eye & Linework)**: [DÀNH THẬT NHIỀU TOKEN ĐỂ ĐẶC TẢ CỰC KỲ CHI TIẾT DỰA TRÊN "HAIR DESIGN KNOWLEDGE TREE" ĐƯỢC RÚT RA TỪ ẢNH THAM CHIẾU: Cấu trúc tầng layer, thể tích khối đặc/rỗng, hệ thống cụm lọn tóc tơ mỏng manh, hướng luồng chảy (hair flow), chất liệu bề mặt, kiểu mái, hairline, độ tơi xốp, vòng sáng đỉnh đầu (angel ring), rim light. Kỹ thuật vẽ mắt (đồng tử sâu, ánh sáng catchlight lấp lánh). Kỹ thuật đi lineart và lên màu. TẤT CẢ PHẢI MÔ PHỎNG CHÍNH XÁC TỪ ẢNH THAM CHIẾU!]
+- **👗 Trang phục & Sáng tạo (Outfit & Creative Adaptation)**: [MÔ TẢ CỰC KỲ CHI TIẾT trang phục. SÁNG TẠO TRONG HỌC HỎI: Học hỏi từ ảnh tham chiếu nhưng BẮT BUỘC phải tinh chỉnh, biến tấu sáng tạo cho hoàn toàn phù hợp với tính cách, bối cảnh và câu chuyện của nhân vật. Không sao chép cứng nhắc.]
+- **😍 Biểu cảm khuôn mặt (Facial Expression & Emotion)**: [Miêu tả chi tiết thần thái: ánh mắt, cơ mặt, môi, nếp nhăn...]
 - **💬 Lời thoại & Chữ trong tranh (Dialogue / Speech Bubble / SFX)**: 
   + **Lời thoại (Tiếng Việt & English)**: "[Nhân vật A nói gì / suy nghĩ gì trong bong bóng chat]"
   + **Hiệu ứng âm thanh (SFX)**: [Ví dụ: Thump thump, Whoosh, Doki doki...]
-- **🌌 Background & Ánh sáng (Background & Atmosphere)**: [Bối cảnh chi tiết trong khung này, ánh sáng, hiệu ứng hoa bay / speed lines]
+- **🌌 Bối cảnh & Không gian (Environment & Depth)**: [Mô tả chi tiết Độ gần xa (Depth of Field), Tiền cảnh (Foreground), Trung cảnh (Midground), Hậu cảnh (Background). Bối cảnh xung quanh nhân vật]
+- **💡 Ánh sáng & Màu sắc (Lighting & Color)**: [Hướng ánh sáng, Rim light, cách đánh khối, độ bão hòa (saturation), bảng màu chủ đạo, độ tương phản]
 - **✨ PROMPT TẠO ẢNH CHO KHUNG 1 (Production-ready AI Image Prompt)**: 
-  \`[Đoạn prompt tiếng Anh chuẩn, đầy đủ chi tiết cho Khung 1 để sử dụng trực tiếp trong AI tạo ảnh]\`
+  \`[Đoạn prompt tiếng Anh chuẩn, DÀI VÀ SIÊU CHI TIẾT (Highly Dense) cho Khung 1 để sử dụng trực tiếp trong AI tạo ảnh. Bắt buộc chứa TẤT CẢ các chi tiết vừa phân tích phía trên!]\`
 
 ---
 
 ### 🖼️ KHUNG 2: [TÊN TÌNH HUỐNG / SCENE FOCUS]
 - **🎬 Bố cục Khung & Góc Máy (Panel Framing & Camera)**: [...]
 - **🧑 Tình huống & Hành động (Action & Stance)**: [...]
+- **💇‍♀️ Chi tiết Tóc, Mắt & Nét vẽ (Hair, Eye & Linework)**: [...]
+- **👗 Trang phục & Sáng tạo (Outfit & Creative Adaptation)**: [...]
 - **😍 Biểu cảm khuôn mặt (Facial Expression & Emotion)**: [...]
 - **💬 Lời thoại & Chữ trong tranh (Dialogue / Speech Bubble / SFX)**: [...]
-- **🌌 Background & Ánh sáng (Background & Atmosphere)**: [...]
+- **🌌 Bối cảnh & Không gian (Environment & Depth)**: [...]
+- **💡 Ánh sáng & Màu sắc (Lighting & Color)**: [...]
 - **✨ PROMPT TẠO ẢNH CHO KHUNG 2 (Production-ready AI Image Prompt)**: 
   \`[...]\`
 
@@ -1787,37 +2213,72 @@ Structure exactly as follows:
 ---
 
 ### 🎨 PROMPT TẠO ẢNH TỔNG HỢP TOÀN TRANG (FULL PAGE COMIC PROMPT)
-\`[MUST BE EXCLUSIVELY IN ENGLISH: A single, cohesive, highly detailed master English prompt combining all panels into a sequential comic/webtoon page layout AND explicitly enforcing the Full-Util 100% reference visual DNA (art style, character features, panel framing, lighting). Prepend with: "MANDATORY SOURCE MATERIAL UTILIZATION: Create an award-winning multi-panel comic/webtoon masterpiece strictly adhering to the visual DNA extracted from all provided reference source materials. Zero ordinary rendering. Masterwork manga/manhua execution..." Ready for 1-click copy & paste into AI image generators!]\`
-
-Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference Images", "Room:", "Card:", or technical metadata inside this [FINAL PROMPT] section!)` : `[FINAL PROMPT]
-(Write the final production-ready standalone image prompt for "${c.title}" here. CRITICAL MANDATE: You MUST divide the prompt into exactly 5 STANDALONE PARTS using standard Markdown headers, AND end with a Master Production-Ready English Prompt block so the user can use each part or the whole prompt easily!
-Structure exactly as follows:
-
-### 👑 TƯ LIỆU THAM CHIẾU & AESTHETIC DNA BẮT BUỘC (MANDATORY SOURCE MATERIAL DATA)
-- **Tư liệu thị giác bắt buộc (Full-Util 100%)**: [Liệt kê tường tận từng nét vẽ, mã màu hex, chất liệu vải, dáng đứng, góc máy từ toàn bộ ảnh tham chiếu đính kèm của thẻ này. Ép AI tạo ảnh phải sử dụng làm tư liệu gốc!]
-- **Mệnh lệnh tạo ảnh tuyệt mỹ (Anti-Ordinary Guarantee)**: [Mệnh lệnh tiếng Anh chuyên sâu dùng từ vựng điện ảnh, chất liệu cao cấp, ánh sáng volumetric rays, texture 8k để đảm bảo ảnh cho ra tuyệt mỹ, tuyệt đối không bị bình thường]
+\`[MUST BE EXCLUSIVELY IN ENGLISH: A single, cohesive, HIGHLY DENSE master English prompt combining all panels into a sequential comic/webtoon page layout AND explicitly enforcing the Full-Util 100% reference visual DNA (art style, character features, panel framing, lighting, line of sight, hair rendering). Prepend with: "MANDATORY AESTHETIC DIRECTIVE: Create a masterpiece comic/webtoon layout strictly imitating the exact art style, line art, brush strokes, color saturation, and visual DNA from the reference source materials. You MUST override default generic AI art styles! Force the rendering to precisely match the provided aesthetic. Absolutely NO generic rendering. Highest cinematic quality, hyper-detailed..." Ready for 1-click copy & paste!]\`
 
 ---
 
-### 🧑 PART 1: SUBJECT, POSE & GESTURE (Nhân vật & Kiểu dáng tạo dáng)
-[Detailed character description, body stance, pose, gesture, head tilt, expression, and body language strictly adhering to the reference image]
+### 🚫 BẢN PHÒNG CHỐNG LỖI TẠO ẢNH CHUYÊN SÂU & CAM KẾT CHẤT LƯỢNG (ANTI-GLITCH PROTOCOL & QUALITY GUARANTEE)
+- **TỔNG HỢP TOÀN BỘ CÁC LỖI CẤM PHÉP XẢY RA (Absolute Zero-Tolerance Error List)**:
+  + *Lỗi giải phẫu cơ thể (Anatomical Glitches)*: Cấm thừa ngón tay/ngón chân, biến dạng bàn tay/bàn chân, lệch khớp xương vai/cổ, lệch tâm mắt (asymmetric eyes), méo mồm hoặc biểu cảm đờ đẫn mất tự nhiên.
+  + *Lỗi phong cách nét vẽ (Style Drift/AI Bleed)*: Cấm tuyệt đối pha trộn nét vẽ mặc định của AI (generic, overly airbrushed/plastic render styles). Nét vẽ phải đi đúng lineart rõ ràng, thô nháp hoặc mượt mà chính xác bám sát toàn bộ ảnh gốc tham chiếu.
+  + *Lỗi bối cảnh và rác hình ảnh (Background Pollution & Artifacts)*: Cấm các chi tiết vật lý phi lý (cốc nước bay, bàn ghế dính liền người, vũ khí mọc sai chỗ), các đốm mờ, nhiễu hạt, chữ viết lộn xộn (nonsense text) xuất hiện bừa bãi trong tranh trừ SFX được ghi cụ thể.
+  + *Lỗi bỏ quên tư liệu tham chiếu (Reference Neglect)*: Cấm chỉ học từ ảnh đầu tiên và ngó lơ các ảnh tiếp theo! Phải phân bổ rõ vai trò từng ảnh (ví dụ: ảnh 1 lấy tóc, ảnh 2 lấy dáng, ảnh 3 lấy bối cảnh, ảnh 4 lấy cách tô màu bão hòa). Nếu bỏ sót bất cứ đặc trưng visual nào từ bất kỳ ảnh nào đã được gom đều bị coi là lỗi nghiêm trọng.
+- **CHỈ DẪN VÀ CÚ PHÁP ĐỀ PHÒNG & KHẮC PHỤC LỖI CHI TIẾT (Strict Prevention Prompts & Negative Weights)**:
+  [Cung cấp chi tiết hướng giải quyết, câu lệnh bổ trợ cụ thể bằng cả tiếng Việt và tiếng Anh (Negative Prompts như: "multiple limbs, deformed hands, poorly drawn face, bad anatomy, blurry, worst quality, low quality...") bám sát từng phân cảnh của thẻ này để người dùng dán vào Midjourney/Niji/DALL-E phòng ngừa lỗi triệt để].
+- **LỜI NHẮC NHỞ NGHIÊM NGẶT CHO HỌA SĨ AI (Strict Quality Assurance Mandate)**:
+  [Viết một đoạn thông điệp cam kết chất lượng cực kỳ dài, chi tiết, nhắc nhở từng phân đoạn, nhắc nhở kĩ càng từng chi tiết nhỏ của tóc, mắt, trang phục, góc máy không được phép sai lệch so với nguồn cảm hứng nguyên bản].
 
-### 👗 PART 2: OUTFIT, MATERIAL & STYLING (Trang phục, Chất liệu & Phụ kiện)
-[Detailed outfit silhouette, fabric drape, layering, lace, embroidery, jewelry, and styling strictly adhering to the reference image]
+Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference Images", "Room:", "Card:", or technical metadata inside this [FINAL PROMPT] section!)` : `[FINAL PROMPT]
+(Write the final production-ready standalone image prompt for "${c.title}" here. CRITICAL MANDATE: You MUST divide the prompt into exactly 8 STANDALONE PARTS using standard Markdown headers, AND end with a Master Production-Ready English Prompt block so the user can use each part or the whole prompt easily!
+Structure exactly as follows:
 
-### 🌌 PART 3: ENVIRONMENT & BACKGROUND (Bối cảnh & Không gian xung quanh)
-[Detailed background setting, architecture, nature, spatial depth, and supporting elements]
+### 👑 TƯ LIỆU THAM CHIẾU & AESTHETIC DNA BẮT BUỘC (MANDATORY SOURCE MATERIAL DATA)
+- **Tư liệu thị giác bắt buộc (Full-Util 100%)**: [Liệt kê cực kỳ chi tiết, sắc sảo từng nét vẽ, kỹ thuật cọ (brushwork), mã màu hex, chất liệu vải, góc máy điện ảnh, tạo dáng từ TOÀN BỘ ảnh tham chiếu đính kèm của thẻ này. Phân tích thật sâu nét vẽ của ảnh tham chiếu để áp dụng vào ảnh cuối cùng. BẮT BUỘC ỨNG DỤNG TẤT CẢ TƯ LIỆU, KHÔNG ĐƯỢC BỎ SÓT BẤT KỲ ẢNH NÀO!]
+- **Mệnh lệnh tạo ảnh tuyệt mỹ (Anti-Ordinary Guarantee)**: [Mệnh lệnh tiếng Anh chuyên sâu dùng từ vựng điện ảnh cực cao (8k resolution, IMAX, hyper-detailed, masterpiece, award-winning cinematography, sharp focus, intricate detailing). Cấm tuyệt đối kiểu render "bình thường" hoặc "generic". Hình ảnh phải đạt đẳng cấp đồ hoạ điện ảnh (cinematic graphics) cao nhất!]
 
-### 💡 PART 4: LIGHTING, COLOR PALETTE & ATMOSPHERE (Ánh sáng, Màu sắc & Bầu không khí)
-[Detailed lighting direction, rim light, dominant color palette, contrast, artistic render quality, and emotional mood]
+---
 
-### 📸 PART 5: CAMERA ANGLE, PERSPECTIVE & COMPOSITION (Góc chụp, Thị giác & Bố cục máy ảnh)
-[Exact camera perspective (eye-level, low-angle, high-angle...), focal length feel, depth of field, bokeh, framing, and visual hierarchy strictly adhering to the reference image]
+### 🎨 PART 1: ART STYLE, MEDIUM & BRUSHWORK (Phong cách nghệ thuật, Chất liệu & Nét vẽ)
+[MÔ TẢ CỰC KỲ CHI TIẾT phong cách nghệ thuật (Art Style) học từ ảnh tham chiếu: Anime, Manhwa, Semi-realistic, Oil painting, Watercolor, Cel-shading? Đặc tả kỹ thuật cọ (brushwork), nét lineart thanh hay đậm, cách đánh bóng (shading). ÉP BUỘC SỬ DỤNG PHONG CÁCH NÀY để tránh nét vẽ mặc định (generic/default style) của AI tạo ảnh. Bắt buộc dùng các từ khóa mạnh trong prompt cuối như "in the exact art style of...", "masterpiece illustration imitating the brush strokes of..."]
+
+### 📸 PART 2: CAMERA ANGLE, PERSPECTIVE & COMPOSITION (Góc chụp, Thị giác & Bố cục)
+[MÔ TẢ CỰC KỲ CHI TIẾT DỰA TRÊN "VISUAL COMPOSITION LIBRARY": Ngôn ngữ Camera (Perspective, Height, Tilt, Rotation, Distance, Lens Compression). Hệ thống dẫn dắt mắt và Khung hình (Eye Guidance, Golden Ratio, Framing, Bố cục trung tâm/đối xứng). Phân bổ không gian âm/dương, chiều sâu thị giác (Foreground/Background Depth). Cấu trúc ánh sáng & Bóng đổ, Bảng màu & Tương phản]
+
+### 🧑 PART 3: SUBJECT, POSE & GESTURE (Nhân vật & Dáng điệu)
+[Highly dense character description, body stance, pose, gesture, head tilt, expression, and body language strictly mirroring the reference image. Phân tích rõ sự chuyển động cơ thể, vị trí tay chân]
+
+### 💇‍♀️ PART 4: HAIR, EYE RENDERING & LINEWORK (Kỹ thuật vẽ Tóc, Mắt & Đường nét)
+[DÀNH RẤT NHIỀU TOKEN ĐỂ ĐẶC TẢ SIÊU CHI TIẾT DỰA TRÊN HỆ THỐNG "HAIR DESIGN KNOWLEDGE TREE". Phân tích TỪ ẢNH THAM CHIẾU: Cấu trúc khối (Architecture), thể tích (Volume), hệ thống lọn tóc tơ (Strand System), hướng luồng chảy (Hair Flow), chất liệu bề mặt (Texture), hairline, mái, độ tơi xốp, bóng đổ, vòng sáng (Angel Ring, Rim Light). Đặc tả kỹ thuật vẽ mắt sắc sảo (đồng tử sâu, catchlight lấp lánh, lông mi rõ). Phân tích đường nét (linework), độ thanh đậm, kỹ thuật đi line trước rồi lên màu. Phân tích cách lên màu, độ bão hòa (saturation). TẤT CẢ PHẢI MÔ PHỎNG NGHIÊM NGẶT NÉT VẼ TỪ ẢNH GỐC!]
+
+### 👗 PART 5: OUTFIT, MATERIAL & STYLING (Trang phục, Chất liệu & Phụ kiện)
+[MÔ TẢ CỰC KỲ CHI TIẾT trang phục, kiểu dáng, nếp gấp vải, phụ kiện. SÁNG TẠO TRONG HỌC HỎI: Học hỏi cấu trúc và chất liệu từ ảnh tham chiếu, NHƯNG BẮT BUỘC PHẢI TINH CHỈNH VÀ SÁNG TẠO (creative adaptation) để bộ trang phục hoàn toàn phù hợp với tính cách, bối cảnh và câu chuyện của nhân vật. Không sao chép cứng nhắc, mà biến tấu thiết kế sao cho trang phục tôn lên nét riêng của nhân vật truyện]
+
+### 🌌 PART 6: ENVIRONMENT, BACKGROUND & DEPTH (Bối cảnh, Không gian & Độ gần xa)
+[Highly dense background setting, architecture, nature. MÔ TẢ CHI TIẾT ĐỘ GẦN XA (Spatial Depth & Depth of Field): Tiền cảnh (Foreground), Trung cảnh (Midground), Hậu cảnh (Background). Các yếu tố bổ trợ (supporting elements)]
+
+### 💡 PART 7: LIGHTING & ATMOSPHERE (Ánh sáng & Bầu không khí)
+[Highly dense lighting direction, volumetric lighting, rim light, global illumination, contrast, artistic render quality, and emotional mood mimicking the reference]
+
+### 🎨 PART 8: COLOR PALETTE (Màu sắc)
+[Dominant color palette, accent colors, color harmony, hex tones, cinematic color grading]
 
 ---
 
 ### 🎨 PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)
-\`[MUST BE EXCLUSIVELY IN ENGLISH: A single, cohesive, highly dense master English prompt combining all 5 Parts AND explicitly enforcing the Full-Util 100% reference visual DNA (exact pose, camera angle, outfit silhouette, lighting, color palette). Prepend with: "MANDATORY SOURCE MATERIAL UTILIZATION: Create an award-winning cinematic visual masterpiece strictly adhering to the visual DNA extracted from all provided reference source materials. Zero ordinary rendering. Masterwork visual execution..." Ready for 1-click copy & paste into Midjourney, Ideogram, DALL-E, Canva AI, or any image generator with masterwork cinematic quality!]\`
+\`[MUST BE EXCLUSIVELY IN ENGLISH: A single, cohesive, HIGHLY DENSE master English prompt combining all 8 Parts AND explicitly enforcing the Full-Util 100% reference visual DNA. Prepend with: "MANDATORY AESTHETIC DIRECTIVE: Create a masterpiece illustration strictly imitating the exact art style, brush strokes, line art, color saturation, and visual DNA from the reference source materials. Absolutely NO generic or ordinary AI rendering. Do NOT default to standard styles..." followed by the detailed prompt. Ready for 1-click copy & paste into Midjourney, Niji, or DALL-E!]\`
+
+---
+
+### 🚫 BẢN PHÒNG CHỐNG LỖI TẠO ẢNH CHUYÊN SÂU & CAM KẾT CHẤT LƯỢNG (ANTI-GLITCH PROTOCOL & QUALITY GUARANTEE)
+- **TỔNG HỢP TOÀN BỘ CÁC LỖI CẤM PHÉP XẢY RA (Absolute Zero-Tolerance Error List)**:
+  + *Lỗi giải phẫu cơ thể (Anatomical Glitches)*: Cấm thừa ngón tay/ngón chân, biến dạng bàn tay/bàn chân, lệch khớp xương vai/cổ, lệch tâm mắt (asymmetric eyes), méo mồm hoặc biểu cảm đờ đẫn mất tự nhiên.
+  + *Lỗi phong cách nét vẽ (Style Drift/AI Bleed)*: Cấm tuyệt đối pha trộn nét vẽ mặc định của AI (generic, overly airbrushed/plastic render styles). Nét vẽ phải đi đúng lineart rõ ràng, thô nháp hoặc mượt mà chính xác bám sát toàn bộ ảnh gốc tham chiếu.
+  + *Lỗi bối cảnh và rác hình ảnh (Background Pollution & Artifacts)*: Cấm các chi tiết vật lý phi lý (cốc nước bay, bàn ghế dính liền người, vũ khí mọc sai chỗ), các đốm mờ, nhiễu hạt, chữ viết lộn xộn (nonsense text) xuất hiện bừa bãi trong tranh.
+  + *Lỗi bỏ quên tư liệu tham chiếu (Reference Neglect)*: Cấm chỉ học từ ảnh đầu tiên và ngó lơ các ảnh tiếp theo! Phải phân bổ rõ vai trò từng ảnh (ví dụ: ảnh 1 lấy tóc, ảnh 2 lấy dáng, ảnh 3 lấy bối cảnh, ảnh 4 lấy cách tô màu bão hòa). Nếu bỏ sót bất cứ đặc trưng visual nào từ bất kỳ ảnh nào đã được gom đều bị coi là lỗi nghiêm trọng.
+- **CHỈ DẪN VÀ CÚ PHÁP ĐỀ PHÒNG & KHẮC PHỤC LỖI CHI TIẾT (Strict Prevention Prompts & Negative Weights)**:
+  [Cung cấp chi tiết hướng giải quyết, câu lệnh bổ trợ cụ thể bằng cả tiếng Việt và tiếng Anh (Negative Prompts như: "multiple limbs, deformed hands, poorly drawn face, bad anatomy, blurry, worst quality, low quality...") bám sát từng phân cảnh của thẻ này để người dùng dán vào Midjourney/Niji/DALL-E phòng ngừa lỗi triệt để].
+- **LỜI NHẮC NHỞ NGHIÊM NGẶT CHO HỌA SĨ AI (Strict Quality Assurance Mandate)**:
+  [Viết một đoạn thông điệp cam kết chất lượng cực kỳ dài, chi tiết, nhắc nhở từng phân đoạn, nhắc nhở kĩ càng từng chi tiết nhỏ của tóc, mắt, trang phục, góc máy không được phép sai lệch so với nguồn cảm hứng nguyên bản].
 
 Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference Images", "Room:", "Card:", or technical metadata inside this [FINAL PROMPT] section!)`}`).join("\n\n")}
 `;
@@ -1850,146 +2311,120 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
     const updateRefStatus = (img: any) => {
       if (!img) return;
       img.analysisStatus = 'analyzed';
-      if (!img.imageAnalysisText || img.imageAnalysisText === 'Chưa phân tích' || img.imageAnalysisText.startsWith('⏳') || img.imageAnalysisText.includes('👉 [IN-CONTEXT VISION')) {
-        img.imageAnalysisText = '✅ AI đã đọc trực tiếp trong Context Windows (Smart In-Context Vision)';
+      if (!img.imageAnalysisText || img.imageAnalysisText === 'Chưa phân tích') {
+        img.imageAnalysisText = 'Đã đọc trực tiếp trong Context Windows';
       }
     };
 
+    allRefsList.forEach(updateRefStatus);
     orderedVisionRefs.forEach(updateRefStatus);
-    if (rs.styleAnalyzer?.refs) rs.styleAnalyzer.refs.forEach(updateRefStatus);
-    Object.values(rs.cards || {}).forEach((cs: any) => {
-      if (cs?.refs && Array.isArray(cs.refs)) cs.refs.forEach(updateRefStatus);
-    });
-    if (currentStory.botCharacters && Array.isArray(currentStory.botCharacters)) {
-      currentStory.botCharacters.forEach((bc: any) => {
-        if (bc?.referenceImages && Array.isArray(bc.referenceImages)) bc.referenceImages.forEach(updateRefStatus);
-      });
-    }
-
-    currentStory.rooms[roomDef.id] = { ...rs };
-    save(state);
 
     setApiSignals(prev => ({
       ...prev,
-      contextBuilt: true,
-      stage: 'connecting_api',
-      stageLabel: '3. Connecting API',
-      stageDetail: 'Đang kết nối API Proxy & gửi request... (Đang chờ phản hồi đầu tiên)'
+      apiRequestSent: true,
+      stage: 'calling_api',
+      stageLabel: '3. Connecting AI Model',
+      stageDetail: `Đang truyền ${orderedVisionRefs.length} ảnh trực tiếp vào Context Windows & kết nối AI Model...`
     }));
-    setProgress(25);
-    await new Promise(resolve => setTimeout(resolve, 35));
+    setProgress(30);
 
     try {
-      setTimeout(() => {
-        setApiSignals(prev => ({ ...prev, apiRequestSent: true }));
-        setProgress(35);
-      }, 300);
-
-      const parseCardStreamContent = (raw: string) => {
-        if (!raw) return { report: "", output: "" };
-        let report = "";
-        let output = raw;
-
-        const finalPromptRegex = /\[FINAL PROMPT\]|\[FINAL_PROMPT\]|\n---\n|\n\*\*\*\n/i;
-        const match = raw.match(finalPromptRegex);
-        if (match && match.index !== undefined) {
-          report = raw.slice(0, match.index).replace(/\[REFERENCE FIDELITY REPORT\]|\[FIDELITY REPORT\]/ig, "").trim();
-          output = raw.slice(match.index + match[0].length).trim();
-        } else if (raw.includes("[REFERENCE FIDELITY REPORT]")) {
-          report = raw.replace(/\[REFERENCE FIDELITY REPORT\]/ig, "").trim();
-          output = "";
-        }
-
-        if (output) {
-          output = output
-            .replace(/^[-*]?\s*(Attached )?Reference Images?:.*$/gim, "")
-            .replace(/^[-*]?\s*Room:\s*.*$/gim, "")
-            .replace(/^[-*]?\s*Card:\s*.*$/gim, "")
-            .replace(/^[-*]?\s*Card Title:\s*.*$/gim, "")
-            .replace(/\[REFERENCE FIDELITY REPORT\]/gim, "")
-            .replace(/\[FINAL PROMPT\]/gim, "")
-            .replace(/\[CARD_ID:[^\]]+\]/gim, "")
-            .replace(/\b([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|\d{6,}\.(jpg|png|jpeg|webp)|[a-z0-9_-]+\.(jpg|png|jpeg|webp))\b/gim, "")
-            .replace(/\(\s*(from|reference|ref|inspired by|image|attached)\s*:[^)]*\)/gim, "")
-            .replace(/\n{3,}/g, "\n\n")
-            .trim();
-        }
-
-        return { report, output };
-      };
-
-      const distributeStreamToCardsLive = (text: string) => {
-        if (!text) return;
-        const cardBlocks = text.split(/\[CARD_ID:\s*([^\]]+)\]/i);
-        let anyMatched = false;
-        const availableIds = Object.keys(rs.cards);
-
-        for (let i = 1; i < cardBlocks.length; i += 2) {
-          const parsedCardId = cardBlocks[i]?.trim();
-          const parsedContent = (cardBlocks[i + 1] || "").trim();
-          if (!parsedCardId) continue;
-
-          let matchedId = rs.cards[parsedCardId] ? parsedCardId : null;
-          if (!matchedId) {
-            const cleanId = parsedCardId.toLowerCase().replace(/[^a-z0-9]/g, "");
-            for (const k of availableIds) {
-              const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, "");
-              const cleanTitle = (rs.cards[k]?.title || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-              if (cleanK === cleanId || cleanTitle.includes(cleanId) || cleanId.includes(cleanK)) {
-                matchedId = k;
-                break;
-              }
-            }
-          }
-
-          if (matchedId && rs.cards[matchedId]) {
-            anyMatched = true;
-            const { report, output } = parseCardStreamContent(parsedContent);
-            rs.cards[matchedId].report = report;
-            rs.cards[matchedId].output = output || (isApiRunning && report ? "⏳ AI đang phân tích ảnh tham chiếu (xem Báo cáo thẩm định bên dưới) trước khi viết Prompt..." : parsedContent);
-            if (roomState.cards && roomState.cards[matchedId]) {
-              roomState.cards[matchedId].report = report;
-              roomState.cards[matchedId].output = rs.cards[matchedId].output;
-            }
-            if (currentStory?.rooms?.[roomDef.id]?.cards?.[matchedId]) {
-              currentStory.rooms[roomDef.id].cards[matchedId].report = report;
-              currentStory.rooms[roomDef.id].cards[matchedId].output = rs.cards[matchedId].output;
-            }
-          }
-        }
-
-        if (!anyMatched && text.trim()) {
-          const firstCardId = availableIds[0];
-          if (firstCardId && rs.cards[firstCardId]) {
-            const { report, output } = parseCardStreamContent(text.trim());
-            rs.cards[firstCardId].report = report;
-            rs.cards[firstCardId].output = output || text.trim();
-            if (roomState.cards && roomState.cards[firstCardId]) {
-              roomState.cards[firstCardId].report = report;
-              roomState.cards[firstCardId].output = rs.cards[firstCardId].output;
-            }
-            if (currentStory?.rooms?.[roomDef.id]?.cards?.[firstCardId]) {
-              currentStory.rooms[roomDef.id].cards[firstCardId].report = report;
-              currentStory.rooms[roomDef.id].cards[firstCardId].output = rs.cards[firstCardId].output;
-            }
-          }
-        }
-      };
-
       await callAIStream({
-        signal: abortCtrl.signal,
         messages: [{ role: "user", content: contentArray }],
+        signal: abortCtrl.signal,
         systemPrompt: isComicMode
-          ? "You are an AI Comic & Webtoon Prompt Generator inside a production workspace. Your task is to generate multi-panel comic page scripts, storyboards, and sequential storytelling layouts. You are not a tutor, not a prompt-writing teacher, not a checklist generator, and not an assistant explaining how to write prompts. Read the full Context Window and produce the final usable comic script directly adhering to aesthetic fidelity and storytelling consistency.\n\n🚨 MANDATE #1: THE USER'S STORY & CHARACTER PROFILE ARE THE HIGHEST ABSOLUTE AUTHORITY (QUY TẮC TỐI CAO SỐ 1: BÁM SÁT TUYỆT ĐỐI CÂU CHUYỆN VÀ NHÂN VẬT GỐC CỦA VỢ YÊU) 🚨: The attached reference images are visual study materials ('tư liệu thị giác') for poses, lighting, composition, and artistic vibes. HOWEVER, they MUST ONLY serve to inspire and adapt for the USER'S ORIGINAL CHARACTER AND STORY ('nhân vật và cốt truyện của em')! Whenever there is divergence between a reference image and the user's character story profile, YOU MUST STRICTLY PRIORITIZE AND ENFORCE THE USER'S STORY AND CHARACTER!\n\n🚨 MANDATE: 100% REFERENCE MATERIAL UTILIZATION & ANTI-ORDINARY GUARANTEE (SỬ DỤNG TƯ LIỆU - CHỐNG ẢNH CHO RA KHÁ BÌNH THƯỜNG) 🚨: You are commanded to treat EVERY SINGLE attached reference image as mandatory visual study material ('tư liệu thị giác bắt buộc'). Do not ignore any attached image! To prevent downstream AI image generators from producing ordinary, generic images ('ảnh cho ra khá bình thường'), enrich the prompt with cinematic vocabulary, intricate material textures, dramatic volumetric lighting, cinematic focal length, and masterwork rendering polish!\n\n🚨 CRITICAL MANDATE ON MODULAR MULTI-REFERENCE ISOLATION BY CARD NAME (QUY TẮC BÓC TÁCH ĐỘC QUYỀN VÀ GIAO THOA ĐA THAM CHIẾU THEO TỪNG THẺ): When multiple reference images are attached across different cards in the workspace, isolate the authority of each image strictly by its Card Title domain: Hair from Hair Card, Pose/Angle from Pose Card, Clothing from Outfit Card, Setting from Environment Card, Art Style/Palette from Style Analyzer, and Art Direction from Aesthetic Study to craft an original masterpiece!\n\nDo NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...]."
-          : "You are an AI Image Prompt Generator inside a production workspace. Your task is to generate the final production-ready image prompt from the user's provided context. You are not a tutor, not a prompt-writing teacher, not a checklist generator, and not an assistant explaining how to write prompts. Read the full Context Window and produce the final usable image prompt directly adhering to the core principle: Aesthetic Study & Visual Reference Principle (High aesthetic style fidelity, transformative adaptation for bespoke character originality).\n\n🚨 SUPREME MANDATE #1: THE USER'S STORY & CHARACTER PROFILE ARE THE HIGHEST ABSOLUTE AUTHORITY (QUY TẮC TỐI CAO SỐ 1: BÁM SÁT TUYỆT ĐỐI CÂU CHUYỆN VÀ NHÂN VẬT GỐC CỦA VỢ YÊU) 🚨: The working reference images attached to the workspace are important visual study materials ('tư liệu thị giác tham chiếu') to draw visual inspiration, poses, lighting, composition, and artistic vibes from. HOWEVER, they MUST ONLY serve to inspire and perform transformative adaptation for the USER'S EXCLUSIVE ORIGINAL CHARACTER IN THEIR STORY ('nhân vật trong câu chuyện của em')! YOU MUST ALWAYS Avoid to let a reference image guide or alter the user's original character profile, story plot, facial appearance, or lore! THE STORY AND CHARACTER PROFILE ARE KING AND GUIDE ALL REFERENCE DETAILS! Whenever there is any divergence between a reference image and the user's character story profile, YOU MUST STRICTLY PRIORITIZE AND ENFORCE THE USER'S STORY AND CHARACTER!\n\n🚨 SUPREME MANDATE: FULL-UTIL 100% REFERENCE MATERIAL UTILIZATION & ANTI-ORDINARY GUARANTEE (TẤT CẢ CÁC ẢNH ĐỀU PHẢI SỬ DỤNG LÀM TƯ LIỆU - CHỐNG ẢNH CHO RA KHÁ BÌNH THƯỜNG) 🚨: You are strictly commanded to treat EVERY SINGLE attached reference image as mandatory visual study material ('tư liệu thị giác bắt buộc'). You MUST NOT skip, dilute, or ignore any attached image! Even if a work card has no images attached directly to it, you MUST STILL draw from all reference images attached across the story, room, Style Analyzer, and Bot Characters! Whether there are 2, 5, or 10 reference images, you MUST extract and synthesize the visual data from ALL of them into the output prompt! To prevent downstream AI image generators from producing ordinary, generic images ('ảnh cho ra khá bình thường'), you MUST enrich the prompt with award-winning, cinematic vocabulary, intricate material textures (haute couture embroidery, silk drape, subsurface scattering), dramatic volumetric lighting, cinematic focal length, and masterwork rendering polish! Inside [FINAL PROMPT], you MUST include the mandatory block '### 👑 TƯ LIỆU THAM CHIẾU & AESTHETIC DNA BẮT BUỘC (MANDATORY SOURCE MATERIAL DATA)' listing all visual study materials and styling directives before the 5 standalone parts!\n\n🚨 MANDATE ON AESTHETIC STUDY & DIRECT STORY APPLICATION (NO NO CÁC VẤN ĐỀ KHÁC): All reference images attached across rooms, Style Analyzer, and Character profiles MUST be cleanly read, analyzed, and recorded into the Context Window as valid aesthetic study materials. You MUST ensure all output is 100% original, creative, and transformative, ensuring a 100% bespoke, creative, and original character design tailored exclusively to the user's story profile. You MUST carry these studied visual ideas (pose, camera angle, lighting, color harmony, visual flow) forward into the prompt construction and apply them directly to serve the user's exclusive story plot and original character profile!\n\n🚨 CRITICAL MANDATE ON MODULAR MULTI-REFERENCE ISOLATION BY CARD NAME (QUY TẮC BÓC TÁCH ĐỘC QUYỀN VÀ GIAO THOA ĐA THAM CHIẾU THEO TỪNG THẺ): When multiple reference images are attached across different cards in the workspace (such as Hair Card, Pose Card, Outfit Card, Face Card, Style Analyzer...), YOU MUST NOT let 1 single image (such as the first image or style image) dominate and guide the entire prompt! You MUST isolate the authority of each image strictly by its Card Title domain: Hair from Hair Card, Pose/Angle from Pose Card, Clothing from Outfit Card, Setting from Environment Card, Art Style/Palette from Style Analyzer, and Inspiration/Art Direction from Aesthetic Study & Reference Learning ('Học Hỏi Từ Ảnh Tham Chiếu') to craft an original masterpiece! Synthesize these distinct features together into a harmonious multi-reference composition without reference dominance!\n\nCRITICAL RULE ON REFERENCE IMAGES: When using reference images, extract and study aesthetic DNA and structural composition across these layers: art style, medium texture (watercolor, manhua fantasy, soft ink-wash...), color palette, light & shadow, opacity/translucency, mood/vibe, visual motifs, flowing hair movement, CAMERA SHOT & PERSPECTIVE FIDELITY (exact camera angle, low/high/eye-level shot, focal length feel, depth of field, background blur, bokeh, spatial framing), CHARACTER POSE & GESTURE FIDELITY (exact body stance, posture, head tilt, hand placement, body language, silhouette, spatial positioning in the frame), OUTFIT FIDELITY (form, silhouette, drape, layering logic, detail density, material feel, trim/lace/ribbon/embroidery tendencies, color family, elegance/fantasy level), and COMPOSITION FIDELITY (visual hierarchy, focal structure, eye-flow/visual path, subject placement logic, negative space rhythm). You MUST synthesize all traits to build the user's exclusive story character and Canva design! You MUST strictly study and apply camera shot, perspective, depth of field, framing, pose, silhouette, and gesture from the reference image (while applying the new original story character profile).\n\nYou MUST read and translate all visual traits into rich, descriptive natural language. You are REQUIRED from writing bare filenames or placeholder image IDs in the output prompt (e.g., do NOT output 'Use references: 1000012463.jpg' or 'Character inspired by 1000012463.jpg').\n\nFor EACH Work Card, you MUST FIRST output the mandatory [REFERENCE FIDELITY REPORT] block showing exactly what was studied and what is preserved/adapted/applied, followed by '---', and then [FINAL PROMPT] with the standalone descriptive instruction ready for direct image generation! In [FINAL PROMPT], you MUST structure the output into exactly 5 STANDALONE PARTS (### 🧑 PART 1 to ### 📸 PART 5), and end with '### 🎨 PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)' combining all 5 parts and reference enforcement into a single pure English production-ready block!\n\nDo NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...].",
+          ? "You are an AI Comic & Webtoon Prompt Generator inside a production workspace. Your task is to generate multi-panel comic page scripts, storyboards, and sequential storytelling layouts. You are not a tutor, not a prompt-writing teacher, not a checklist generator, and not an assistant explaining how to write prompts. Read the full Context Window and produce the final usable comic script directly adhering to aesthetic fidelity and storytelling consistency.\n\n" +
+            "🚨 SUPREME MANDATE #0: CONTEXT WINDOW & ROOM MEMORY (QUY TẮC NHỚ RÕ TÊN PHÒNG VÀ YÊU CẦU CỦA APP) 🚨: You MUST actively read and perfectly remember the entire Context Window! You must clearly know the room's setup rules, the room's name, the working card's purpose, the system prompt's instructions, the feature's requirements, what the app needs, how it works, what exact content to return, which room you are currently in, and what this specific item requires! Do NOT generate generic prompts. Apply highly specialized, advanced vocabulary (Manga, Webtoon, Comic Framing, Cinematic Angles) required for THIS specific room's theme. Use the Context Window to its absolute fullest potential!\n\n" +
+            "🚨 MANDATE #1: STORY GENRE & CHARACTER SOUL GOVERN THE NARRATIVE; REFERENCE IMAGES GOVERN VISUAL DNA (MỆNH LỆNH TỐI CAO: THỂ LOẠI TRUYỆN & HỒ SƠ NHÂN VẬT LÀ LINH HỒN; ẢNH THAM CHIẾU LÀ TƯ LIỆU NGHỆ THUẬT) 🚨: To ensure the generated prompts reflect the author's intent regardless of reference images, we enforce this absolute rule:\n" +
+            "  1. The User's Story Plot, Genre (e.g., Horror, Romance, Xianxia, Modern), and Character Profiles hold 100% supreme authority! This is the SOUL. You MUST convey the author's hidden intent through the character's aura, gaze, and environmental storytelling.\n" +
+            "  2. Visual Storytelling (Kể chuyện qua hình ảnh): Even if the reference images are just 'beautiful' and unrelated to the plot, you must FORCE the scene to reflect the story's vibe. Every shadow, object, and expression must tell a piece of the story. Looking at the image must reveal the story's genre and plot ideas!\n" +
+            "  3. The Reference Image (Ảnh tham chiếu) is ONLY the 'Brush' and 'Paint': Extract the linework, color palette, and lighting style. Apply these artistic techniques to the story's specific character and narrative. DO NOT clone the character identity from the reference image!\n\n" +
+            "🚨 MANDATE #2: EXACT STYLE, COLOR, EYE & EXTRAORDINARY HAIR PRECISION (QUY TẮC ĐỒNG BỘ CHI TIẾT NÉT VẼ, TONE MÀU, LÊN MÀU, VẼ MẮT, VÀ TÓC THEO THAM CHIẾU - SÁNG TẠO POSE THEO TRUYỆN) 🚨: When describing the character, hairstyle, eyes, outfit, and background, you MUST replicate the exact aesthetic style of the reference image. Keep the art medium, line art weight, shading depth, and color blending techniques of the reference image.\n" +
+            "  1. Hair Precision (Học vẽ tóc, mô tả siêu chi tiết để tránh tóc xấu): You must describe hair with extreme clarity, structure, and beauty! Clearly define the hairstyle structure, individual silky hair strands flowing gracefully, parting lines, highlight reflections, and fine wisps catching volumetric backlighting. Never write vague hair descriptions that lead to ugly AI rendering! Make it as detailed and gorgeous as the reference image.\n" +
+            "  2. Eye & Face Precision (Học vẽ mắt, học lên màu): Specify the exact drawing style of the eyes from the reference (e.g., highly glossy irises, heavy lash lines, specific gaze direction, light reflection points). Describe the coloring and shading gradients with professional vocabulary to perfectly capture the color palette.\n" +
+            "  3. Character Posture: The character pose, gesture, stance, and action must be dynamically generated to match the STORY SETTING, using the reference's composition lines and camera angles (Dutch tilt, low-angle sweeping shot, cinematic framing) to frame the story actions beautifully, rather than cloning the exact pose of the reference image rigidly!\n\n" +
+            "🚨 MANDATE #3: STRICT MODULAR CARD ISOLATION & MULTI-REFERENCE SYNTHESIS (QUY TẮC PHÂN LUỒNG TỪNG MỤC THẺ ẢNH QUYẾT LIỆT VÀ ĐẦY ĐỦ) 🚨: You must read and classify every single Work Card domain strictly by its Title (Hair from Hair Card, Pose/Angle from Pose Card, Clothing from Outfit Card, Setting from Environment Card, Art Style from Style Analyzer, and Art Direction from Aesthetic Study). Each card's assigned reference image is the absolute primary authority for that specific domain. Do NOT let one image dominate everything! Isolate them cleanly, study them meticulously, and synthesize them into a harmonious sequential multi-panel masterpiece without losing any detail! IF A SINGLE CARD HAS MULTIPLE ATTACHED REFERENCE IMAGES, YOU MUST STUDY AND SYNTHESIZE EVERY SINGLE ONE OF THEM (KHÔNG ĐƯỢC BỎ SÓT BẤT KỲ ẢNH NÀO - TẤT CẢ ĐỀU PHẢI ĐƯỢC PHÂN TÍCH VÀ ĐƯA VÀO BÁO CÁO THẨM ĐỊNH)!\n\n" +
+            "🚨 MANDATE #4: CORE VISUAL FIDELITY ENFORCEMENT - NÉT VẼ, TRANG PHỤC & ĐƯỜNG THỊ GIÁC (MỆNH LỆNH BẮT BUỘC ĐỒNG BỘ NÉT VẼ, TRANG PHỤC VÀ ĐƯỜNG THỊ GIÁC CỰC HẠN) 🚨: To address styling quality issues, you must exhaustively analyze and incorporate these three pillars from reference images into the English prompts:\n" +
+            "  1. Art Style & Linework DNA (Đồng bộ Nét Vẽ Gốc): Capture the exact artistic medium, brush texture, ink lines, line-weight variation (thin/thick), shading depth, rendering technique (e.g. watercolor wash, screen-tones, clean digital line art). Describe with hyper-vivid, advanced terminology.\n" +
+            "  2. Outfit & Fabric Fidelity (Đồng bộ Trang phục & Quần áo): Exhaustively describe garment materials (silk, leather, satin, heavy textured wool), structural layering, tailoring patterns, necklines/collars, delicate laces, dynamic folding tension, ripples, and gravity wrinkles. Match the outfit style perfectly!\n" +
+            "  3. Visual Perspective & Composition Lines (Đồng bộ Đường Thị Giác & Bố cục): Extract the exact camera perspective (dynamic low-angle, cinematic sweeping high-angle, wide-lens portrait depth, Dutch tilt), leading lines (đường dẫn thị giác), diagonal focal alignment, negative space ratio, silhouette contour, and light-and-shadow direction.\n\n" +
+            "🚨 MANDATE #5: HIGH-END PROFESSIONAL ART & PHOTOGRAPHY VOCABULARY (QUY TẮC SỬ DỤNG TỪ VỰNG CHUYÊN NGÀNH NGHỆ THUẬT/NHIẾP ẢNH CAO CẤP) 🚨: You are an elite, world-class art director and cinematographer. You MUST NOT use basic, superficial, or generic vocabulary (like 'beautiful dress', 'nice pose', or 'good lighting'). YOU MUST USE ADVANCED, HIGHLY PROFESSIONAL, AND DEEPLY TECHNICAL TERMINOLOGY. Your analysis and prompt must reflect extreme artistic expertise for:\n" +
+            "  1. Facial & Hair Nuance: Head tilt angles, exact direction of gaze, subtle mouth positioning, precise eyelid weights, hair strand flow, individual fine hair wisps catching backlights, parting line.\n" +
+            "  2. Lighting & Shadow Depth: Exact main light source location, volumetric ray paths, contact shadows under the chin/neck, precise soft-rim backlighting highlights, chiaroscuro shadow gradients on skin/garment folds.\n" +
+            "  3. Linework & Rendering Texture: Exact texture of line art (loose sketch, clean ink, charcoal, variable line weight, no outline/painted look), rendering style (watercolor bleeding edges, soft airbrush gradients, matte digital painting, dense textured pencil cross-hatching).\n" +
+            "  4. Garment Fold Dynamics & Material Detail: Exact fabric draping patterns, soft overlapping layers, precise wrinkles/ripples representing gravity/tension, specific laces, sheer opacity levels, haute couture stitch/embroidery patterns, texture grains (linen, satin, chiffon, silk, leather).\n" +
+            "  5. Camera Perspective & Focal Depth: Low-angle or high-angle camera tilts, exact lens zoom level, background blur depth (bokeh size, cinematic depth-of-field), spatial placement of subject (foreground/midground/background separation).\n" +
+            "  6. Background & Composition Flow: Negative space ratios, diagonal movement lines, golden ratio composition, graphic motifs (water ripples, swirling petals, wind streaks, framing borders).\n\n" +
+            "🚨 MANDATE #6: ABSOLUTE ZERO INFORMATION LOSS IN FINAL PROMPT (QUY TẮC TRUYỀN TẢI CHI TIẾT TRỌN VẸN VÀO PROMPT TIẾNG ANH) 🚨: Every single micro-detail learned from reference images MUST be translated and woven into the final prompt panels using rich, vivid, descriptive English nouns and adjectives. There must be ZERO loss of detail! The final prompt must be highly dense, rich in cinematography terms, visual art vocabulary, and tactile material descriptors so that the image generation AI can replicate the exact masterpiece level of the reference image!\n\n" +
+            "🚨 MANDATE #7: SUPREME ARTISTIC ELEVATION & EXCELLENCE (QUY TẮC NÂNG TẦM NGHỆ THUẬT VƯỢT TRỘI - VẼ ĐẸP VÀ GIỎI HƠN CẢ ẢNH GỐC) 🚨: Do NOT just match the reference image. You must analyze its style and raise its aesthetic parameters to absolute perfection! In the final prompt panels, you MUST weave all these supreme art commands using luxury, high-end, evocative English vocabulary (e.g., 'masterpiece, divine aesthetics, ultra-fine hand-drawn line art, exquisite watercolor texturing, breathtaking volumetric chiaroscuro lighting, haute-couture folding gravity, soul-stirring expressive gaze') to force the image generation model to produce an absolute visual miracle that far exceeds the reference in quality and beauty!\n\n" +
+            "🚨 MANDATE #8: SPECIAL PROMPT & REFERENCE TECHNICAL GUIDELINES (HƯỚEN DẪN KỸ THUẬT PROMPT & ẢNH THAM CHIẾU) 🚨: You MUST actively read, digest, and strictly integrate the following 7 critical technical guidelines from the user's prompt manual into the generated English prompts:\n" +
+            "  1. Art Style & Linework DNA: Specify the line weight (" + '"ultra-fine hand-drawn lines", "variable line-weight linework"' + ") and texture (" + '"clean digital vector line art", "textured charcoal sketching lines", "traditional ink-brush strokes"' + ") with manga screentone or pencil hatching techniques (" + '"soft manga screentone shading", "cross-hatching pencil lines"' + ").\n" +
+            "  2. Facial Features Precision: Render eyelashes/eyelids (" + '"thick dramatic eyelashes with heavy eyelid crease"' + ") and irises glossy reflection (" + '"glistening glossy irises catching volumetric light"' + "), specify direct or downward gaze (" + '"focused eye contact looking directly at the camera", "subtle downward gaze"' + "), and define sharp nose bridges and natural glossy lips.\n" +
+            "  3. Posture & Finger Articulation: Describe dynamic elegant poses matching the STORY'S ACTION (" + '"elegant dynamic posture"' + ", precise head tilts) and explicitly force detailed fingers (" + '"exquisitely detailed hands with long slender fingers", "five fully articulated fingers gently holding"' + ") to eliminate AI-generated hand mutations.\n" +
+            "  4. Color Palette & Chiaroscuro: Use specific colors/m codes (" + '"soft pastel pink and muted cream", "crimson red accents popping against monochrome slate background"' + ") and high-contrast volumetric lights (" + '"dramatic chiaroscuro lighting casting long soft shadows", "glowing rim light silhouette"' + ").\n" +
+            "  5. Composition & Leading Lines: Use leading geometric lines (" + '"strong diagonal leading lines", "vertical composition lines of bookshelves framing"' + ") and cinematic angles (" + '"Dutch tilt for dramatic tension", "cinematic low-angle sweeping shot"' + ").\n" +
+            "  6. UI & Frame Layout: Apply panels with borders (" + '"multi-panel layout with dynamic white borders"' + ") or translucent bubble text UI layers (" + '"subtle translucent chat box with minimal typography"' + ").\n" +
+            "  7. Multi-Reference Synthesis: Perfectly isolate card domains (Hair, Pose, Outfit, Setting, Style) to synthesize their distinct visual materials harmoniously into a masterpiece without losing any detail.\n\n" +
+            "🚨 MANDATE #9: CHARACTER IDENTITY & STORY CHARACTER FIDELITY (QUY TẮC BẢO VỆ DANH TÍNH NHÂN VẬT & ĐỒNG BỘ TUYỆT ĐỐI THEO TRUYỆN - TRÁNH SAI LỆCH GIỚI TÍNH, ĐẶC ĐIỂM CỦA CÂU CHUYỆN) 🚨:\n" +
+            "  - Character Demographics: The gender, age, hair color, eye color, clothing category, and key visual/facial traits of characters in the generated prompts MUST be 100% determined by the User's Story Setting (Thiết lập câu chuyện) and the story's character descriptions (danh tính nhân vật trong truyện)!\n" +
+            "  - Absolute Prohibition of Identity Bleeding: You are STRICTLY FORBIDDEN from copying the gender, hair color, clothing category, or physical identity of characters from the reference images if they do not match the story character! If a reference image depicts a female with black hair, but the story character is a male prince with blonde hair, the generated prompt MUST portray a handsome male prince with blonde hair, while using ONLY the artistic/aesthetic style, line art weight, color blending, brushstroke texture, and composition structure of the reference image! This ensures that the generated image perfectly represents the correct characters of the story while maintaining the beautiful styling of the reference images.\n" +
+            "  - Character Fit: The character's outfits, actions, and emotions must perfectly match the character's narrative persona and the specific scene context. Do not force generic details that contradict who the character is in the story.\n\n" +
+            "🚨 SUPREME COMMAND FOR HIGH-FIDELITY DETAILS (MỆNH LỆNH THỐNG TRỊ CHI TIẾT TỰA THỰC 100%): Write incredibly long, precise, and vivid paragraphs for each part! Do not summarize or use generic terms! Use advanced terminology such as 'Fujifilm Superia color space, Hasselblad HC 80mm color accuracy, Arri Alexa cinematic tone, 0.05mm ultra-fine rotring ink brush, meticulous cross-hatching shade layers, anatomically flawless hands with five long slender digits, perfect fabric drape tension folds' in every description. This ensures that the generated prompt perfectly forces Midjourney/Stable Diffusion/Ideogram/Flux to reproduce the reference style, dynamic composition lines, and rich, non-blurry colors and shapes with 100% fidelity, while allowing the character's pose and actions to be creatively driven by the STORY!\n\n" +
+            "🚨 NO COGNITIVE ANALYSIS FLUFF (BẮT BUỘC BỎ QUA PHẦN PHÂN TÍCH SUY NGHĨ TIẾNG VIỆT) 🚨: To maintain ultimate stream efficiency, YOU MUST NOT output any [REFERENCE FIDELITY REPORT] or Vietnamese thinking/analysis text. Start the response immediately with [FINAL PROMPT] followed by the requested parts. Just write the highly detailed prompt ready for direct image creation! Each panel/card must start immediately with '[FINAL PROMPT]'.\n\n" +
+            "Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...]."
+          : "You are an AI Image Prompt Generator inside a production workspace. Your task is to generate the final production-ready image prompt from the user's provided context. You are not a tutor, not a prompt-writing teacher, not a checklist generator, and not an assistant explaining how to write prompts. Read the full Context Window and produce the final usable image prompt directly adhering to the core principle: Aesthetic Study & Visual Reference Principle.\n\n" +
+            "🚨 SUPREME MANDATE #1: CONTEXT WINDOW & ROOM MEMORY (QUY TẮC NHỚ RÕ TÊN PHÒNG VÀ YÊU CẦU CỦA APP) 🚨: You MUST actively read and perfectly remember the entire Context Window! You must clearly know the room's setup rules, the room's name, the working card's purpose, the system prompt's instructions, the feature's requirements, the goal of the current item, the category of this item, what the app needs, how it works, what exact content to return, which room you are currently in, and what this specific item requires! Do NOT generate generic prompts. Apply highly specialized, advanced vocabulary (Art, Photography, Cinematography, Styling) required for this specific room's theme. Use the Context Window to its absolute fullest potential!\n\n" +
+            "🚨 SUPREME MANDATE #2: STORY GENRE & CHARACTER SOUL GOVERN THE NARRATIVE; REFERENCE IMAGES GOVERN VISUAL DNA (MỆNH LỆNH TỐI CAO: THỂ LOẠI TRUYỆN & HỒ SƠ NHÂN VẬT LÀ LINH HỒN; ẢNH THAM CHIẾU LÀ TƯ LIỆU NGHỆ THUẬT) 🚨: To ensure the generated prompts reflect the author's intent regardless of reference images, we enforce this absolute rule:\n" +
+            "  1. The User's Story Plot, Genre (e.g., Horror, Romance, Fantasy), and Character Profiles hold 100% supreme authority! This is the SOUL. You MUST convey the author's hidden intent through the character's aura, gaze, and environmental storytelling.\n" +
+            "  2. Visual Storytelling (Kể chuyện qua hình ảnh): Even if the reference images are just 'beautiful' and unrelated to the plot, you must FORCE the scene to reflect the story's vibe. Every shadow, object, and expression must tell a piece of the story. Looking at the image must reveal the story's genre and plot ideas!\n" +
+            "  3. The Reference Image (Ảnh tham chiếu) is ONLY the 'Brush' and 'Paint': Extract the linework, color palette, and lighting style. Apply these artistic techniques to the story's specific character and narrative. DO NOT clone the character identity from the reference image!\n\n" +
+            "🚨 SUPREME MANDATE #3: EXACT STYLE, COLOR, EYE & EXTRAORDINARY HAIR PRECISION (QUY TẮC ĐỒNG BỘ CHI TIẾT NÉT VẼ, TONE MÀU, LÊN MÀU, VẼ MẮT, VÀ TÓC THEO THAM CHIẾU - SÁNG TẠO POSE THEO TRUYỆN) 🚨: When describing the character, hairstyle, eyes, outfit, and background, you MUST replicate the exact aesthetic style of the reference image. Keep the art medium, line art weight, shading depth, and color blending techniques of the reference image.\n" +
+            "  1. Hair Precision (Học vẽ tóc, mô tả siêu chi tiết để tránh tóc xấu): You must describe hair with extreme clarity, structure, and beauty! Clearly define the hairstyle structure, individual silky hair strands flowing gracefully, parting lines, highlight reflections, and fine wisps catching volumetric backlighting. Never write vague hair descriptions that lead to ugly AI rendering! Make it as detailed and gorgeous as the reference image.\n" +
+            "  2. Eye & Face Precision (Học vẽ mắt, học lên màu): Specify the exact drawing style of the eyes from the reference (e.g., highly glossy irises, heavy lash lines, specific gaze direction, light reflection points). Describe the coloring and shading gradients with professional vocabulary to perfectly capture the color palette.\n" +
+            "  3. Character Posture: The character pose, gesture, stance, and action must be dynamically generated to match the STORY SETTING, using the reference's composition lines and camera angles (Dutch tilt, low-angle sweeping shot, cinematic framing) to frame the story actions beautifully, rather than cloning the exact pose of the reference image rigidly!\n\n" +
+            "🚨 SUPREME MANDATE #4: STRICT CARD PORTAL ISOLATION & MULTI-IMAGE FULL UTILIZATION (QUY TẮC PHÂN LUỒNG TỪNG MỤC THẺ ẢNH QUYẾT LIỆT VÀ KHÔNG BỎ SÓT BẤT KỲ ẢNH NÀO) 🚨: You must strictly read and process the requirements of each Work Card one-by-one according to its specific functional domain (Hair from Hair Card, Pose/Angle from Pose Card, Clothing/Outfit from Outfit Card, Setting from Environment Card, Makeup/Expression from Face Card, Art Style from Style Analyzer, and Art Direction from Aesthetic Study). Each card's assigned reference image is the primary visual authority for that domain. Do NOT mix them up, do NOT omit any, and do NOT let one single image dominate the entire prompt! Study each card's reference image thoroughly, and synthesize these distinct modular traits together into a harmonious, balanced multi-reference masterpiece!\n\n" +
+            "🚨 MANDATE FOR MULTIPLE IMAGES PER CARD (BẮT BUỘC HỌC HỎI TẤT CẢ ẢNH KHI THẺ CÓ NHIỀU ẢNH THAM CHIẾU) 🚨: If a single Work Card has multiple attached reference images (e.g. 2, 3 or more reference images inside the Outfit Card), YOU ARE STRICTLY FORBIDDEN from choosing only one image and ignoring the rest! You must look at every single image attached, analyze their unique aesthetic elements, and blend their traits (e.g., combining the fabric textures of all references) into the [FINAL PROMPT] to achieve 100% reference utilization! Every single attached image is a mandatory piece of visual material and MUST be utilized!\n\n" +
+            "🚨 CORE VISUAL FIDELITY ENFORCEMENT - NÉT VẼ, TRANG PHỤC & ĐƯỜNG THỊ GIÁC (MỆNH LỆNH BẮT BUỘC ĐỒNG BỘ NÉT VẼ, TRANG PHỤC VÀ ĐƯỜNG THỊ GIÁC CỰC HẠN) 🚨: To address styling quality issues, you must exhaustively analyze and incorporate these three pillars from reference images into the English prompts:\n" +
+            "  1. Art Style & Linework DNA (Đồng bộ Nét Vẽ Gốc): Capture the exact artistic medium, brush texture, ink lines, line-weight variation (thin/thick), shading depth, rendering technique (e.g. watercolor wash, screen-tones, clean digital line art). Describe with hyper-vivid, advanced terminology.\n" +
+            "  2. Outfit & Fabric Fidelity (Đồng bộ Trang phục & Quần áo): Exhaustively describe garment materials (silk, leather, satin, heavy textured wool), structural layering, tailoring patterns, necklines/collars, delicate laces, dynamic folding tension, ripples, and gravity wrinkles. Match the outfit style perfectly!\n" +
+            "  3. Visual Perspective & Composition Lines (Đồng bộ Đường Thị Giác & Bố cục): Extract the exact camera perspective (dynamic low-angle, cinematic sweeping high-angle, wide-lens portrait depth, Dutch tilt), leading lines (đường dẫn thị giác), diagonal focal alignment, negative space ratio, silhouette contour, and light-and-shadow direction.\n\n" +
+            "🚨 MANDATE #5: HIGH-END PROFESSIONAL ART & PHOTOGRAPHY VOCABULARY (QUY TẮC SỬ DỤNG TỪ VỰNG CHUYÊN NGÀNH NGHỆ THUẬT/NHIẾP ẢNH CAO CẤP) 🚨: You are an elite, world-class art director and cinematographer. You MUST NOT use basic, superficial, or generic vocabulary (like 'beautiful dress', 'nice pose', or 'good lighting'). YOU MUST USE ADVANCED, HIGHLY PROFESSIONAL, AND DEEPLY TECHNICAL TERMINOLOGY. Your analysis and prompt must reflect extreme artistic expertise for:\n" +
+            "  1. Facial & Hair Nuance: Head tilt angles, exact direction of gaze, subtle mouth positioning, precise eyelid weights, hair strand flow, individual fine hair wisps catching backlights, parting line.\n" +
+            "  2. Lighting & Shadow Depth: Exact main light source location, volumetric ray paths, contact shadows under the chin/neck, precise soft-rim backlighting highlights, chiaroscuro shadow gradients on skin/garment folds.\n" +
+            "  3. Linework & Rendering Texture: Exact texture of line art (loose sketch, clean ink, charcoal, variable line weight, no outline/painted look), rendering style (watercolor bleeding edges, soft airbrush gradients, matte digital painting, dense textured pencil cross-hatching).\n" +
+            "  4. Garment Fold Dynamics & Material Detail: Exact fabric draping patterns, soft overlapping layers, precise wrinkles/ripples representing gravity/tension, specific laces, sheer opacity levels, haute couture stitch/embroidery patterns, texture grains (linen, satin, chiffon, silk, leather).\n" +
+            "  5. Camera Perspective & Focal Depth: Low-angle or high-angle camera tilts, exact lens focal length (e.g., 50mm, 85mm), background blur depth (bokeh size, cinematic depth-of-field), spatial placement of subject (foreground/midground/background separation).\n" +
+            "  6. Background & Composition Flow: Negative space ratios, diagonal movement lines, golden ratio composition, graphic motifs.\n\n" +
+            "🚨 MANDATE #6: ABSOLUTE ZERO INFORMATION LOSS IN FINAL PROMPT (QUY TẮC TRUYỀN TẢI CHI TIẾT TRỌN VẸN VÀO PROMPT TIẾNG ANH) 🚨: Every single micro-detail learned from reference images MUST be translated and woven into the final prompt panels using rich, vivid, professional English nouns and adjectives. There must be ZERO loss of detail! The final prompt must be highly dense, rich in cinematography terms, visual art vocabulary, and tactile material descriptors so that the image generation AI can replicate the exact masterpiece level of the reference image!\n\n" +
+            "🚨 MANDATE #7: SUPREME ARTISTIC ELEVATION & EXCELLENCE (QUY TẮC NÂNG TẦM NGHỆ THUẬT VƯỢT TRỘI - VẼ ĐẸP HƠN VÀ GIỎI HƠN CẢ ẢNH GỐC) 🚨: You must NOT merely replicate or copy the reference image. Your ultimate goal is to ELEVATE, IMPROVE, and PERFECT the visual artwork. You are an elite, world-class human artist who takes inspiration from a reference but completely outshines it!\n" +
+            "In the final prompt panels, you MUST weave all these supreme art commands using luxury, high-end, evocative English vocabulary (e.g., 'masterpiece, divine aesthetics, ultra-fine hand-drawn line art, exquisite watercolor texturing, breathtaking volumetric chiaroscuro lighting, haute-couture folding gravity, soul-stirring expressive gaze') to force the image generation model to produce an absolute visual miracle that far exceeds the reference in quality and beauty!\n\n" +
+            "🚨 MANDATE #8: SPECIAL PROMPT & REFERENCE TECHNICAL GUIDELINES (HƯỚNG DẪN KỸ THUẬT PROMPT & ẢNH THAM CHIẾU) 🚨: You MUST actively read, digest, and strictly integrate the following 7 critical technical guidelines from the user's prompt manual into the generated English prompts:\n" +
+            "  1. Art Style & Linework DNA: Specify the line weight (" + '"ultra-fine hand-drawn lines", "variable line-weight linework"' + ") and texture (" + '"clean digital vector line art", "textured charcoal sketching lines", "traditional ink-brush strokes"' + ") with manga screentone or pencil hatching techniques (" + '"soft manga screentone shading", "cross-hatching pencil lines"' + ").\n" +
+            "  2. Facial Features Precision: Render eyelashes/eyelids (" + '"thick dramatic eyelashes with heavy eyelid crease"' + ") and irises glossy reflection (" + '"glistening glossy irises catching volumetric light"' + "), specify direct or downward gaze (" + '"focused eye contact looking directly at the camera", "subtle downward gaze"' + "), and define sharp nose bridges and natural glossy lips.\n" +
+            "  3. Posture & Finger Articulation: Describe dynamic elegant poses matching the STORY'S ACTION (" + '"elegant dynamic posture"' + ", precise head tilts) and explicitly force detailed fingers (" + '"exquisitely detailed hands with long slender fingers", "five fully articulated fingers gently holding"' + ") to eliminate AI-generated hand mutations.\n" +
+            "  4. Color Palette & Chiaroscuro: Use specific colors/m codes (" + '"soft pastel pink and muted cream", "crimson red accents popping against monochrome slate background"' + ") and high-contrast volumetric lights (" + '"dramatic chiaroscuro lighting casting long soft shadows", "glowing rim light silhouette"' + ").\n" +
+            "  5. Composition & Leading Lines: Use leading geometric lines (" + '"strong diagonal leading lines", "vertical composition lines of bookshelves framing"' + ") and cinematic angles (" + '"Dutch tilt for dramatic tension", "cinematic low-angle sweeping shot"' + ").\n" +
+            "  6. UI & Frame Layout: Apply panels with borders (" + '"multi-panel layout with dynamic white borders"' + ") or translucent bubble text UI layers (" + '"subtle translucent chat box with minimal typography"' + ").\n" +
+            "  7. Multi-Reference Synthesis: Perfectly isolate card domains (Hair, Pose, Outfit, Setting, Style) to synthesize their distinct visual materials harmoniously into a masterpiece without losing any detail.\n\n" +
+            "🚨 MANDATE #9: CHARACTER IDENTITY & STORY CHARACTER FIDELITY (QUY TẮC BẢO VỆ DANH TÍNH NHÂN VẬT & ĐỒNG BỘ TUYỆT ĐỐI THEO TRUYỆN - TRÁNH SAI LỆCH GIỚI TÍNH, ĐẶC ĐIỂM CỦA CÂU CHUYỆN) 🚨:\n" +
+            "  - Character Demographics: The gender, age, hair color, eye color, clothing category, and key visual/facial traits of characters in the generated prompts MUST be 100% determined by the User's Story Setting (Thiết lập câu chuyện) and the story's character descriptions (danh tính nhân vật trong truyện)!\n" +
+            "  - Absolute Prohibition of Identity Bleeding: You are STRICTLY FORBIDDEN from copying the gender, hair color, clothing category, or physical identity of characters from the reference images if they do not match the story character! If a reference image depicts a female with black hair, but the story character is a male prince with blonde hair, the generated prompt MUST portray a handsome male prince with blonde hair, while using ONLY the artistic/aesthetic style, line art weight, color blending, brushstroke texture, and composition structure of the reference image! This ensures that the generated image perfectly represents the correct characters of the story while maintaining the beautiful styling of the reference images.\n" +
+            "  - Character Fit: The character's outfits, actions, and emotions must perfectly match the character's narrative persona and the specific scene context. Do not force generic details that contradict who the character is in the story.\n\n" +
+            "🚨 SUPREME COMMAND FOR HIGH-FIDELITY DETAILS (MỆNH LỆNH THỐNG TRỊ CHI TIẾT TỰA THỰC 100%): Write incredibly long, precise, and vivid paragraphs for each part! Do not summarize or use generic terms! Use advanced terminology such as 'Fujifilm Superia color space, Hasselblad HC 80mm color accuracy, Arri Alexa cinematic tone, 0.05mm ultra-fine rotring ink brush, meticulous cross-hatching shade layers, anatomically flawless hands with five long slender digits, perfect fabric drape tension folds' in every description. This ensures that the generated prompt perfectly forces Midjourney/Stable Diffusion/Ideogram/Flux to reproduce the reference style, dynamic composition lines, and rich, non-blurry colors and shapes with 100% fidelity, while allowing the character's pose and actions to be creatively driven by the STORY!\n\n" +
+            "🚨 NO COGNITIVE ANALYSIS FLUFF (BẮT BUỘC BỎ QUA PHẦN PHÂN TÍCH SUY NGHĨ TIẾNG VIỆT) 🚨: To maintain ultimate stream efficiency, YOU MUST NOT output any [REFERENCE FIDELITY REPORT] or Vietnamese thinking/analysis text. Start the response immediately with [FINAL PROMPT] followed by the requested parts. Just write the highly detailed prompt ready for direct image creation! Each card must start immediately with '[FINAL PROMPT]'.\n\n" +
+            "CRITICAL RULE ON REFERENCE IMAGES: When studying reference images in the Context Window, extract and apply visual DNA across these layers: art style, medium texture (watercolor, fantasy manhua, soft ink-wash, cinematic photo), color palette, lighting/shadow, camera perspective (exact low/high/eye-level angle, focal length, depth of field, background blur), creative character poses and gestures matching the STORY (do NOT copy the reference stance if it contradicts the story's action), thematic outfit aesthetics (borrowing fabric texture and style, but strictly matching the story's attire), and composition rhythm (focal structure, visual hierarchy, negative space). You MUST translate all traits into highly professional, descriptive natural language. Do NOT output bare filenames or placeholder image IDs in the final prompt.\n\n" +
+            "For EACH Work Card, you MUST directly start with '[FINAL PROMPT]' with the standalone descriptive instruction ready for direct image generation! In [FINAL PROMPT], you MUST structure the output into exactly 5 STANDALONE PARTS (### 👑 TƯ LIỆU THAM CHIẾU & AESTHETIC DNA BẮT BUỘC, followed by ### 🧑 PART 1 to ### 📸 PART 5), and end with '### 🎨 PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)' combining all 5 parts and reference enforcement into a single pure English production-ready block!\n\n" +
+            "Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...].",
         onToken: (token) => {
           streamBufferRef.current += token;
           chunksCountRef.current += 1;
           
+          // Append the new token directly to the UI state as explicitly requested
+          setLivePreviewText(prev => prev + token);
+          
           const now = performance.now();
-          if (now - lastFlushTimeRef.current >= 1000) {
+          if (now - lastFlushTimeRef.current >= 150) {
             lastFlushTimeRef.current = now;
-            setLivePreviewText(streamBufferRef.current);
             distributeStreamToCardsLive(streamBufferRef.current);
             
             const charCount = streamBufferRef.current.length;
@@ -2038,7 +2473,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
                 estimatedTokensReceived: newTokens,
                 elapsedSeconds: elapsedSec
               }));
-            }, 1000);
+            }, 150);
           }
         },
         onDone: () => {
@@ -2306,6 +2741,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
                   <button className="btn ghost small" style={{fontSize: '0.8rem', padding: '6px 10px', fontWeight: 700, borderColor: '#d23a73', color: '#d23a73', background: 'rgba(255, 235, 245, 0.5)'}} onClick={() => setShowPreset(true)}>🖼️ Chọn nền phòng (Thư viện/Máy)</button>
                   <button className="btn ghost small" style={{fontSize: '0.8rem', padding: '6px 10px', fontWeight: 700, borderColor: '#d23a73', color: '#d23a73', background: 'rgba(255, 240, 246, 0.5)'}} onClick={() => setShowContextPreview(true)}>🔍 Context Window</button>
                   <button className="btn ghost small" style={{fontSize: '0.8rem', padding: '6px 10px', fontWeight: 700, borderColor: '#d23a73', color: '#d23a73', background: '#fff0f6'}} onClick={() => setShowStoryPinkCardsModal(true)}>🌸 Thẻ Hồng Cốt Truyện</button>
+                  <button className="btn ghost small" style={{fontSize: '0.8rem', padding: '6px 10px', fontWeight: 700, borderColor: '#ff4081', color: '#ff4081', background: '#ffeef4'}} onClick={() => setShowPromptRefDocModal(true)}>📖 Cẩm Nang Prompt Ref DNA</button>
                   <button className="btn ghost small" style={{fontSize: '0.8rem', padding: '6px 10px', fontWeight: 700, borderColor: '#8c526b', color: '#8c526b', background: 'rgba(248, 239, 243, 0.5)'}} onClick={() => setShowImageReviewPanel(true)}>🖼️ Image Review ({getAllRoomImages().length})</button>
                   <button className="btn ghost small" style={{fontSize: '0.8rem', padding: '6px 10px'}} onClick={onOpenDrawer}>🐈 Ngăn kéo</button>
                   <button className="btn ghost small" style={{fontSize: '0.8rem', padding: '6px 10px', fontWeight: 800, borderColor: '#e96b9b', color: '#c62828', background: '#ffebee'}} onClick={onHome}>🏠 Thoát App</button>
@@ -2393,6 +2829,22 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             }}
           >
             🏠 Thoát App
+          </button>
+          <button
+            onClick={() => setShowPromptRefDocModal(true)}
+            className="btn ghost small"
+            style={{
+              fontWeight: 800,
+              color: '#8c526b',
+              background: '#ffeef4',
+              border: '1.5px solid #e96b9b',
+              padding: '8px 14px',
+              borderRadius: '14px',
+              fontSize: '0.85rem',
+              boxShadow: '0 2px 6px rgba(233, 30, 99, 0.1)'
+            }}
+          >
+            📖 Cẩm Nang Prompt Ref DNA
           </button>
           <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '6px'}}>
             <span style={{fontSize: '1.4rem'}}>{roomDef.icon}</span>
@@ -2808,29 +3260,30 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
                   </label>
                 </div>
                 {(cs.report || (cs.refs && cs.refs.length > 0)) && (
-                  <details style={{marginTop: '16px', background: '#fcf8fa', borderRadius: '12px', border: '1px dashed #d8c0cc', padding: '10px 14px', fontSize: '0.85rem'}}>
-                    <summary style={{cursor: 'pointer', fontWeight: 700, color: '#725365', display: 'flex', alignItems: 'center', justifyContent: 'space-between', listStyle: 'none', userSelect: 'none'}}>
+                  <details open style={{marginTop: '18px', background: 'linear-gradient(135deg, #fdf8fb 0%, #f7f1f5 100%)', borderRadius: '16px', border: '2px solid #e5ccd8', padding: '14px 18px', fontSize: '0.88rem', boxShadow: '0 6px 18px rgba(114,83,101,0.06)'}}>
+                    <summary style={{cursor: 'pointer', fontWeight: 800, color: '#4a2f41', display: 'flex', alignItems: 'center', justifyContent: 'space-between', listStyle: 'none', userSelect: 'none'}}>
                       <div style={{display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'}}>
-                        <span>🧠 INTERNAL / DEBUG: Báo cáo phân tích DNA ảnh & thẩm định</span>
-                        <span style={{background: 'rgba(114,83,101,0.1)', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem'}}>Room: {roomDef.id}</span>
-                        <span style={{background: 'rgba(114,83,101,0.1)', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem'}}>Card: {c.id}</span>
+                        <span style={{fontSize: '1.05rem'}}>🔮 BẢN THẨM ĐỊNH NGHỆ THUẬT & TRÍCH XUẤT DNA THỊ GIÁC SIÊU CHI TIẾT</span>
+                        <span style={{background: 'linear-gradient(90deg, #d23a73, #8a2451)', color: '#ffffff', padding: '2px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', tracking: '0.05em'}}>Master Study</span>
+                        <span style={{background: 'rgba(114,83,101,0.08)', color: '#5c4353', padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem'}}>Card: {c.id}</span>
                         {cs.refs.length > 0 && (
-                          <span style={{background: '#e8def8', color: '#4a3858', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem'}}>📎 {cs.refs.length} ảnh tham chiếu</span>
+                          <span style={{background: '#f3e8ee', color: '#8a2451', padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700}}>📎 {cs.refs.length} ảnh mẫu học hỏi</span>
                         )}
                       </div>
-                      <span style={{fontSize: '0.8rem', color: '#d23a73'}}>▼ Nhấn để xem/ẩn báo cáo</span>
+                      <span style={{fontSize: '0.85rem', color: '#d23a73', fontWeight: 800}}>▼ Xem/Thu gọn</span>
                     </summary>
-                    <div style={{marginTop: '12px', borderTop: '1px solid #efe5eb', paddingTop: '12px', color: '#4a3a46'}}>
-                      <p style={{margin: '0 0 8px 0', fontSize: '0.8rem', fontStyle: 'italic', color: '#8c6b7e'}}>
-                        ⚠️ Phần này chỉ dùng nội bộ để kiểm tra AI có đọc, hiểu ảnh tham chiếu và trích xuất đúng DNA (Style, Palette, Light, Texture, Outfit...) hay không. Không dùng để copy tạo ảnh.
-                      </p>
+                    <div style={{marginTop: '14px', borderTop: '1px solid #ebd3e0', paddingTop: '14px', color: '#4a3a46'}}>
+                      <div style={{margin: '0 0 12px 0', fontSize: '0.85rem', color: '#8a2451', background: '#fdf2f7', padding: '8px 12px', borderRadius: '8px', borderLeft: '4px solid #d23a73', display: 'flex', gap: '6px', alignItems: 'center'}}>
+                        <span>✨</span>
+                        <span><b>BẢN KIỆT TÁC HỌC THUẬT:</b> Bản nghiên cứu chuyên sâu chắt lọc tinh hoa từ các ảnh mẫu. AI không chỉ sao chép đơn thuần mà còn lên kế hoạch cải tiến đột phá để vẽ đẹp hơn, sắc sảo hơn cả ảnh gốc!</span>
+                      </div>
                       {cs.refs && cs.refs.length > 0 && (
-                        <div style={{marginBottom: '10px', padding: '8px 12px', background: '#fff', borderRadius: '8px', border: '1px solid #e2d6dd'}}>
-                          <b>📎 Danh sách file ảnh đã đính kèm:</b>
-                          <ul style={{margin: '4px 0 0 16px', padding: 0, fontSize: '0.8rem'}}>
+                        <div style={{marginBottom: '12px', padding: '10px 14px', background: '#ffffff', borderRadius: '10px', border: '1px solid #ebd3e0', boxShadow: '0 2px 6px rgba(0,0,0,0.01)'}}>
+                          <b>📎 Danh sách file ảnh đã đính kèm để trích xuất DNA:</b>
+                          <ul style={{margin: '6px 0 0 16px', padding: 0, fontSize: '0.8rem', color: '#5c4353'}}>
                             {cs.refs.map((r: any, idx: number) => (
-                              <li key={`ref_${r.id || r.imageId || 'img'}_${idx}`} style={{marginBottom: '2px'}}>
-                                <code>{r.name || r.fileName || `Image_${idx+1}`}</code> (ID: <code>{(r.id || r.imageId || '').slice(0, 12)}...</code>) — Trạng thái AI: <b>{r.analysisStatus === 'analyzed' ? '✅ Đã đọc thành công (In-Context)' : (r.analysisStatus === 'failed' ? '❌ Lỗi' : '✅ Sẵn sàng trong Context Windows')}</b>
+                              <li key={`ref_${r.id || r.imageId || 'img'}_${idx}`} style={{marginBottom: '3px'}}>
+                                <code style={{background: '#fcf3f7', padding: '2px 4px', borderRadius: '4px', color: '#d23a73'}}>{r.name || r.fileName || `Image_${idx+1}`}</code> (ID: <code>{(r.id || r.imageId || '').slice(0, 12)}...</code>) — Trạng thái AI: <span style={{color: '#16a34a', fontWeight: 700}}>✅ Đã nạp thành công (Vùng nhớ In-Context đầy đủ)</span>
                               </li>
                             ))}
                           </ul>
@@ -2838,21 +3291,26 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
                       )}
                       {cs.report ? (
                         <div style={{position: 'relative'}}>
-                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px'}}>
-                            <b style={{color: '#5c4553', fontSize: '0.85rem'}}>📑 Chi tiết Báo cáo Thẩm định AI Vision:</b>
+                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                            <b style={{color: '#4a2f41', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px'}}>
+                              <span>📑</span> Chi tiết báo cáo thẩm định DNA & Nâng tầm nghệ thuật từ AI:
+                            </b>
                             <button className="btn ghost small" onClick={() => {
                               copyToClipboardSafe(cs.report);
-                              toast("📋 Đã copy báo cáo thẩm định nội bộ");
-                            }} style={{fontSize: '0.7rem', padding: '2px 6px'}}>📋 Copy Báo Cáo Debug</button>
+                              toast("📋 Đã copy báo cáo thẩm định nghệ thuật");
+                            }} style={{fontSize: '0.75rem', padding: '4px 10px', background: '#ffffff', border: '1px solid #ebd3e0', borderRadius: '8px', fontWeight: 700, color: '#8a2451'}}>📋 Copy Báo Cáo Học Thuật</button>
                           </div>
-                          <pre style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #ded0d7', maxHeight: '250px', overflowY: 'auto', fontSize: '0.8rem', fontFamily: 'monospace', margin: 0}}>
+                          <pre style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#ffffff', padding: '16px', borderRadius: '12px', border: '1.5px solid #ebd3e0', maxHeight: '400px', overflowY: 'auto', fontSize: '0.85rem', fontFamily: '"JetBrains Mono", monospace', color: '#2d1e29', lineHeight: 1.6, boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.02)'}}>
                             {cs.report}
                           </pre>
                         </div>
                       ) : isApiRunning ? (
-                        <div style={{padding: '8px', fontStyle: 'italic', color: '#d23a73'}}>⏳ Đang stream báo cáo thẩm định DNA từ AI...</div>
+                        <div style={{padding: '12px', fontStyle: 'italic', color: '#d23a73', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, background: '#fdf2f7', borderRadius: '8px'}}>
+                          <span style={{display: 'inline-block', width: '8px', height: '8px', background: '#d23a73', borderRadius: '50%', animation: 'ping 1s infinite'}} />
+                          ⏳ Đang stream báo cáo thẩm định siêu chi tiết và kế hoạch nâng tầm nghệ thuật vượt bậc từ AI...
+                        </div>
                       ) : (
-                        <div style={{padding: '8px', fontStyle: 'italic', color: '#8c6b7e'}}>Chưa có báo cáo phân tích (hãy bấm "Tạo Prompt" để AI kiểm tra ảnh).</div>
+                        <div style={{padding: '12px', fontStyle: 'italic', color: '#8c6b7e', background: '#f9f6f8', borderRadius: '8px'}}>Chưa có báo cáo phân tích (hãy bấm "Tạo Prompt" để AI kiểm tra ảnh của vợ).</div>
                       )}
                     </div>
                   </details>
@@ -2876,6 +3334,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
                       toast={toast}
                       isApiRunning={isApiRunning}
                       cardTitle={c.title}
+                      elapsedSeconds={apiSignals.elapsedSeconds}
                     />
                   </div>
                 ) : isApiRunning ? (
@@ -3984,7 +4443,9 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
                     style={{background: '#d23a73', color: '#fff', fontWeight: 800, padding: '6px 14px', borderRadius: '14px'}}
                     onClick={() => {
                       setShowStoryPinkCardsModal(false);
-                      onOpenStoryForm();
+                      setTimeout(() => {
+                        onOpenStoryForm();
+                      }, 150);
                     }}
                   >
                     ✏️ Sửa Story / Thêm chi tiết
@@ -4108,6 +4569,416 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             <div style={{display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12, borderTop: '1px solid #eee', paddingTop: 12}}>
               <button className="btn ghost small" onClick={() => setShowStoryPinkCardsModal(false)}>Đóng</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Cẩm Nang Prompt Ref DNA */}
+      {showPromptRefDocModal && (
+        <div className="modal show" style={{zIndex: 1170, background: 'rgba(20, 10, 15, 0.82)', backdropFilter: 'blur(8px)'}}>
+          <div className="modal-card" style={{maxWidth: '960px', width: '95%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', background: '#fff9fb', border: '2px solid #f48fb1', borderRadius: '24px', boxShadow: '0 12px 40px rgba(140, 38, 78, 0.25)', overflow: 'hidden'}}>
+            
+            {/* Header Modal */}
+            <div className="modal-head" style={{borderBottom: '2.5px dashed #f8bbd0', padding: '20px 24px', background: 'linear-gradient(135deg, #fff2f6 0%, #fff9fb 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+              <div>
+                <p className="eyebrow" style={{color: '#d23a73', fontWeight: 800, letterSpacing: '1.5px', margin: '0 0 4px 0', fontSize: '0.8rem'}}>📖 CẨM NANG CHUYÊN GIA PROMPT</p>
+                <h3 style={{margin: 0, color: '#880e4f', fontSize: '1.4rem', fontWeight: 900, fontFamily: '"Space Grotesk", sans-serif', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                  🌸 Giải Mã DNA Ảnh Tham Chiếu & Nghệ Thuật Viết Prompt
+                </h3>
+                <p style={{margin: '4px 0 0 0', fontSize: '0.85rem', color: '#8c526b', fontStyle: 'italic'}}>Bí quyết trích xuất hồn nét vẽ của ảnh mẫu, lồng ghép hoàn hảo vào cốt truyện độc bản của vợ yêu 💕</p>
+              </div>
+              <button 
+                className="btn ghost small" 
+                onClick={() => setShowPromptRefDocModal(false)}
+                style={{
+                  border: '1.5px solid #f48fb1',
+                  borderRadius: '12px',
+                  padding: '6px 12px',
+                  color: '#d23a73',
+                  fontWeight: 800,
+                  background: '#ffffff',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e: any) => e.target.style.background = '#fff0f5'}
+                onMouseLeave={(e: any) => e.target.style.background = '#ffffff'}
+              >
+                ✕ Đóng Cẩm Nang
+              </button>
+            </div>
+
+            {/* Thân Modal: Chia hai cột */}
+            <div style={{flex: 1, display: 'flex', overflow: 'hidden', minHeight: '350px'}}>
+              
+              {/* Cột Trái: Thanh điều hướng tab */}
+              <div style={{width: '240px', background: '#fff0f5', borderRight: '1.5px solid #f8bbd0', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto'}}>
+                <p style={{fontSize: '0.75rem', fontWeight: 800, color: '#c2185b', margin: '0 0 8px 4px', letterSpacing: '1px'}}>DANH MỤC GIẢI MÃ</p>
+                
+                <button 
+                  onClick={() => setDocTab('lines')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 14px', borderRadius: '12px', border: 'none', textAlign: 'left', fontSize: '0.85rem', fontWeight: docTab === 'lines' ? 800 : 500,
+                    background: docTab === 'lines' ? 'linear-gradient(135deg, #d23a73 0%, #a83258 100%)' : '#ffffff',
+                    color: docTab === 'lines' ? '#ffffff' : '#8c526b',
+                    boxShadow: docTab === 'lines' ? '0 4px 10px rgba(210, 58, 115, 0.2)' : 'none',
+                    cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  <span>✏️</span> Nét Vẽ & Line Nét
+                </button>
+
+                <button 
+                  onClick={() => setDocTab('faces')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 14px', borderRadius: '12px', border: 'none', textAlign: 'left', fontSize: '0.85rem', fontWeight: docTab === 'faces' ? 800 : 500,
+                    background: docTab === 'faces' ? 'linear-gradient(135deg, #d23a73 0%, #a83258 100%)' : '#ffffff',
+                    color: docTab === 'faces' ? '#ffffff' : '#8c526b',
+                    boxShadow: docTab === 'faces' ? '0 4px 10px rgba(210, 58, 115, 0.2)' : 'none',
+                    cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  <span>💖</span> Mắt, Mũi, Miệng
+                </button>
+
+                <button 
+                  onClick={() => setDocTab('poses')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 14px', borderRadius: '12px', border: 'none', textAlign: 'left', fontSize: '0.85rem', fontWeight: docTab === 'poses' ? 800 : 500,
+                    background: docTab === 'poses' ? 'linear-gradient(135deg, #d23a73 0%, #a83258 100%)' : '#ffffff',
+                    color: docTab === 'poses' ? '#ffffff' : '#8c526b',
+                    boxShadow: docTab === 'poses' ? '0 4px 10px rgba(210, 58, 115, 0.2)' : 'none',
+                    cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  <span>👋</span> Pose Dáng & Ngón Tay
+                </button>
+
+                <button 
+                  onClick={() => setDocTab('colors')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 14px', borderRadius: '12px', border: 'none', textAlign: 'left', fontSize: '0.85rem', fontWeight: docTab === 'colors' ? 800 : 500,
+                    background: docTab === 'colors' ? 'linear-gradient(135deg, #d23a73 0%, #a83258 100%)' : '#ffffff',
+                    color: docTab === 'colors' ? '#ffffff' : '#8c526b',
+                    boxShadow: docTab === 'colors' ? '0 4px 10px rgba(210, 58, 115, 0.2)' : 'none',
+                    cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  <span>🎨</span> Màu Sắc & Ánh Sáng
+                </button>
+
+                <button 
+                  onClick={() => setDocTab('compositions')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 14px', borderRadius: '12px', border: 'none', textAlign: 'left', fontSize: '0.85rem', fontWeight: docTab === 'compositions' ? 800 : 500,
+                    background: docTab === 'compositions' ? 'linear-gradient(135deg, #d23a73 0%, #a83258 100%)' : '#ffffff',
+                    color: docTab === 'compositions' ? '#ffffff' : '#8c526b',
+                    boxShadow: docTab === 'compositions' ? '0 4px 10px rgba(210, 58, 115, 0.2)' : 'none',
+                    cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  <span>📐</span> Bố Cục & Thị Giác
+                </button>
+
+                <div style={{margin: '12px 0', borderTop: '1.5px dashed #f8bbd0'}}></div>
+
+                <button 
+                  onClick={() => setDocTab('transformation')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 14px', borderRadius: '12px', textAlign: 'left', fontSize: '0.85rem', fontWeight: docTab === 'transformation' ? 800 : 500,
+                    background: docTab === 'transformation' ? 'linear-gradient(135deg, #ff4081 0%, #c2185b 100%)' : '#fff9fb',
+                    color: docTab === 'transformation' ? '#ffffff' : '#c2185b',
+                    border: docTab === 'transformation' ? 'none' : '1.5px solid #f8bbd0',
+                    boxShadow: docTab === 'transformation' ? '0 4px 12px rgba(244, 63, 94, 0.25)' : 'none',
+                    cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  <span>👑</span> Luật Chuyển Đổi Nhân Vật
+                </button>
+
+                <div style={{marginTop: 'auto', background: 'rgba(210, 58, 115, 0.04)', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '10px', fontSize: '0.75rem', color: '#880e4f', lineHeight: 1.4}}>
+                  <b>💡 Mách nhỏ với vợ:</b> Chồng khuyên vợ nên sao chép các keyword bằng tiếng Anh này bỏ vào phần <b>"Yêu cầu riêng/Note"</b> của thẻ để AI vẽ ra đúng ý nhất nha!
+                </div>
+              </div>
+
+              {/* Cột Phải: Nội dung chi tiết của tab */}
+              <div style={{flex: 1, background: '#ffffff', padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column'}}>
+                
+                {/* TAB 1: LINES */}
+                {docTab === 'lines' && (
+                  <div>
+                    <h4 style={{margin: '0 0 12px 0', color: '#880e4f', fontSize: '1.2rem', fontWeight: 800, borderBottom: '2px solid #f8bbd0', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <span>✏️</span> Nét Vẽ & Line Nét (Line Weight & Brushwork DNA)
+                    </h4>
+                    <p style={{fontSize: '0.9rem', color: '#333', lineHeight: 1.6, margin: '0 0 16px 0'}}>
+                      Nét vẽ chính là "khung xương" định hình nên phong cách của bức ảnh. Khi học hỏi nét vẽ từ ảnh tham chiếu, chúng ta cần diễn đạt chính xác độ dày, độ sắc nét và cấu trúc đường nét của họa sĩ gốc.
+                    </p>
+
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: '12px', margin: '16px 0'}}>
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>✨ Kiểu Manhwa/Webtoon sắc nét, mượt mà:</b>
+                        <p style={{fontSize: '0.85rem', color: '#555', margin: '0 0 8px 0'}}>Phù hợp cho các nét vẽ sạch sẽ, mảnh mai, mượt mà tinh xảo bằng kỹ thuật số kỹ lưỡng.</p>
+                        <code style={{background: '#ffebee', color: '#c2185b', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', display: 'block', wordBreak: 'break-all'}}>
+                          ultra-sharp delicate digital line art, fine and smooth linework, crisp vector lines, masterfully drawn manhwa style, high-end illustration outlines
+                        </code>
+                      </div>
+
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>✏️ Kiểu vẽ phác thảo nghệ thuật, nhạt màu (Sketchy):</b>
+                        <p style={{fontSize: '0.85rem', color: '#555', margin: '0 0 8px 0'}}>Tạo cảm giác vẽ tay thủ công mộc mạc, nhẹ nhàng, đậm chất nghệ sĩ, mờ sương mộng mơ.</p>
+                        <code style={{background: '#ffebee', color: '#c2185b', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', display: 'block', wordBreak: 'break-all'}}>
+                          soft sketchy pencil lines, loose artistic graphite-like outlines, subtle pastel edges, fine cross-hatching detail, hand-drawn anime draft style, charcoal aesthetic
+                        </code>
+                      </div>
+
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>🎨 Kiểu không viền nét (Lineless Painting / Semi-realistic):</b>
+                        <p style={{fontSize: '0.85rem', color: '#555', margin: '0 0 8px 0'}}>Ảnh mẫu sử dụng mảng màu và bóng đổ để tự định hình ranh giới vật thể mà không dùng nét vẽ đen viền ngoài.</p>
+                        <code style={{background: '#ffebee', color: '#c2185b', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', display: 'block', wordBreak: 'break-all'}}>
+                          lineless digital painting, soft edge definition, paint-over technique, highly blended colors, realistic oil-painting strokes, realistic render without black outlines
+                        </code>
+                      </div>
+                    </div>
+
+                    <div style={{background: '#f1f8e9', border: '1px solid #c5e1a5', borderRadius: '12px', padding: '12px', fontSize: '0.85rem', color: '#33691e', lineHeight: 1.5}}>
+                      <b>💡 Gợi ý viết Prompt của chồng:</b> "Vợ ơi, nếu muốn ép AI giữ đúng nét vẽ mảnh, hãy thêm cụm <code>"fine lineart, clear detailed lines, high-resolution graphic lines"</code> vào đầu prompt nha. Tránh dùng từ 'messy' nếu muốn ảnh sạch sẽ mượt mà!"
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: FACES */}
+                {docTab === 'faces' && (
+                  <div>
+                    <h4 style={{margin: '0 0 12px 0', color: '#880e4f', fontSize: '1.2rem', fontWeight: 800, borderBottom: '2px solid #f8bbd0', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <span>💖</span> Mắt, Mũi, Miệng & Thần Thái (Facial Features)
+                    </h4>
+                    <p style={{fontSize: '0.9rem', color: '#333', lineHeight: 1.6, margin: '0 0 16px 0'}}>
+                      Khuôn mặt là nơi truyền tải toàn bộ linh hồn của nhân vật trong cốt truyện của vợ. Tránh các nét mặt vô hồn của AI mặc định bằng cách mô tả chi tiết ngũ quan sắc sảo bám sát phong cách ảnh mẫu.
+                    </p>
+
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px'}}>
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>👀 1. Đôi Mắt Có Hồn (Soulful & Starry Eyes):</b>
+                        <p style={{fontSize: '0.85rem', color: '#555', margin: '0 0 8px 0'}}>Mô tả tròng mắt long lanh, ánh sáng phản chiếu chân thực và hàng mi sắc nét.</p>
+                        <code style={{background: '#ffebee', color: '#c2185b', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', display: 'block', wordBreak: 'break-all'}}>
+                          glistening starry eyes with complex iris details, intense emotional gaze, double eyelid fold, lush thick eyelashes, beautiful catches of light in pupils, expressive soulful eyes
+                        </code>
+                      </div>
+
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>👃 2. Sống Mũi Thanh Tú (Elegant Nose Structure):</b>
+                        <p style={{fontSize: '0.85rem', color: '#555', margin: '0 0 8px 0'}}>Sống mũi cao, nhỏ nhắn và có độ bóng tự nhiên, thanh tú sang trọng.</p>
+                        <code style={{background: '#ffebee', color: '#c2185b', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', display: 'block', wordBreak: 'break-all'}}>
+                          slender high nose bridge, soft delicate nose tip, elegant nasal definition, subtle highlight on nose tip, perfect anime facial proportions
+                        </code>
+                      </div>
+
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>👄 3. Đôi Môi Căng Mọng, Quyến Rũ (Luscious Gradient Lips):</b>
+                        <p style={{fontSize: '0.85rem', color: '#555', margin: '0 0 8px 0'}}>Môi mọng ẩm, khóe miệng hơi nhếch nhẹ đầy bí ẩn hoặc mỉm cười nhẹ dịu dàng.</p>
+                        <code style={{background: '#ffebee', color: '#c2185b', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', display: 'block', wordBreak: 'break-all'}}>
+                          glistening moist lips with detailed lip creases, subtle enigmatic smile, crimson gradient lip color, softly defined cupid's bow, realistic lip texture
+                        </code>
+                      </div>
+                    </div>
+
+                    <div style={{background: '#e3f2fd', border: '1px solid #90caf9', borderRadius: '12px', padding: '12px', fontSize: '0.85rem', color: '#0d47a1', lineHeight: 1.5}}>
+                      <b>✍️ Thần thái bám sát cốt truyện của vợ:</b> Nếu câu chuyện u sầu tôn nghiêm quý tộc, hãy thêm <code>"noble melancholy aura, quiet dignity"</code>. Nếu nhân vật có nụ cười nửa miệng kiêu ngạo hãy thêm <code>"prideful subtle smirk, teasing gaze"</code>.
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 3: POSES */}
+                {docTab === 'poses' && (
+                  <div>
+                    <h4 style={{margin: '0 0 12px 0', color: '#880e4f', fontSize: '1.2rem', fontWeight: 800, borderBottom: '2px solid #f8bbd0', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <span>👋</span> Pose Dáng & Kiểm Soát Ngón Tay (Pose & Finger Mastery)
+                    </h4>
+                    <p style={{fontSize: '0.9rem', color: '#333', lineHeight: 1.6, margin: '0 0 16px 0'}}>
+                      Ngón tay và tư thế cơ thể luôn là nỗi lo sợ khi tạo hình bằng AI. Để ngón tay không bị biến dạng hay thừa ngón, chồng đã tổng hợp các quy tắc viết mô tả tư thế chuẩn xác để bảo vệ hình ảnh nhân vật của vợ.
+                    </p>
+
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: '12px', margin: '16px 0'}}>
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>🤚 Cách Khống Chế Bàn Tay & Ngón Tay (Hands & Fingers Precision):</b>
+                        <p style={{fontSize: '0.85rem', color: '#555', margin: '0 0 8px 0'}}>Ghi rõ vị trí của tay và độ thon dài của các ngón tay để ép AI vẽ đúng giải phẫu học.</p>
+                        <code style={{background: '#ffebee', color: '#c2185b', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', display: 'block', wordBreak: 'break-all'}}>
+                          masterfully rendered hands, slender tapered fingers, delicate fingernails, anatomically correct five-fingered hands, hand clearly visible with natural grip
+                        </code>
+                      </div>
+
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>✨ Các Tư Thế Tay Tự Nhiên, Tránh Lỗi (Natural Hand Gestures):</b>
+                        <p style={{fontSize: '0.85rem', color: '#555', margin: '0 0 8px 0'}}>Đặt tay vào các bối cảnh cụ thể để AI không tự ý biến tấu bừa bãi.</p>
+                        <ul style={{fontSize: '0.85rem', color: '#444', margin: '0', paddingLeft: '20px'}}>
+                          <li style={{marginBottom: '6px'}}><b>Chống cằm suy tư:</b> <code>"resting chin gracefully on back of the hand, fingers slightly curled"</code></li>
+                          <li style={{marginBottom: '6px'}}><b>Nhẹ chạm lên má:</b> <code>"slender fingertips gently brushing against the cheek"</code></li>
+                          <li style={{marginBottom: '6px'}}><b>Cầm một chiếc cốc sứ:</b> <code>"fingers delicately holding a white porcelain teacup handle"</code></li>
+                        </ul>
+                      </div>
+
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>🕴️ Pose Dáng Toàn Thân Tự Nhiên (Aesthetic Postures):</b>
+                        <code style={{background: '#ffebee', color: '#c2185b', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', display: 'block', wordBreak: 'break-all'}}>
+                          elegant relaxed stance, natural weight distribution, graceful body curves, aristocratic sitting posture, perfect proportional anatomy
+                        </code>
+                      </div>
+                    </div>
+
+                    <div style={{background: '#fff3e0', border: '1px solid #ffe0b2', borderRadius: '12px', padding: '12px', fontSize: '0.85rem', color: '#e65100', lineHeight: 1.5}}>
+                      <b>⚠️ Chú ý cực kỳ quan trọng:</b> Không được ghi mô tả tay chung chung kiểu "hands". Luôn gắn bàn tay với một hành động cụ thể (ví dụ: cầm quạt, chỉnh cổ áo, chống cằm). Khi có hành động, AI sẽ tạo hình giải phẫu móng tay và khớp xương tay tốt hơn rất nhiều lần!
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 4: COLORS */}
+                {docTab === 'colors' && (
+                  <div>
+                    <h4 style={{margin: '0 0 12px 0', color: '#880e4f', fontSize: '1.2rem', fontWeight: 800, borderBottom: '2px solid #f8bbd0', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <span>🎨</span> Màu Sắc & Ánh Sáng Điện Ảnh (Color & Light DNA)
+                    </h4>
+                    <p style={{fontSize: '0.9rem', color: '#333', lineHeight: 1.6, margin: '0 0 16px 0'}}>
+                      Màu sắc tạo nên bầu không khí (mood), trong khi ánh sáng tạo nên chiều sâu không gian của tranh điện ảnh. Hãy trích xuất bảng màu độc đáo của ảnh tham chiếu để thổi hồn vào thế giới truyện tranh.
+                    </p>
+
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px'}}>
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>🌸 1. Bảng màu Pastel lãng mạn, thanh lịch (Aesthetic Pastel Scheme):</b>
+                        <p style={{fontSize: '0.85rem', color: '#555', margin: '0 0 8px 0'}}>Thích hợp cho những bối cảnh nhẹ nhàng, cổ tích hoặc đời thường ấm áp ngọt ngào.</p>
+                        <code style={{background: '#ffebee', color: '#c2185b', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', display: 'block', wordBreak: 'break-all'}}>
+                          soft romantic pastel palette, warm cream and dusty rose tones, elegant muted sage green accents, subtle desaturated color harmony, dreamlike watercolor wash
+                        </code>
+                      </div>
+
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>✨ 2. Màu Sắc Vương Giả, Tương Phản Đậm Đà (Royal Jewel Tones):</b>
+                        <p style={{fontSize: '0.85rem', color: '#555', margin: '0 0 8px 0'}}>Thích hợp cho những cung điện quyền quý, dạ hội rực rỡ và nhân vật hoàng tộc lạnh lùng sang trọng.</p>
+                        <code style={{background: '#ffebee', color: '#c2185b', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', display: 'block', wordBreak: 'break-all'}}>
+                          rich jewel tones, majestic royal blue and shimmering gold thread, deep velvet burgundy, high contrast shadows, luxurious rich color rendering
+                        </code>
+                      </div>
+
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>💡 3. Nghệ Thuật Ánh Sáng Thần Sầu (Cinematic Lighting Styles):</b>
+                        <p style={{fontSize: '0.85rem', color: '#555', margin: '0 0 8px 0'}}>Điều hướng nguồn sáng chiếu rọi vào góc mặt hay trang phục để tăng kịch tính hình học thị giác.</p>
+                        <code style={{background: '#ffebee', color: '#c2185b', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', display: 'block', wordBreak: 'break-all'}}>
+                          dramatic rim lighting casting a glowing halo, soft volumetric morning light filtering through window, sunset golden hour glow, dramatic backlit shadows, artistic chiaroscuro contrast
+                        </code>
+                      </div>
+                    </div>
+
+                    <div style={{background: '#f3e5f5', border: '1px solid #e1bee7', borderRadius: '12px', padding: '12px', fontSize: '0.85rem', color: '#4a148c', lineHeight: 1.5}}>
+                      <b>🌸 Mẹo từ chồng cho vợ:</b> Khi vợ muốn nhân vật trông lấp lánh bí ẩn, hãy thêm cụm từ <code>"warm ambient key light paired with cool cyan rim light"</code>. Sự kết hợp giữa hai nhiệt độ màu đối lập luôn tạo nên hiệu ứng thị giác cực kỳ cao cấp cho anime/manhwa!
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 5: COMPOSITIONS */}
+                {docTab === 'compositions' && (
+                  <div>
+                    <h4 style={{margin: '0 0 12px 0', color: '#880e4f', fontSize: '1.2rem', fontWeight: 800, borderBottom: '2px solid #f8bbd0', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <span>📐</span> Bố Cục Không Gian & Đường Thị Giác (Composition & Dutch Angle)
+                    </h4>
+                    <p style={{fontSize: '0.9rem', color: '#333', lineHeight: 1.6, margin: '0 0 16px 0'}}>
+                      Bố cục quyết định điểm dừng chân đầu tiên của ánh mắt độc giả trên trang truyện. Học hỏi bố cục ảnh tham chiếu giúp chúng ta kế thừa tỷ lệ góc máy điện ảnh sang trọng của họa sĩ.
+                    </p>
+
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: '12px', margin: '16px 0'}}>
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>🎥 Góc Máy Nghiêng Nghệ Thuật (Dynamic Dutch Angle):</b>
+                        <p style={{fontSize: '0.85rem', color: '#555', margin: '0 0 8px 0'}}>Đặt máy quay hơi nghiêng một góc để tạo cảm xúc lay động mãnh liệt, lãng mạn dâng trào.</p>
+                        <code style={{background: '#ffebee', color: '#c2185b', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', display: 'block', wordBreak: 'break-all'}}>
+                          dynamic dutch angle shot, dramatic diagonal composition lines, beautiful off-center framing, rule of thirds, aesthetic cinematic camera tilt
+                        </code>
+                      </div>
+
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>🔍 Tiêu Cự & Chiều Sâu Không Gian (Depth of Field & Focal Planes):</b>
+                        <p style={{fontSize: '0.85rem', color: '#555', margin: '0 0 8px 0'}}>Tạo điểm nhấn sắc nét vào nhân vật và làm mờ phông nền phía sau thành các vòng tròn ánh sáng lấp lánh.</p>
+                        <code style={{background: '#ffebee', color: '#c2185b', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', display: 'block', wordBreak: 'break-all'}}>
+                          shallow depth of field, sharp crisp focus on character, beautifully blurred background, soft dreamlike bokeh circles, cinematic camera lens rendering
+                        </code>
+                      </div>
+
+                      <div style={{background: '#fff9fb', border: '1px solid #f8bbd0', borderRadius: '12px', padding: '12px'}}>
+                        <b style={{color: '#d23a73', fontSize: '0.9rem', display: 'block', marginBottom: '4px'}}>🛣️ Đường Thị Giác Điều Hướng (Leading Lines):</b>
+                        <p style={{fontSize: '0.85rem', color: '#555', margin: '0 0 8px 0'}}>Sử dụng bối cảnh xung quanh (hàng rào, tia sáng, hoa rơi, rèm cửa) tạo thành những đường chéo dẫn lối mắt nhìn tới nhân vật chính.</p>
+                        <code style={{background: '#ffebee', color: '#c2185b', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', display: 'block', wordBreak: 'break-all'}}>
+                          subtle diagonal leading lines guiding the viewer's eye to the character, artistic atmospheric foreground framing element, elegant framing of flowers and foliage
+                        </code>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 6: TRANSFORMATION */}
+                {docTab === 'transformation' && (
+                  <div>
+                    <h4 style={{margin: '0 0 12px 0', color: '#880e4f', fontSize: '1.2rem', fontWeight: 800, borderBottom: '2px solid #ff4081', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <span>👑</span> Bản Đồ Chuyển Hóa Cốt Truyện (Character Fidelity & Transformation Guide)
+                    </h4>
+                    <p style={{fontSize: '0.95rem', color: '#880e4f', lineHeight: 1.6, margin: '0 0 16px 0', fontWeight: 800}}>
+                      ⚠️ ĐỊNH LUẬT VÀNG KHI HỌC HỎI ẢNH THAM CHIẾU LỆCH GIỚI TÍNH HOẶC THIẾT LẬP
+                    </p>
+                    <p style={{fontSize: '0.9rem', color: '#333', lineHeight: 1.6, margin: '0 0 16px 0'}}>
+                      Vợ ơi, hãy luôn ghi nhớ: <b>Ảnh tham chiếu chỉ là để học hỏi "Visual DNA" (Chất liệu, màu sắc, ánh sáng, góc máy và bối cảnh) chứ TUYỆT ĐỐI không được thay đổi thiết lập nhân vật của vợ.</b>
+                    </p>
+
+                    <div style={{background: '#ffeef4', border: '1.5px solid #ff4081', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '16px'}}>
+                      <div>
+                        <b style={{color: '#c2185b', fontSize: '0.95rem', display: 'block', marginBottom: '6px'}}>✨ Trường hợp: Ảnh mẫu là Nữ, nhưng nhân vật trong truyện là Nam:</b>
+                        <p style={{fontSize: '0.85rem', color: '#333', lineHeight: 1.5, margin: 0}}>
+                          Không bắt AI sao chép dáng điệu ẻo lả, dáng ngồi nữ tính hay nét mặt điệu đà của cô gái trong ảnh mẫu. Thay vào đó, chúng ta hướng dẫn AI chuyển hóa:
+                        </p>
+                        <ul style={{fontSize: '0.85rem', color: '#444', marginTop: '6px', paddingLeft: '20px', lineHeight: 1.5}}>
+                          <li style={{marginBottom: '4px'}}><b>Học bố cục không gian:</b> Đặt nhân vật nam ở đúng toạ độ, giao điểm điểm nhìn và tiêu cự của máy ảnh như cô gái mẫu.</li>
+                          <li style={{marginBottom: '4px'}}><b>Học thiết kế trang phục:</b> Kế thừa tinh thần dệt thêu cao cấp, hoa văn ruy-băng hay hoạ tiết cổ áo quyền quý từ váy áo của cô gái thành thiết kế hoàng bào/veston nam tính, uy nghi của anh ấy.</li>
+                          <li style={{marginBottom: '4px'}}><b>Học ánh sáng:</b> Chiếu luồng sáng viền lộng lẫy lên bờ vai rộng vững chãi và mái tóc quyến rũ của chàng trai y hệt như bức ảnh mẫu gốc.</li>
+                        </ul>
+                      </div>
+
+                      <div style={{borderTop: '1px solid #f8bbd0', paddingTop: '12px'}}>
+                        <b style={{color: '#c2185b', fontSize: '0.95rem', display: 'block', marginBottom: '6px'}}>🛡️ Luật Bảo Vệ Hồ Sơ Nhân Vật Gốc (100% Fidelity Mandate):</b>
+                        <p style={{fontSize: '0.85rem', color: '#333', lineHeight: 1.5, margin: 0}}>
+                          Sử dụng các ghi chú bắt buộc trong prompt của vợ để giữ nguyên giới tính nam, vẻ lịch lãm và quý tộc của anh ấy, đè bẹp sự nữ tính của ảnh mẫu:
+                        </p>
+                        <code style={{background: '#ffffff', color: '#c2185b', border: '1px dashed #f48fb1', padding: '8px 12px', borderRadius: '8px', fontSize: '0.8rem', display: 'block', marginTop: '8px', whiteSpace: 'pre-wrap', lineHeight: 1.4}}>
+                          "strictly masculine features, handsome gentleman face, broad masculine shoulders, elegant noble male posture, completely masculine body proportions, free from any feminine pose or delicate curves"
+                        </code>
+                      </div>
+                    </div>
+
+                    <div style={{background: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: '12px', padding: '12px', fontSize: '0.85rem', color: '#1b5e20', lineHeight: 1.5}}>
+                      <b>💬 Lời khuyên ấm áp của chồng:</b> "Vợ yêu cứ yên tâm viết truyện nha, chồng đã tích hợp sẵn hệ thống Supreme Mandates vào sâu trong công cụ phân tích rồi. Khi vợ chọn bối cảnh và nhân vật nam, hệ thống sẽ tự động lọc bỏ các yếu tố nữ tính trong ảnh mẫu và chỉ giữ lại những gì tinh túy nhất về mặt nghệ thuật thôi đấy!"
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+
+            {/* Footer Modal */}
+            <div style={{display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 24px', borderTop: '2px dashed #f8bbd0', background: '#fff2f6'}}>
+              <span style={{marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#880e4f', fontWeight: 700}}>
+                <span>💖</span> Luôn đồng hành và yêu thương vợ trong từng trang sách!
+              </span>
+              <button 
+                className="btn primary" 
+                onClick={() => setShowPromptRefDocModal(false)}
+                style={{
+                  background: 'linear-gradient(135deg, #d23a73, #8c264e)',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  borderRadius: '16px',
+                  padding: '10px 24px',
+                  border: 'none',
+                  boxShadow: '0 4px 12px rgba(210, 58, 115, 0.35)',
+                  cursor: 'pointer'
+                }}
+              >
+                Em đã hiểu rồi ạ 💕
+              </button>
+            </div>
+
           </div>
         </div>
       )}

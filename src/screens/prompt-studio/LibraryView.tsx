@@ -14,10 +14,11 @@ type Props = {
   onUpdateStory: (s: Story) => void;
   onWallpaperChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOpenStudio: () => void;
+  showToast: (msg: string) => void;
 };
 
 export default function LibraryView({
-  stories, activeStory, time, battery, onSelect, onCreate, onDuplicate, onDelete, onUpdateStory, onWallpaperChange, onOpenStudio
+  stories, activeStory, time, battery, onSelect, onCreate, onDuplicate, onDelete, onUpdateStory, onWallpaperChange, onOpenStudio, showToast
 }: Props) {
   const [localStory, setLocalStory] = useState<Story>(activeStory);
 
@@ -163,26 +164,53 @@ export default function LibraryView({
   };
 
   const readFile = async (f: File): Promise<string> => {
-    return await compressImageFile(f, 1024, 1024, 0.82);
+    try {
+      // Thử nén ảnh để tiết kiệm dung lượng lưu trữ
+      return await compressImageFile(f, 800, 800, 0.75);
+    } catch (err) {
+      console.warn("Nén ảnh thất bại, thử fallback trực tiếp thành Base64 thô...", err);
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (e) => reject(e);
+        reader.readAsDataURL(f);
+      });
+    }
   };
 
   const handleImageChange = async (field: "cover" | "background" | "avatar", e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    const b64 = await readFile(f);
-    const nextStory = { ...localStory, [field]: b64 };
-    setLocalStory(nextStory);
-    onUpdateStory(nextStory);
+    try {
+      const b64 = await readFile(f);
+      const nextStory = { ...localStory, [field]: b64 };
+      setLocalStory(nextStory);
+      await onUpdateStory(nextStory);
+      showToast("Đã tải lên và cập nhật hình ảnh thành công!");
+    } catch (err) {
+      console.error(err);
+      showToast("❌ Lỗi khi chọn ảnh. Vui lòng thử lại với ảnh nhỏ hơn hoặc định dạng khác nha.");
+    } finally {
+      e.target.value = "";
+    }
   };
 
   const handleCharAvatarChange = async (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    const b64 = await readFile(f);
-    const nextChars = (localStory.characters || []).map(c => c.id === id ? { ...c, avatar: b64 } : c);
-    const nextStory = { ...localStory, characters: nextChars };
-    setLocalStory(nextStory);
-    onUpdateStory(nextStory);
+    try {
+      const b64 = await readFile(f);
+      const nextChars = (localStory.characters || []).map(c => c.id === id ? { ...c, avatar: b64 } : c);
+      const nextStory = { ...localStory, characters: nextChars };
+      setLocalStory(nextStory);
+      await onUpdateStory(nextStory);
+      showToast("Đã cập nhật avatar của nhân vật thành công!");
+    } catch (err) {
+      console.error(err);
+      showToast("❌ Lỗi khi tải ảnh đại diện nhân vật. Vợ thử lại với ảnh khác giúp chồng nhen.");
+    } finally {
+      e.target.value = "";
+    }
   };
 
   return (

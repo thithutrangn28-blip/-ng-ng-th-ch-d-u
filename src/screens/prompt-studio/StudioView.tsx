@@ -33,6 +33,7 @@ type Props = {
   onOutputModeChange?: (mode: "final" | "audit" | "debug") => void;
   promptLanguage?: "vi" | "en" | "zh";
   onPromptLanguageChange?: (lang: "vi" | "en" | "zh") => void;
+  showToast: (msg: string) => void;
 };
 
 export default function StudioView({
@@ -40,7 +41,7 @@ export default function StudioView({
   onCheckApi, onTestApi, onBack, onOpenRoom, onUpdateStory, onMerge, onCallAll,
   onFiles, onClearFiles, onCreateBlankRun, onClearRuns, timeLabel,
   contextMode, onContextModeChange, outputMode = "final", onOutputModeChange,
-  promptLanguage = "vi", onPromptLanguageChange
+  promptLanguage = "vi", onPromptLanguageChange, showToast
 }: Props) {
   const [localStoryText, setLocalStoryText] = useState(story.context.story || "");
   const [modalTitle, setModalTitle] = useState<string | null>(null);
@@ -101,7 +102,7 @@ export default function StudioView({
         await readDir(dirHandle, dirHandle.name);
         onFiles(files as any);
       } else {
-        alert("Trình duyệt không hỗ trợ showDirectoryPicker, vui lòng dùng nút 'Chọn thư mục trong máy' bên dưới.");
+        showToast("⚠️ Trình duyệt không hỗ trợ chọn thư mục, vui lòng dùng nút 'Chọn file từ máy' hoặc kéo thả nha.");
       }
     } catch (e) {
       console.log("User cancelled directory picker or error:", e);
@@ -113,7 +114,7 @@ export default function StudioView({
     const f = story.context.files[idx];
     const text = f.parsedText || f.content;
     if (!text || !text.trim()) {
-      alert("File này mới được chọn nhưng chưa được parse nội dung.");
+      showToast("📝 File này mới được chọn nhưng chưa được parse nội dung.");
       return;
     }
     setModalTitle(`📖 Nội dung đã đọc: ${f.fileName || f.name}`);
@@ -125,7 +126,7 @@ export default function StudioView({
     const f = story.context.files[idx];
     const summary = f.extractedSummary || f.summary;
     if (!summary || !summary.trim()) {
-      alert("File này chưa có bản tóm tắt nội dung.");
+      showToast("📝 File này chưa có bản tóm tắt nội dung.");
       return;
     }
     setModalTitle(`📑 Tóm tắt file: ${f.fileName || f.name}`);
@@ -144,7 +145,7 @@ export default function StudioView({
       ...story,
       context: { ...story.context, files: updatedFiles }
     });
-    alert("Đã đọc lại và phân tích dữ kiện cho file.");
+    showToast("🌸 Đã đọc lại và phân tích dữ kiện cho file!");
   };
 
   const handleExtractFacts = (idx: number) => {
@@ -183,7 +184,7 @@ export default function StudioView({
     const text = f.parsedText || f.content || "";
     const summary = f.extractedSummary || f.summary || "";
     if (!text.trim() && !summary.trim()) {
-      alert("File này mới được chọn nhưng chưa được parse nội dung.");
+      showToast("📝 File này mới được chọn nhưng chưa được parse nội dung.");
       return;
     }
     const appendText = `\n\n--- [NẠP TỪ FILE: ${f.fileName || f.name}] ---\n${text || summary}\n`;
@@ -193,7 +194,7 @@ export default function StudioView({
       ...story,
       context: { ...story.context, story: newStoryText }
     });
-    alert("Đã đưa nội dung file vào Story Workspace chính!");
+    showToast("🌸 Đã đưa nội dung file vào Story Workspace chính!");
   };
 
   const handleRemoveLocalFile = (idx: number) => {
@@ -256,7 +257,7 @@ export default function StudioView({
               <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#333' }}>🎛️ Chế độ Context Mode:</span>
               <button className={`btn ${contextMode === 'full' ? 'pink' : 'soft'}`} style={{ fontSize: '11.5px', padding: '4px 10px', background: contextMode === 'full' ? '#EFA9C2' : '#fff', color: contextMode === 'full' ? '#fff' : '#333' }} onClick={() => onContextModeChange('full')} title="Gửi toàn bộ chi tiết 100 tác vụ trong 1 lần gọi duy nhất">1. Full Room Mode (1 Lần Duy Nhất)</button>
               <button className={`btn ${contextMode === 'compress' ? 'pink' : 'soft'}`} style={{ fontSize: '11.5px', padding: '4px 10px', background: contextMode === 'compress' ? '#EFA9C2' : '#fff', color: contextMode === 'compress' ? '#fff' : '#333' }} onClick={() => onContextModeChange('compress')} title="Nén phần lặp, giữ nguyên quy chuẩn và boundary">2. Smart Compress Mode</button>
-              <button className={`btn ${contextMode === 'queue' ? 'pink' : 'soft'}`} style={{ fontSize: '11.5px', padding: '4px 10px', background: contextMode === 'queue' ? '#EFA9C2' : '#fff', color: contextMode === 'queue' ? '#fff' : '#333' }} onClick={() => onContextModeChange('queue')} title="Gọi nối tiếp tuần tự 12 phòng để đảm bảo độ sâu tối đa">3. Queue All Rooms Mode</button>
+              <button className={`btn ${contextMode === 'queue' ? 'pink' : 'soft'}`} style={{ fontSize: '11.5px', padding: '4px 10px', background: contextMode === 'queue' ? '#EFA9C2' : '#fff', color: contextMode === 'queue' ? '#fff' : '#333' }} onClick={() => onContextModeChange('queue')} title="Gọi nối tiếp tuần tự tất cả các phòng để đảm bảo độ sâu tối đa">3. Queue All Rooms Mode</button>
               <button className={`btn ${contextMode === 'preview' ? 'pink' : 'soft'}`} style={{ fontSize: '11.5px', padding: '4px 10px', background: contextMode === 'preview' ? '#EFA9C2' : '#fff', color: contextMode === 'preview' ? '#fff' : '#333' }} onClick={() => onContextModeChange('preview')} title="Xem trước cấu trúc Prompt Markdown không tốn API">4. Debug Context Preview</button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
