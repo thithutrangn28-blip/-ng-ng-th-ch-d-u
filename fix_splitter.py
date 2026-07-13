@@ -1,4 +1,7 @@
-import React, { useState, useMemo } from "react";
+import os
+file_path = "src/screens/prompt-studio/Prompt10CardSplitter.tsx"
+
+content = """import React, { useState, useMemo } from "react";
 import { copyToClipboardSafe } from "../../lib/clipboard";
 
 type Props = {
@@ -27,11 +30,11 @@ export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast, me
     
     // Tách theo độ dài văn bản thành 4 đoạn
     const totalLen = cleanText.length;
-    const targetLen = Math.ceil(totalLen / 10);
+    const targetLen = Math.ceil(totalLen / 4);
     const result: string[] = [];
     let currentIdx = 0;
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 4; i++) {
       if (currentIdx >= totalLen) {
         result.push("(Đoạn kết thúc - Không còn nội dung)");
         continue;
@@ -45,7 +48,7 @@ export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast, me
         const searchWindow = Math.min(300, totalLen - currentIdx);
         // Tìm dấu chấm, chấm hỏi, chấm than, hoặc xuống dòng
         for (let j = endIdx; j > Math.max(currentIdx, endIdx - searchWindow); j--) {
-          if (["\n", ".", "?", "!"].includes(cleanText[j])) {
+          if (["\\n", ".", "?", "!"].includes(cleanText[j])) {
             bestBreak = j + 1;
             break;
           }
@@ -73,7 +76,7 @@ export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast, me
     copyToClipboardSafe(content);
     setCopiedIndex(idx);
     if (onToast) {
-      onToast(`💖 Đã sao chép Thẻ ${idx + 1} / 10 cho Vợ yêu!`);
+      onToast(`💖 Đã sao chép Thẻ ${idx + 1} / 4 cho Vợ yêu!`);
     }
     setTimeout(() => {
       setCopiedIndex(prev => (prev === idx ? null : prev));
@@ -81,14 +84,14 @@ export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast, me
   };
 
   const handleSmartGlobalCopy = () => {
-    const cycleIndex = globalCopyCycle % 10;
+    const cycleIndex = globalCopyCycle % 4;
     const contentToCopy = chunks[cycleIndex];
     copyToClipboardSafe(contentToCopy);
     
     setGlobalCopyCycle(prev => prev + 1);
     
     if (onToast) {
-      onToast(`✅ Đã sao chép tổng thể: Phần ${cycleIndex + 1}/10 (10% nội dung) cho Vợ yêu!`);
+      onToast(`✅ Đã sao chép tổng thể: Phần ${cycleIndex + 1}/4 (25% nội dung) cho Vợ yêu!`);
     }
   };
 
@@ -139,7 +142,7 @@ export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast, me
               style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 'bold', background: '#D81B60', color: '#fff', border: '1px solid #AD1457', boxShadow: '0 2px 8px rgba(216, 27, 96, 0.3)' }}
               onClick={handleSmartGlobalCopy}
             >
-              📋 Sao Chép Tổng Thể (Phần {(globalCopyCycle % 10) + 1}/10)
+              📋 Sao Chép Tổng Thể (Phần {(globalCopyCycle % 4) + 1}/4)
             </button>
             <button
               className="btn soft"
@@ -151,11 +154,11 @@ export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast, me
           </div>
         </div>
         <div style={{ fontSize: '13px', color: '#880E4F', fontStyle: 'italic', fontWeight: 500 }}>
-          💡 Mẹo: Bấm nút "Sao Chép Tổng Thể" để tự động trích 10% nội dung mỗi lần (chu kỳ 10 lần). Vợ cũng có thể copy từng thẻ bên dưới nhen!
+          💡 Mẹo: Bấm nút "Sao Chép Tổng Thể" để tự động trích 25% nội dung mỗi lần (chu kỳ 4 lần). Vợ cũng có thể copy từng thẻ bên dưới nhen!
         </div>
       </div>
 
-      {/* Lưới 10 Thẻ Phân Đoạn */}
+      {/* Lưới 4 Thẻ Phân Đoạn */}
       {isExpanded && (
         <div style={{
           display: 'grid',
@@ -189,7 +192,7 @@ export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast, me
                   background: 'rgba(255, 255, 255, 0.2)'
                 }}>
                   <b style={{ color: isCopied ? '#1B5E20' : '#880E4F', fontSize: '15px', textShadow: '0 1px 1px rgba(255,255,255,0.5)' }}>
-                    Thẻ {idx + 1}: Phần {idx * 10}% - {(idx + 1) * 10}% Nội Dung
+                    Thẻ {idx + 1}: Phần {idx * 25}% - {(idx + 1) * 25}% Nội Dung
                   </b>
                   <button
                     disabled={isBlank}
@@ -241,3 +244,9 @@ export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast, me
     </div>
   );
 }
+"""
+
+with open(file_path, "w") as f:
+    f.write(content)
+
+print("Updated Prompt10CardSplitter.tsx")

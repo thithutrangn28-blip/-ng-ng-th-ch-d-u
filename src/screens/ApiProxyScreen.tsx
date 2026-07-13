@@ -27,7 +27,6 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
   const [testOutput, setTestOutput] = useState("");
   const [isError, setIsError] = useState(false);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
-  const [useLocalProxy, setUseLocalProxyState] = useState(true);
 
   const [isWorking, setIsWorking] = useState(false);
   const [workStage, setWorkStage] = useState("");
@@ -86,19 +85,12 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
     const all = await dbGetAll();
     all.sort((a, b) => (b.primary ? 1 : 0) - (a.primary ? 1 : 0) || b.updatedAt - a.updatedAt);
     setProfiles(all);
-    setUseLocalProxyState(getApiProxySettings().useLocalProxy);
     if (autoFill && all.length > 0) {
       const primaryOrFirst = all.find(p => p.primary) || all[0];
       fillForm(primaryOrFirst);
     } else if (autoFill && all.length === 0) {
       fillForm();
     }
-  };
-
-  const handleToggleLocalProxy = (val: boolean) => {
-    setUseLocalProxyState(val);
-    setApiProxySettings({ useLocalProxy: val });
-    showMsg(`Đã chuyển chế độ: ${val ? "Bật Local Proxy (Chuyển tiếp qua server giúp tránh lỗi CORS & keep-alive)" : "Tắt Local Proxy (Trình duyệt gọi trực tiếp đến API Proxy của bạn)"}`);
   };
 
   useEffect(() => {
@@ -375,42 +367,6 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
             </button>
           </div>
         )}
-
-        <section className="api-card" style={{ marginBottom: 16, padding: '16px 20px', background: 'rgba(255, 243, 248, 0.95)', border: '1.5px solid #ffb6c1' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '15px', color: '#880e4f', display: 'flex', alignItems: 'center', gap: 6 }}>
-                🛡️ Chế độ chuyển tiếp kết nối (Local Proxy Engine)
-              </h3>
-              <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#555' }}>
-                <b>Bật (Khuyên dùng):</b> Gửi request qua server trung chuyển, giúp tránh lỗi CORS, giữ kết nối keep-alive tới 900s và không bị timeout. <br/>
-                <b>Tắt:</b> Trình duyệt sẽ gọi trực tiếp đến địa chỉ API Proxy bên thứ ba hoặc API chính thức mà bạn thiết lập.
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: 8, background: '#fff', padding: 4, borderRadius: 999, border: '1px solid #ffcdd2' }}>
-              <button 
-                onClick={() => handleToggleLocalProxy(true)}
-                style={{
-                  padding: '6px 14px', borderRadius: 999, border: 'none', fontSize: 13, fontWeight: 'bold', cursor: 'pointer',
-                  background: useLocalProxy ? '#e91e63' : 'transparent', color: useLocalProxy ? '#fff' : '#666',
-                  transition: 'all 0.2s'
-                }}
-              >
-                ✓ Bật Local Proxy
-              </button>
-              <button 
-                onClick={() => handleToggleLocalProxy(false)}
-                style={{
-                  padding: '6px 14px', borderRadius: 999, border: 'none', fontSize: 13, fontWeight: 'bold', cursor: 'pointer',
-                  background: !useLocalProxy ? '#37474f' : 'transparent', color: !useLocalProxy ? '#fff' : '#666',
-                  transition: 'all 0.2s'
-                }}
-              >
-                ✕ Tắt (Trực tiếp)
-              </button>
-            </div>
-          </div>
-        </section>
 
         <section className="api-card">
           <div className="segmented">

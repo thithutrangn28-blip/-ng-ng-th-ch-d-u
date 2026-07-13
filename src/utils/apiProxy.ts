@@ -57,83 +57,26 @@ function normalizeVisionMessages(msgs: any[]): any[] {
   });
 }
 
-export type ApiProxySettings = {
-  useLocalProxy: boolean;
-};
+export type ApiProxySettings = {};
 
 const SETTINGS_KEY = "minmin_api_proxy_settings_v1";
 
 export function getApiProxySettings(): ApiProxySettings {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return {
-        useLocalProxy: parsed.useLocalProxy !== undefined ? Boolean(parsed.useLocalProxy) : true
-      };
-    }
-  } catch (e) {
-    console.warn("Lỗi khi đọc cài đặt API Proxy từ localStorage:", e);
-  }
-  // Mặc định bật Local Proxy (true) để an toàn qua server, nhưng tôn trọng tuyệt đối nếu người dùng tắt
-  return { useLocalProxy: true };
+  return {};
 }
 
 export function setApiProxySettings(settings: ApiProxySettings): void {
-  try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    console.log("[API Proxy] Đã cập nhật cấu hình useLocalProxy =", settings.useLocalProxy);
-  } catch (e) {
-    console.error("Lỗi khi lưu cài đặt API Proxy vào localStorage:", e);
-  }
+  // Disabled: Proxy is now mandatory
 }
 
 /**
- * Hàm phân giải endpoint cuối cùng theo cài đặt người dùng:
- * Nếu settings.useLocalProxy === true -> Dùng Local Proxy server (/api/ai-stream, /api/test-proxy)
- * Nếu settings.useLocalProxy === false -> Dùng trực tiếp địa chỉ API Proxy bên thứ 3 của người dùng
+ * Hàm phân giải endpoint cuối cùng: Luôn đi qua Local Proxy server của app.
  */
 export function resolveEndpointUrl(profile: ApiProfile, type: "chat" | "models" | "test" | "text"): string {
-  const settings = getApiProxySettings();
-  
-  if (settings.useLocalProxy === true) {
-    if (type === "chat") return "/api/ai-stream";
-    if (type === "models") return "/api/models";
-    if (type === "text") return "/api/ai-text";
-    return "/api/test-proxy";
-  }
-
-  // Khi settings.useLocalProxy === false -> Gọi trực tiếp API Proxy bên thứ ba hoặc API chính thức
-  let url = (profile.endpoint || "").trim();
-  if (!url) {
-    throw new Error("Địa chỉ endpoint không được để trống trong cấu hình API Profile.");
-  }
-  
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    url = "https://" + url;
-  }
-  
-  // Remove trailing slash
-  url = url.replace(/\/$/, "");
-  
-  // Tự động bổ sung /v1 nếu format là openai và chưa có /v1, tuyệt đối không tạo lỗi /v1/v1
-  if (profile.format === "openai" && (profile.pathMode === "v1" || profile.pathMode === "auto")) {
-    if (!url.endsWith("/v1") && !url.includes("/v1/")) {
-      url = url + "/v1";
-    }
-  }
-  
-  if (type === "chat" || type === "test" || type === "text") {
-    if (!url.endsWith("/chat/completions")) {
-      url = url + "/chat/completions";
-    }
-  } else if (type === "models") {
-    if (!url.endsWith("/models")) {
-      url = url + "/models";
-    }
-  }
-  
-  return url;
+  if (type === "chat") return "/api/ai-stream";
+  if (type === "models") return "/api/models";
+  if (type === "text") return "/api/ai-text";
+  return "/api/test-proxy";
 }
 
 export type ProxyStreamOptions = {
@@ -260,59 +203,31 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
   let fullContent = "";
 
   const targetUrl = resolveEndpointUrl(profile, "chat");
-  console.log(`[API Proxy Lifecycle] Giai đoạn 1 & 2: Bắt đầu request 1 lần duy nhất bám trụ bất tận. useLocalProxy=${settings.useLocalProxy}, Endpoint=${targetUrl}, Model=${profile.model}`);
+  console.log(`[API Proxy Lifecycle] Giai đoạn 1 & 2: Bắt đầu request qua Proxy bắt buộc. Endpoint=${targetUrl}, Model=${profile.model}`);
 
   try {
     let res: Response;
 
-    if (settings.useLocalProxy === true) {
-      // Gọi qua Local Proxy trung chuyển (Backend Express Server)
-      const payload: any = {
-        profile,
-        messages: finalMessages,
-      };
-      if (maxTokens) {
-        payload.maxTokensOverride = maxTokens;
-      }
-
-      console.log(`[API Proxy Lifecycle] Giai đoạn 3: Gửi request đến Local Proxy -> Upstream.`);
-      res = await fetch(targetUrl, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Accept": "text/event-stream"
-        },
-        body: JSON.stringify(payload),
-        signal: signal, // Dùng signal từ UI để vợ có thể chủ động hủy nếu muốn nhen
-      });
-      console.log(`[API Proxy Lifecycle] Local Proxy response status: ${res.status} ${res.statusText}`);
-    } else {
-      // Gọi trực tiếp đến API Proxy bên thứ ba hoặc API chính thức của người dùng
-      const headers: Record<string, string> = {
-        "Authorization": `Bearer ${profile.key}`,
-        "Content-Type": "application/json",
-        "Accept": "text/event-stream",
-        ...profile.extraHeaders,
-      };
-
-      const payload: any = {
-        model: profile.model || "gpt-3.5-turbo",
-        messages: finalMessages,
-        stream: true,
-      };
-      if (maxTokens) {
-        payload.max_tokens = maxTokens;
-      }
-
-      console.log(`[API Proxy Lifecycle] Giai đoạn 3: Gửi request TRỰC TIẾP tới API bên ngoài: ${targetUrl}`);
-      res = await fetch(targetUrl, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-        signal: signal,
-      });
-      console.log(`[API Proxy Lifecycle] Direct Proxy response status: ${res.status} ${res.statusText}`);
+    // Luôn gọi qua Local Proxy trung chuyển (Backend Express Server)
+    const payload: any = {
+      profile,
+      messages: finalMessages,
+    };
+    if (maxTokens) {
+      payload.maxTokensOverride = maxTokens;
     }
+
+    console.log(`[API Proxy Lifecycle] Giai đoạn 3: Gửi request đến Local Proxy -> Upstream.`);
+    res = await fetch(targetUrl, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream"
+      },
+      body: JSON.stringify(payload),
+      signal: signal, // Dùng signal từ UI để vợ có thể chủ động hủy nếu muốn nhen
+    });
+    console.log(`[API Proxy Lifecycle] Local Proxy response status: ${res.status} ${res.statusText}`);
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
@@ -473,107 +388,49 @@ export async function executeApiProxyText(
   const timeoutMs = Math.max((profile.timeoutSeconds || 900) * 1000, 900000);
   await new Promise(resolve => setTimeout(resolve, 15));
 
-  if (settings.useLocalProxy === true) {
-    const payload = {
-      profile,
-      messages: finalMessages,
-      maxTokensOverride: maxTokens,
-    };
+  const payload = {
+    profile,
+    messages: finalMessages,
+    maxTokensOverride: maxTokens,
+  };
 
-    const res = await fetch(targetUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
+  const res = await fetch(targetUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
 
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      throw new Error("Server Proxy không trả về JSON hợp lệ:\n" + text.slice(0, 120));
-    }
-
-    if (!res.ok || data.ok === false) {
-      throw new Error(data.error || "Lỗi không xác định từ Server Proxy");
-    }
-
-    let sampleText = "";
-    if (data.data) {
-      if (typeof data.data === "string") {
-        sampleText = data.data;
-      } else {
-        const c = data.data.choices?.[0];
-        const cand = data.data.candidates?.[0];
-        if (c?.message?.content) sampleText = c.message.content;
-        else if (c?.text) sampleText = c.text;
-        else if (cand?.content?.parts?.[0]?.text) sampleText = cand.content.parts[0].text;
-        else if (data.data.response) sampleText = data.data.response;
-        else if (data.data.content) sampleText = typeof data.data.content === 'string' ? data.data.content : JSON.stringify(data.data.content);
-      }
-    }
-    if (!sampleText) sampleText = data.rawText || "";
-
-    if (!sampleText) {
-      throw new Error("API Proxy đã gọi thành công nhưng không nhận được nội dung văn bản (empty text).");
-    }
-    return sampleText;
-  } else {
-    // Gọi trực tiếp đến bên thứ ba
-    const headers: Record<string, string> = {
-      "Authorization": `Bearer ${profile.key}`,
-      "Content-Type": "application/json",
-      ...profile.extraHeaders,
-    };
-
-    const payload = {
-      model: profile.model || "gpt-3.5-turbo",
-      messages: finalMessages,
-      stream: false,
-      max_tokens: maxTokens,
-    };
-
-    const res = await fetch(targetUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      console.error(`[API Proxy Debug Text] ❌ Lỗi HTTP ${res.status} từ Upstream API!`);
-      console.error(`[API Proxy Debug Text] 📄 Response Body chính xác từ máy chủ:\n${errText}`);
-
-      let exactServerErr = errText;
-      try {
-        const parsed = JSON.parse(errText);
-        if (parsed.error) {
-          exactServerErr = typeof parsed.error === "string" ? parsed.error : (parsed.error.message || JSON.stringify(parsed.error, null, 2));
-        }
-      } catch (e) {}
-
-      let errMsg = `HTTP ${res.status}: ${exactServerErr}`;
-      const hasImages = finalMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'image_url'));
-      if ((res.status === 400 || res.status === 413 || res.status === 422) && hasImages) {
-        errMsg = `⚠️ Lỗi ${res.status} (Bad Request) từ máy chủ API khi gửi kèm ảnh tham chiếu!\n\n📋 CHI TIẾT LỖI CHÍNH XÁC TỪ MÁY CHỦ API (Response Body):\n"${exactServerErr}"\n\n💡 PHÂN TÍCH & HƯỚNG XỬ LÝ:\n1. Khả năng hỗ trợ Vision của Model: Nếu vợ chọn model text thuần (không hỗ trợ Multi-modal/Vision), API Gateway sẽ từ chối ngay lập tức trong 0.5s. Vợ hãy đổi sang model có Vision (như gpt-4o, gemini-1.5-pro, claude-3-5-sonnet).\n2. Định dạng & cấu trúc Payload: App đã tự động chuẩn hóa cấu trúc JSON theo tài liệu mới nhất ({ type: "image_url", image_url: { url, detail: "auto" } } và bổ sung data URI scheme nếu thiếu).\n3. Bộ lọc an toàn (Safety Settings): Một số proxy hoặc model tự động từ chối ảnh nếu nghi ngờ bản quyền hoặc nội dung nhạy cảm.\n👉 Vợ có thể mở F12 / Console để xem cấu trúc Payload và Response chi tiết nhé!`;
-      }
-      throw new Error(errMsg);
-    }
-
-    const data = await res.json();
-    let content = "";
-    if (data.choices?.[0]?.message?.content) content = data.choices[0].message.content;
-    else if (data.choices?.[0]?.text) content = data.choices[0].text;
-    else if (data.candidates?.[0]?.content?.parts?.[0]?.text) content = data.candidates[0].content.parts[0].text;
-    else if (data.response) content = data.response;
-    else if (data.content) content = typeof data.content === 'string' ? data.content : JSON.stringify(data.content);
-    else if (typeof data === "string") content = data;
-    
-    if (!content) {
-      throw new Error("API Proxy trả về thành công nhưng nội dung rỗng.");
-    }
-    return content;
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    throw new Error("Server Proxy không trả về JSON hợp lệ:\n" + text.slice(0, 120));
   }
+
+  if (!res.ok || data.ok === false) {
+    throw new Error(data.error || "Lỗi không xác định từ Server Proxy");
+  }
+
+  let sampleText = "";
+  if (data.data) {
+    if (typeof data.data === "string") {
+      sampleText = data.data;
+    } else {
+      const c = data.data.choices?.[0];
+      const cand = data.data.candidates?.[0];
+      if (c?.message?.content) sampleText = c.message.content;
+      else if (c?.text) sampleText = c.text;
+      else if (cand?.content?.parts?.[0]?.text) sampleText = cand.content.parts[0].text;
+      else if (data.data.response) sampleText = data.data.response;
+      else if (data.data.content) sampleText = typeof data.data.content === 'string' ? data.data.content : JSON.stringify(data.data.content);
+    }
+  }
+  if (!sampleText) sampleText = data.rawText || "";
+
+  if (!sampleText) {
+    throw new Error("API Proxy đã gọi thành công nhưng không nhận được nội dung văn bản (empty text).");
+  }
+  return sampleText;
 }

@@ -64,7 +64,7 @@ export default function StyleAnalyzer({ roomState, currentStory, roomDef, state,
     for (let i = 0; i < sa.refs.length; i++) {
       if (sa.refs[i].analysisStatus !== 'analyzed') {
         sa.refs[i].analysisStatus = 'analyzing';
-        save(state);
+        // Removed save(state) from loop to avoid multiple expensive re-renders
         try {
           const sysPrompt = `You are the professional vision analysis module inside Lipstick Prompt Rooms.
 You MUST analyze and extract the visual traits from this reference image to support downstream AI image generation under the core rule: "SUPREME MANDATE: Story Fidelity & Character Soul (Cốt truyện và Nhân vật là linh hồn - Ảnh tham chiếu là tư liệu)":

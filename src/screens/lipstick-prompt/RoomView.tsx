@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { LipstickState, LipstickStory, LipstickRoomState, LipstickImageRef } from "../../lib/lipstick-types";
 import { PRESET_BACKGROUNDS, rooms as ROOMS_DATA } from "../../lib/lipstick-rooms-data";
 import { callAIText, callAIStream } from "../../lib/api-client";
@@ -9,6 +9,24 @@ import { SafeImg } from "../../components/SafeImg";
 import { compressImageFile } from "../../utils/imageCompressor";
 import { getPrimaryApiProfile } from "../../lib/api-db";
 import { getApiProxySettings } from "../../utils/apiProxy";
+
+// Regex helper to strip out list numbers/ordinals cleanly while keeping tags like "1girl" or "20 years old" intact
+const cleanPromptText = (text: string) => {
+  if (!text) return "";
+  let val = text;
+  // 1. Remove numbering patterns at start of string or after newline (e.g. "1. ", "Part 1:", "Phần 1:")
+  val = val.replace(/(?:^|\n)\s*[-*•(]?\s*(?:(?:Phần|Phân đoạn|Khung|Khung ảnh|Panel|Part|Section|Mẫu|Mẫu ảnh|Mẫu thiết kế|Mẫu trang phục|Mẫu số|Mẫu trang phục số)\s*\d+[\s\-\:\.\/\)]*|\d+[\.\:\/\-\)]+)\s*/gi, (match) => match.startsWith('\n') ? '\n' : '');
+  
+  // 2. Remove numbering patterns mixed inside lines (e.g. after commas: ", 1. ", ", 2. ")
+  // This avoids stripping "1girl" or "4k" by requiring a space AFTER the number+separator
+  val = val.replace(/(?:^|[\,\;\.\n\s])\s*(?:\d+[\.\:\)\/]\s+)/g, (match) => {
+      const firstChar = match[0];
+      if (/[\,\;\.\n\s]/.test(firstChar)) return firstChar;
+      return '';
+  });
+  
+  return val.trim();
+};
 
 function PromptFivePartsViewer({ 
   output, 
@@ -26,6 +44,8 @@ function PromptFivePartsViewer({
   const [showRaw, setShowRaw] = useState(false);
   const [activeProfile, setActiveProfile] = useState<any>(null);
   const [copiedParts, setCopiedParts] = useState<Record<string, boolean>>({});
+  const [copyClicks, setCopyClicks] = useState<Record<string, number>>({});
+  const [rabbitIndex, setRabbitIndex] = useState<number>(0);
   const rawText = (output || "").trim();
 
   // Load API Profile & settings
@@ -160,16 +180,16 @@ function PromptFivePartsViewer({
     return parsed;
   };
 
-  const allParts = getParsedParts();
-  const parts = allParts.filter(p => 
+  const allParts = React.useMemo(() => getParsedParts(), [rawText]);
+  const parts = React.useMemo(() => allParts.filter(p => 
     p.id !== 'aesthetic_dna' && 
     p.id !== 'comic_overview' &&
     !p.title.toLowerCase().includes('tư liệu') &&
     !p.title.toLowerCase().includes('tổng quan')
-  );
+  ), [allParts]);
 
   // Compute the clean image prompt, completely ignoring any Vietnamese analysis/aesthetic DNA
-  const getCleanPromptToCopy = () => {
+  const getCleanPromptToCopy = useCallback(() => {
     // 1. Try to find the master prompt first (master_prompt or comic_master_prompt)
     const masterPart = allParts.find(p => p.id === 'master_prompt' || p.id === 'comic_master_prompt');
     if (masterPart && masterPart.content) {
@@ -179,7 +199,7 @@ function PromptFivePartsViewer({
         .replace(/```$/, "")
         .trim();
       if (cleanText && !cleanText.includes("AI đang viết tiếp")) {
-        return cleanText;
+        return cleanPromptText(cleanText);
       }
     }
 
@@ -199,7 +219,7 @@ function PromptFivePartsViewer({
             .replace(/^```[a-z]*\n/i, "")
             .replace(/```$/, "")
             .trim();
-          return text;
+          return cleanPromptText(text);
         })
         .filter(t => t && !t.includes("AI đang viết tiếp"))
         .join("\n\n")
@@ -209,26 +229,43 @@ function PromptFivePartsViewer({
     }
 
     // Fallback to raw text with regex
-    return rawText
-      .replace(/(?:^|\n)###\s*[^\n]*/g, " ")
-      .replace(/(?:^|\n)\*\*\s*(?:PART|PHẦN)\s*\d+[^\n]*/gi, " ")
-      .replace(/(?:^|\n)(?:PART|PHẦN)\s*\d+:[^\n]*/gi, " ")
-      .replace(/\n+/g, " ")
-      .replace(/\s{2,}/g, " ")
-      .trim();
-  };
+    return cleanPromptText(
+      rawText
+        .replace(/(?:^|\n)###\s*[^\n]*/g, " ")
+        .replace(/(?:^|\n)\*\*\s*(?:PART|PHẦN)\s*\d+[^\n]*/gi, " ")
+        .replace(/(?:^|\n)(?:PART|PHẦN)\s*\d+:[^\n]*/gi, " ")
+        .replace(/\n+/g, " ")
+        .replace(/\s{2,}/g, " ")
+        .trim()
+    );
+  }, [allParts, parts, rawText]);
 
-  const cleanOneLinePrompt = getCleanPromptToCopy();
+  const cleanOneLinePrompt = React.useMemo(() => getCleanPromptToCopy(), [getCleanPromptToCopy]);
 
   const handleCopyPart = (id: string, contentToCopy: string, label: string) => {
-    const text = contentToCopy.trim();
+    const text = cleanPromptText(contentToCopy);
     if (!text) {
       toast?.("Phần này chưa có nội dung!", "error");
       return;
     }
-    copyToClipboardSafe(text);
+    const currentCount = copyClicks[id] || 0;
+    const nextCount = (currentCount >= 4) ? 1 : currentCount + 1;
+    const fraction = 0.25 * nextCount;
+    const targetLength = Math.max(1, Math.floor(text.length * fraction));
+    const partialText = text.substring(0, targetLength);
+
+    copyToClipboardSafe(partialText);
+    setCopyClicks(prev => ({ ...prev, [id]: nextCount }));
     setCopiedParts(prev => ({ ...prev, [id]: true }));
-    toast?.(`💖 Vợ ơi, chồng đã copy xong ${label}!`, "success");
+
+    const percent = nextCount * 25;
+    if (nextCount === 4) {
+      toast?.(`🎁 Chồng yêu đã copy trọn vẹn 100% ${label} cho vợ yêu rồi nha! (Lần click 4/4 - Hoàn tất) 💖`, "success");
+    } else if (nextCount === 1 && currentCount === 4) {
+      toast?.(`🌸 Chồng yêu đã reset vòng lặp và copy lại 25% phần đầu của ${label} cho vợ nha! (Lần click 1/4 - Reset) 🎀`, "success");
+    } else {
+      toast?.(`🌸 Chồng yêu đã copy ${percent}% nội dung của ${label} cho vợ yêu rồi nhé! (Lần click ${nextCount}/4) 💕`, "success");
+    }
   };
 
   const handleCopyOneLine = () => {
@@ -236,10 +273,25 @@ function PromptFivePartsViewer({
       toast?.("Chưa có nội dung Prompt để copy vợ ơi!", "error");
       return;
     }
-    copyToClipboardSafe(cleanOneLinePrompt);
-    // Mark master_prompt and general as copied
-    setCopiedParts(prev => ({ ...prev, "master_prompt": true, "one_line": true }));
-    toast?.("⚡ Chồng đã copy trọn bộ Prompt gộp liền mạch cho vợ dán thẳng vào Midjourney/SD/Flux nhé!", "success");
+    const id = "one_line";
+    const currentCount = copyClicks[id] || 0;
+    const nextCount = (currentCount >= 4) ? 1 : currentCount + 1;
+    const fraction = 0.25 * nextCount;
+    const targetLength = Math.max(1, Math.floor(cleanOneLinePrompt.length * fraction));
+    const partialText = cleanOneLinePrompt.substring(0, targetLength);
+
+    copyToClipboardSafe(partialText);
+    setCopyClicks(prev => ({ ...prev, [id]: nextCount }));
+    setCopiedParts(prev => ({ ...prev, "master_prompt": true, [id]: true }));
+
+    const percent = nextCount * 25;
+    if (nextCount === 4) {
+      toast?.(`⚡ Chồng yêu đã copy trọn vẹn 100% Prompt gộp liền mạch cho vợ yêu dán vào AI nhé! (Lần click 4/4 - Hoàn tất) 💖`, "success");
+    } else if (nextCount === 1 && currentCount === 4) {
+      toast?.(`🌸 Chồng yêu đã reset vòng lặp và copy lại 25% Prompt gộp liền mạch cho vợ nha! (Lần click 1/4 - Reset) 🎀`, "success");
+    } else {
+      toast?.(`🌸 Chồng yêu đã copy ${percent}% Prompt gộp liền mạch cho vợ yêu rồi nhé! (Lần click ${nextCount}/4) 💕`, "success");
+    }
   };
 
   const handleCopyFullText = () => {
@@ -247,14 +299,101 @@ function PromptFivePartsViewer({
       toast?.("Chưa có văn bản để copy vợ ơi!", "error");
       return;
     }
-    copyToClipboardSafe(rawText);
+    const id = "all_everything";
+    const currentCount = copyClicks[id] || 0;
+    const nextCount = (currentCount >= 4) ? 1 : currentCount + 1;
+    const fraction = 0.25 * nextCount;
+    const targetLength = Math.max(1, Math.floor(rawText.length * fraction));
+    const partialText = rawText.substring(0, targetLength);
+
+    copyToClipboardSafe(partialText);
+    setCopyClicks(prev => ({ ...prev, [id]: nextCount }));
+
     const allCopied: Record<string, boolean> = { ...copiedParts };
     parts.forEach(p => {
       allCopied[p.id] = true;
     });
-    allCopied["all_everything"] = true;
+    allCopied[id] = true;
     setCopiedParts(allCopied);
-    toast?.("🎁 Chồng đã copy trọn gói 100% toàn bộ văn bản kết quả trả về của tất cả các phần cho vợ yêu rồi nha! 💖", "success");
+
+    const percent = nextCount * 25;
+    if (nextCount === 4) {
+      toast?.(`🎁 Chồng yêu đã copy trọn vẹn 100% toàn văn bản kết quả cho vợ yêu rồi nha! (Lần click 4/4 - Hoàn tất) 💖`, "success");
+    } else if (nextCount === 1 && currentCount === 4) {
+      toast?.(`🌸 Chồng yêu đã reset vòng lặp và copy lại 25% toàn văn bản kết quả cho vợ nha! (Lần click 1/4 - Reset) 🎀`, "success");
+    } else {
+      toast?.(`🌸 Chồng yêu đã copy ${percent}% toàn văn bản kết quả cho vợ yêu rồi nhé! (Lần click ${nextCount}/4) 💕`, "success");
+    }
+  };
+
+  const handleRabbitCopy = () => {
+    if (!rawText) {
+      toast?.("Chưa có nội dung Prompt để con thỏ copy vợ ơi! Vợ đợi AI sinh xong một lát nha 🐰💖", "error");
+      return;
+    }
+
+    if (rabbitIndex >= 4) {
+      const confirmReset = window.confirm("🐰 Chồng yêu báo nè: Đã sao chép trọn vẹn 100% nội dung (4 phần) rồi vợ nha! Vợ có muốn bắt đầu sao chép lại từ Phần 1 không?");
+      if (confirmReset) {
+        setRabbitIndex(0);
+        toast?.("Đã reset lại vòng lặp sao chép từ đầu cho vợ yêu rồi nha! 💖", "success");
+      }
+      return;
+    }
+
+    const textToProcess = rawText.trim();
+    // Split into 4 chunks by character length (roughly) but respecting word boundaries
+    const totalLen = textToProcess.length;
+    const chunkSize = Math.ceil(totalLen / 4);
+    
+    let chunks = [];
+    let start = 0;
+    for (let i = 0; i < 4; i++) {
+      if (i === 3) {
+        chunks.push(textToProcess.substring(start));
+      } else {
+        let end = start + chunkSize;
+        // find nearest space or newline
+        while (end < totalLen && !/[ \n\r\t]/.test(textToProcess[end])) {
+          end++;
+        }
+        chunks.push(textToProcess.substring(start, end));
+        start = end + 1;
+      }
+    }
+
+    const targetText = chunks[rabbitIndex] || "";
+    const cleanText = cleanPromptText(targetText);
+
+    if (!cleanText) {
+      toast?.(`Phần ${rabbitIndex + 1} trống, chồng tự động chuyển phần tiếp cho vợ nha! 🐰`, "warning");
+      setRabbitIndex(prev => prev + 1);
+      return;
+    }
+
+    copyToClipboardSafe(cleanText);
+
+    const msgs = [
+      `🐰 Chồng đã copy Phần 1 (25%) cho vợ yêu rồi! Dán xong quay lại đây bấm phần 2 nha 💖`,
+      `🐰 Phần 2 (50%) đã nằm trong khay nhớ tạm rồi nè! Vợ yêu dán tiếp đi nha 💕`,
+      `🐰 Đã xong Phần 3 (75%) cho bà xã rồi ạ! Chỉ còn một chút xíu nữa là xong hết luôn 🌸`,
+      `🐰 Chúc mừng vợ! Đã copy xong Phần 4 (100%) trọn vẹn rồi nhé! Vợ kiểm tra ảnh xinh nha 🎀`
+    ];
+    
+    toast?.(msgs[rabbitIndex] || `🐰 Đã copy xong Phần ${rabbitIndex + 1} cho vợ yêu!`, "success");
+
+    const nextIdx = rabbitIndex + 1;
+    setRabbitIndex(nextIdx);
+
+    if (nextIdx >= 4) {
+      setTimeout(() => {
+        const restart = window.confirm("✨ THÔNG BÁO HOÀN THÀNH: Vợ đã sao chép xong toàn bộ nội dung (4/4 phần) rồi đó! Vợ có muốn bắt đầu sao chép lại từ đầu không?");
+        if (restart) {
+          setRabbitIndex(0);
+          toast?.("Chồng đã reset lại để vợ yêu sao chép từ đầu nhé! 🐰💖", "success");
+        }
+      }, 500);
+    }
   };
 
   // Tính toán thời gian làm việc và thông tin chi tiết
@@ -262,19 +401,17 @@ function PromptFivePartsViewer({
   const estimatedTokens = Math.ceil(totalCharacters / 4);
   const activeModel = activeProfile?.model || "AI Model Cao Cấp";
   const finalDuration = elapsedSeconds || Math.max(12, Math.floor(totalCharacters / 115));
-  const connectionType = proxySettings?.useLocalProxy 
-    ? "Cổng Local Proxy An Toàn 🛡️" 
-    : "Cổng Proxy Riêng Biệt 🌐";
+  const connectionType = "Cổng API Proxy An Toàn 🛡️";
 
   return (
     <div className="flex flex-col gap-3 w-full mt-2">
       {/* KHU VỰC THÔNG TIN CHI TIẾT & HIỆU SUẤT LÀM VIỆC */}
-      <div className="flex flex-col gap-2 p-3.5 rounded-xl border border-[#f48fb1]/40 bg-gradient-to-r from-[#fff5f8] to-[#fff0f5] shadow-xs">
+      <div className="flex flex-col gap-2 p-3.5 rounded-xl border border-[#f48fb1]/40 bg-gradient-to-r from-[#fff5f8] to-[#fff0f5] shadow-xs w-full max-w-full box-border">
         <div className="flex items-center gap-2 pb-2 border-b border-[#f48fb1]/20">
           <span className="text-sm">⏱️</span>
           <b className="text-xs text-[#b83260] uppercase tracking-wider">Thông Tin Hiệu Suất & Thời Gian Làm Việc:</b>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[11px] text-gray-700 font-medium">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-[11px] text-gray-700 font-medium">
           <div className="flex flex-col p-2 rounded-lg bg-white/60 border border-pink-100">
             <span className="text-gray-400">⏱️ Thời gian thực hiện:</span>
             <span className="text-xs font-bold text-[#b83260]">
@@ -302,8 +439,83 @@ function PromptFivePartsViewer({
         </div>
       </div>
 
+      {/* NÚT CON THỎ THẦN KỲ - SIÊU SAO CHÉP LIÊN HOÀN CHO VỢ YÊU 🐰 */}
+      <div className="w-full p-4 sm:p-6 rounded-[32px] border-2 border-white/50 bg-white/5 backdrop-blur-[1px] shadow-xl flex flex-col items-center gap-6 mb-6 box-border max-w-full overflow-x-auto">
+        <div className="w-full text-center flex flex-col items-center gap-4">
+          <div className="w-20 h-20 rounded-full bg-pink-100/30 flex items-center justify-center text-5xl animate-bounce shrink-0 shadow-sm border border-pink-200">
+            🐰
+          </div>
+          <div className="max-w-2xl">
+            <h3 className="text-2xl font-black text-[#880e4f] flex flex-wrap justify-center items-center gap-2">
+              THỎ CON SAO CHÉP THÔNG MINH
+              <span className="bg-gradient-to-r from-pink-500 to-purple-600 text-white text-[11px] px-3 py-1 rounded-full font-bold animate-pulse">SIÊU TIỆN</span>
+            </h3>
+            <p className="text-base font-semibold text-[#ad1457] mt-2 leading-relaxed">
+              Chồng đã chia Prompt làm 4 phần (mỗi phần 25%) để vợ yêu copy dán cho nhanh và đủ 100% nha! 💖
+            </p>
+          </div>
+        </div>
+
+        <div className="w-full max-w-lg flex flex-col gap-4">
+          <button
+            onClick={handleRabbitCopy}
+            disabled={!rawText}
+            className="w-full relative flex items-center justify-center gap-3 sm:gap-5 px-4 sm:px-8 py-4 sm:py-6 rounded-2xl bg-gradient-to-r from-[#ff4081] via-[#ec407a] to-[#ab47bc] text-white font-black text-lg sm:text-xl shadow-2xl hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 border-b-4 border-[#ad1457] box-border overflow-hidden"
+            title="Bấm vào chú thỏ này để tự động copy tuần tự từng phần một cho vợ yêu nhé!"
+          >
+            <div className="text-left flex flex-col min-w-0 flex-1">
+              <span className="text-[10px] sm:text-[12px] font-black uppercase tracking-widest text-pink-100 leading-none">
+                {rawText ? `Copy Phần ${Math.min(rabbitIndex + 1, 4)} / 4` : "Chờ AI tạo Prompt..."}
+              </span>
+              <span className="text-base sm:text-lg font-bold text-white leading-tight mt-1 truncate">
+                {rawText 
+                  ? (rabbitIndex >= 4 ? "Hoàn thành! Bấm làm lại 💖" : `👉 Sao Chép 25% (P${rabbitIndex + 1})`)
+                  : "Đang chuẩn bị..."}
+              </span>
+            </div>
+            <span className="shrink-0 text-base sm:text-xl bg-white/20 px-3 sm:px-5 py-2 sm:py-3 rounded-xl text-white font-black">
+              {Math.min(rabbitIndex + 1, 4)}/4
+            </span>
+          </button>
+          
+          <div className="flex gap-3 w-full">
+            {[0, 1, 2, 3].map(i => (
+              <button
+                key={i}
+                disabled={!rawText}
+                onClick={() => {
+                  if (!rawText) return;
+                  const textToProcess = rawText.trim();
+                  const totalLen = textToProcess.length;
+                  const chunkSize = Math.ceil(totalLen / 4);
+                  let chunks = [];
+                  let start = 0;
+                  for (let j = 0; j < 4; j++) {
+                    if (j === 3) {
+                      chunks.push(textToProcess.substring(start));
+                    } else {
+                      let end = start + chunkSize;
+                      while (end < totalLen && !/[ \n\r\t]/.test(textToProcess[end])) end++;
+                      chunks.push(textToProcess.substring(start, end));
+                      start = end + 1;
+                    }
+                  }
+                  copyToClipboardSafe(cleanPromptText(chunks[i] || ""));
+                  toast?.(`🐰 Đã copy Phần ${i + 1} (25%) cho vợ yêu rồi nha! 💖`, "success");
+                  setRabbitIndex(i + 1);
+                }}
+                className={`flex-1 py-4 rounded-xl text-[16px] font-black transition-all shadow-md active:scale-95 border-2 ${rabbitIndex > i ? 'bg-gradient-to-r from-[#d23a73] to-[#ab47bc] text-white border-transparent' : 'bg-white/90 text-[#d23a73] border-[#f48fb1] hover:bg-white'}`}
+                title={`Sao chép riêng Phần ${i + 1} (25% tổng nội dung)`}
+              >
+                P{i + 1}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* THANH CÔNG CỤ COPY ANH TÀI - SIÊU TIỆN LỢI CHO VỢ */}
-      <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl border border-[#f48fb1]/30 bg-gradient-to-r from-[#fff0f6] to-[#fce4ec] shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl border border-[#f48fb1]/30 bg-gradient-to-r from-[#fff0f6] to-[#fce4ec] shadow-sm w-full box-border max-w-full">
         <div className="flex items-center gap-2">
           <span className="text-lg animate-bounce">💖</span>
           <div>
@@ -343,34 +555,38 @@ function PromptFivePartsViewer({
         <div className="grid grid-cols-1 gap-3">
           {parts.map((part, index) => {
             const isCopied = !!copiedParts[part.id];
+            const clickCount = copyClicks[part.id] || 0;
             return (
               <div
                 key={`part_${part.id}_${index}`}
-                className="relative flex flex-col rounded-xl border transition-all duration-300 overflow-hidden shadow-xs hover:shadow-md"
+                className="relative flex flex-col rounded-xl border transition-all duration-300 overflow-x-auto shadow-xs hover:shadow-md"
                 style={{
-                  borderColor: isCopied ? '#f06292' : `${part.color}40`,
-                  backgroundColor: isCopied ? '#ffe4ec' : part.bg,
+                  borderColor: isCopied ? '#f48fb1' : 'rgba(244, 143, 177, 0.4)',
+                  backgroundColor: isCopied ? 'rgba(255, 230, 238, 0.65)' : 'rgba(255, 240, 245, 0.45)',
                   borderWidth: isCopied ? '2px' : '1px',
                   boxShadow: isCopied ? '0 4px 14px rgba(244, 143, 177, 0.35)' : 'none',
-                  transform: isCopied ? 'scale(1.005)' : 'none'
+                  transform: isCopied ? 'scale(1.005)' : 'none',
+                  width: '100%',
+                  maxWidth: '100%',
+                  boxSizing: 'border-box'
                 }}
               >
                 {/* Header của từng thẻ khối */}
                 <div
                   className="flex items-center justify-between px-3.5 py-2.5 border-b transition-colors duration-300"
                   style={{
-                    borderColor: isCopied ? '#f06292' : `${part.color}25`,
-                    backgroundColor: isCopied ? 'rgba(255, 209, 220, 0.6)' : `${part.color}10`
+                    borderColor: isCopied ? '#f48fb1' : 'rgba(244, 143, 177, 0.2)',
+                    backgroundColor: isCopied ? 'rgba(255, 205, 220, 0.55)' : 'rgba(255, 225, 235, 0.35)'
                   }}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="text-lg select-none shrink-0">{isCopied ? "💖" : part.icon}</span>
                     <div className="min-w-0">
-                      <div className="text-xs font-bold truncate flex items-center gap-1.5" style={{ color: isCopied ? '#ad1457' : part.color }}>
+                      <div className="text-xs font-bold truncate flex items-center gap-1.5" style={{ color: '#b83260' }}>
                         <span>{part.title}</span>
-                        {isCopied && (
-                          <span className="bg-[#ad1457]/10 text-[#ad1457] text-[9px] px-1.5 py-0.5 rounded-full font-extrabold animate-pulse">
-                            ĐÃ SAO CHÉP 💖
+                        {clickCount > 0 && (
+                          <span className="bg-[#b83260]/10 text-[#b83260] text-[9px] px-1.5 py-0.5 rounded-full font-extrabold animate-pulse">
+                            {clickCount === 4 ? "ĐÃ COPY 100% 💖" : `ĐÃ COPY ${clickCount * 25}% 💕`}
                           </span>
                         )}
                       </div>
@@ -385,21 +601,21 @@ function PromptFivePartsViewer({
                     onClick={() => handleCopyPart(part.id, part.content, `[Phần ${index + 1}: ${part.title.replace(/###|\*|PART \d+:/gi, "").trim()}]`)}
                     className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-xs transition-all active:scale-95 hover:brightness-110 ml-2"
                     style={{ 
-                      backgroundColor: isCopied ? '#ad1457' : part.color,
+                      backgroundColor: isCopied ? '#d23a73' : '#b83260',
                       color: '#ffffff'
                     }}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
-                    <span>{isCopied ? "Copy Lại Phần Này" : `Copy Phần ${index + 1}`}</span>
+                    <span>{clickCount > 0 ? `Copy ${clickCount * 25}%` : `Copy Phần ${index + 1}`}</span>
                   </button>
                 </div>
 
                 {/* Nội dung của phần đó */}
-                <div className="p-3.5 font-mono text-xs text-gray-800 leading-relaxed whitespace-pre-wrap bg-white/70">
+                <div className="p-3.5 font-mono text-xs text-pink-950 font-medium leading-relaxed whitespace-pre-wrap bg-[rgba(255,248,250,0.5)]">
                   {part.content ? (
-                    part.content
+                    cleanPromptText(part.content)
                   ) : (
                     <span className="text-gray-400 italic">⏳ Đang đợi AI sinh nội dung phần này...</span>
                   )}
@@ -410,7 +626,7 @@ function PromptFivePartsViewer({
         </div>
       ) : (
         /* FALLBACK: Khi AI trả về văn bản thường chưa có thẻ ### (đang stream những chữ đầu tiên hoặc format khác) */
-        <div className="relative flex flex-col rounded-xl border border-[#f48fb1]/40 bg-white p-3.5 shadow-xs">
+        <div className="relative flex flex-col rounded-xl border border-[#f48fb1]/40 bg-white p-3.5 shadow-xs overflow-x-auto" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
             <span className="text-xs font-bold text-[#b83260] flex items-center gap-1.5">
               <span>✨ Nội dung Prompt đang hiển thị nguyên văn:</span>
@@ -492,12 +708,516 @@ function CardNoteInput({ cs, c, roomState, state, save }: any) {
   );
 }
 
-export default function RoomView({ roomDef, roomState, currentStory, state, save, toast, onBack, onHome, onOpenDrawer, progress, setProgress, isCompactHeader, onToggleCompact, onOpenStoryForm }: any) {
+const CandyIcon = ({ size = 20, color = "#ff79a5" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 7C9.23858 7 7 9.23858 7 12C7 14.7614 9.23858 17 12 17C14.7614 17 17 14.7614 17 12C17 9.23858 14.7614 7 12 7Z" fill={color} />
+    <path d="M7 12L2 9V15L7 12Z" fill={color} />
+    <path d="M17 12L22 9V15L17 12Z" fill={color} />
+  </svg>
+);
+
+const PinkCatIcon = ({ size = 24, color = "#ffb2cc" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 21C16.9706 21 21 16.9706 21 12C21 8.88248 19.4187 6.13388 17.0252 4.51261L18.5 2L14.5 4.0706C13.7054 3.73147 12.8631 3.54545 12 3.54545C11.1369 3.54545 10.2946 3.73147 9.5 4.0706L5.5 2L6.9748 4.51261C4.58134 6.13388 3 8.88248 3 12C3 16.9706 7.02944 21 12 21Z" fill={color} />
+    <circle cx="8.5" cy="11.5" r="1.5" fill="#4a2f41" />
+    <circle cx="15.5" cy="11.5" r="1.5" fill="#4a2f41" />
+    <circle cx="9" cy="11" r="0.5" fill="#ffffff" />
+    <circle cx="16" cy="11" r="0.5" fill="#ffffff" />
+    <path d="M11.5 13.5L12.5 13.5L12 14L11.5 13.5Z" fill="#4a2f41" />
+    <path d="M10.5 15.5C11 15.5 11.5 15 12 15C12.5 15 13 15.5 13.5 15.5" stroke="#4a2f41" strokeWidth="1" strokeLinecap="round" />
+    <circle cx="6.5" cy="13.5" r="1.2" fill="#ff79a5" opacity="0.6" />
+    <circle cx="17.5" cy="13.5" r="1.2" fill="#ff79a5" opacity="0.6" />
+  </svg>
+);
+
+
+const areEqual = (prevProps: any, nextProps: any) => {
+  if (prevProps.i !== nextProps.i) return false;
+  if (prevProps.c.id !== nextProps.c.id) return false;
+  if (prevProps.roomDef.id !== nextProps.roomDef.id) return false;
+
+  const pCs = prevProps.roomState?.cards?.[prevProps.c.id] || {};
+  const nCs = nextProps.roomState?.cards?.[nextProps.c.id] || {};
+
+  if (pCs.note !== nCs.note) return false;
+  if (pCs.selectedOutfit !== nCs.selectedOutfit) return false;
+  if (pCs.output !== nCs.output) return false;
+  if (pCs.report !== nCs.report) return false;
+
+  const pTraits = pCs.selectedTraits || [];
+  const nTraits = nCs.selectedTraits || [];
+  if (pTraits.length !== nTraits.length) return false;
+  for (let i = 0; i < pTraits.length; i++) {
+    if (pTraits[i] !== nTraits[i]) return false;
+  }
+
+  const pExtracted = pCs.extractedTraits || [];
+  const nExtracted = nCs.extractedTraits || [];
+  if (pExtracted.length !== nExtracted.length) return false;
+  for (let i = 0; i < pExtracted.length; i++) {
+    if (pExtracted[i] !== nExtracted[i]) return false;
+  }
+
+  const pExtractedOutfits = pCs.extractedOutfits || [];
+  const nExtractedOutfits = nCs.extractedOutfits || [];
+  if (pExtractedOutfits.length !== nExtractedOutfits.length) return false;
+  for (let i = 0; i < pExtractedOutfits.length; i++) {
+    if (pExtractedOutfits[i] !== nExtractedOutfits[i]) return false;
+  }
+
+  const pRefs = pCs.refs || [];
+  const nRefs = nCs.refs || [];
+  if (pRefs.length !== nRefs.length) return false;
+  for (let i = 0; i < pRefs.length; i++) {
+    if ((pRefs[i].id || pRefs[i].imageId) !== (nRefs[i].id || nRefs[i].imageId)) return false;
+    if (pRefs[i].analysisStatus !== nRefs[i].analysisStatus) return false;
+  }
+
+  const pOutfitRefs = pCs.outfitRefs || [];
+  const nOutfitRefs = nCs.outfitRefs || [];
+  if (pOutfitRefs.length !== nOutfitRefs.length) return false;
+  for (let i = 0; i < pOutfitRefs.length; i++) {
+    if ((pOutfitRefs[i].id || pOutfitRefs[i].imageId) !== (nOutfitRefs[i].id || nOutfitRefs[i].imageId)) return false;
+  }
+
+  const pAnalyzing = prevProps.catAnalyzingCardId === prevProps.c.id;
+  const nAnalyzing = nextProps.catAnalyzingCardId === nextProps.c.id;
+  if (pAnalyzing !== nAnalyzing) return false;
+
+  if (prevProps.isApiRunning !== nextProps.isApiRunning) return false;
+  if (prevProps.apiSignals?.elapsedSeconds !== nextProps.apiSignals?.elapsedSeconds) return false;
+
+  return true;
+};
+
+const WorkCardItem = React.memo(function WorkCardItem({
+  c,
+  i,
+  roomDef,
+  roomState,
+  state,
+  currentStory,
+  save,
+  toast,
+  catAnalyzingCardId,
+  isApiRunning,
+  apiSignals,
+  toggleTraitSelection,
+  selectOutfitOption,
+  handleOutfitUpload,
+  handleRefUpload,
+  analyzeCardAestheticAndOutfits,
+  setSelectedImgDetail,
+  renderTargetSelector,
+  updateGlobalState
+}: any) {
+  const cs = roomState.cards?.[c.id] || { note: "", refs: [], output: "" };
+  const cardRefs = cs.refs || [];
+
+  return (
+    <article className="work-card" key={`card_${roomDef.id}_${c.id}_${i}`} style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'auto', margin: '0 auto' }}>
+      <div className="work-head">
+        <div className="work-title">
+          <div className="num">{i + 1}</div>
+          <div>
+            <h3>{c.title}</h3>
+            <p>{c.desc}</p>
+          </div>
+        </div>
+      </div>
+      <div className="work-body" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'auto' }}>
+        <div className="guide"><b>Nhiệm vụ / từ khóa nhanh của thẻ</b><br/>{c.quick}</div>
+        {c.id === "target" && (
+          <div className="target-selector">
+            {renderTargetSelector(false)}
+          </div>
+        )}
+        <div className="upload-hero" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'auto' }}>
+          <label className="file-label">
+            Thêm ảnh tham chiếu
+            <input type="file" multiple accept="image/*" className="file-native" onChange={(e) => handleRefUpload(e, c.id)} />
+          </label>
+          <div className="image-rail">
+            {cardRefs.length === 0 ? (
+              <div className="photo-card empty-photo"><div><b>Chưa có ảnh tham chiếu</b></div></div>
+            ) : (
+              cardRefs.map((r: any, idx: number) => (
+                <div className="photo-card" key={`photo_${r.id || r.imageId || 'img'}_${idx}`} style={{ cursor: 'pointer' }} onClick={() => setSelectedImgDetail({ ...r, cardId: c.id, cardTitle: c.title })}>
+                  <SafeImg src={r.data || r.previewUrl || r.storageUrl} alt="" />
+                  <span>{r.name || r.fileName}</span>
+                  <div className="analysis-status">{r.analysisStatus === 'analyzed' ? '✅ Đã đọc thành công' : (r.analysisStatus === 'failed' ? '❌ Lỗi đọc ảnh' : '✅ Sẵn sàng trong Context')}</div>
+                  <div style={{ fontSize: '10px', color: '#d23a73', marginTop: 2 }}>🔍 Xem AI phân tích</div>
+                  <button className="delete-btn" onClick={(e) => {
+                    e.stopPropagation();
+                    const newRefs = (cs.refs || []).filter((x: any) => (x.id || x.imageId) !== (r.id || r.imageId));
+                    const newRoomState: LipstickRoomState = {
+                      ...roomState,
+                      cards: {
+                        ...roomState.cards,
+                        [c.id]: {
+                          ...cs,
+                          refs: newRefs
+                        }
+                      }
+                    };
+                    updateGlobalState(newRoomState);
+                  }}>×</button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* 🎀 KHU VỰC THỜI TRANG & NGHỆ THUẬT CỦA BÉ MÈO HỒNG & VIÊN KẸO NGỌT */}
+        <div style={{
+          marginTop: '16px',
+          marginBottom: '16px',
+          padding: '16px',
+          background: 'linear-gradient(135deg, #fff5f8 0%, #fff0f5 100%)',
+          borderRadius: '16px',
+          border: '1.5px dashed #ffa6c9',
+          boxShadow: '0 4px 15px rgba(255, 182, 193, 0.15)',
+          width: '100%',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+          overflowX: 'auto'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <PinkCatIcon size={22} />
+              <span style={{ fontWeight: 800, color: '#9d174d', fontSize: '0.92rem' }}>
+                MÈO HỒNG PHẤN & VIÊN KẸO NGỌT 🍬
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {/* Candy Button */}
+              <label style={{
+                background: 'linear-gradient(135deg, #ffffff 0%, #fff0f5 100%)',
+                color: '#ff4d8d',
+                border: '1.5px solid #ff9bbd',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '12px',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                boxShadow: '0 2px 6px rgba(255, 121, 165, 0.1)',
+                transition: 'all 0.2s'
+              }}>
+                <CandyIcon size={16} />
+                <span>Nạp ảnh trang phục (Candy)</span>
+                <input type="file" multiple accept="image/*" style={{ display: 'none' }} onChange={(e) => handleOutfitUpload(e, c.id)} />
+              </label>
+
+              {/* Pink Cat Button */}
+              <button
+                type="button"
+                onClick={() => analyzeCardAestheticAndOutfits(c.id, c.title)}
+                disabled={catAnalyzingCardId === c.id}
+                style={{
+                  background: 'linear-gradient(135deg, #ffb2cc 0%, #ff79a5 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '6px 14px',
+                  borderRadius: '12px',
+                  fontWeight: 800,
+                  fontSize: '0.8rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  boxShadow: '0 3px 8px rgba(255, 121, 165, 0.25)',
+                  transition: 'all 0.2s',
+                  opacity: catAnalyzingCardId === c.id ? 0.7 : 1
+                }}
+              >
+                {catAnalyzingCardId === c.id ? "🐾 Đang phân tích..." : "Nhờ Bé Mèo phân tích 🐾"}
+              </button>
+            </div>
+          </div>
+
+          {/* Outfit Reference Rail */}
+          {cs.outfitRefs && cs.outfitRefs.length > 0 && (
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#8c526b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <CandyIcon size={14} /> <span>Ảnh tham chiếu trang phục đã nạp qua viên kẹo ({cs.outfitRefs.length}):</span>
+              </div>
+              <div className="image-rail" style={{ padding: '4px 0' }}>
+                {cs.outfitRefs.map((r: any, idx: number) => (
+                  <div className="photo-card" key={`outfit_photo_${r.id || r.imageId || 'img'}_${idx}`} style={{ border: '2.5px solid #ffd1e3' }} onClick={() => setSelectedImgDetail({ ...r, cardId: c.id, cardTitle: c.title })}>
+                    <SafeImg src={r.data || r.previewUrl || r.storageUrl} alt="" />
+                    <span>{r.name || r.fileName}</span>
+                    <div className="analysis-status" style={{ background: 'rgba(255, 240, 243, 0.25)', color: '#ff4d8d', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', border: '1px solid rgba(255, 77, 141, 0.2)' }}>🍬 Trang phục</div>
+                    <button className="delete-btn" type="button" onClick={(e) => {
+                      e.stopPropagation();
+                      const newOutfitRefs = (cs.outfitRefs || []).filter((x: any) => (x.id || x.imageId) !== (r.id || r.imageId));
+                      const newRoomState: LipstickRoomState = {
+                        ...roomState,
+                        cards: {
+                          ...roomState.cards,
+                          [c.id]: {
+                            ...cs,
+                            outfitRefs: newOutfitRefs
+                          }
+                        }
+                      };
+                      updateGlobalState(newRoomState);
+                      toast("Đã gỡ ảnh trang phục nha vợ!");
+                    }}>×</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 100 Extracted Aesthetic Traits */}
+          {cs.extractedTraits && cs.extractedTraits.length > 0 ? (
+            <details style={{
+              marginTop: '10px',
+              background: '#ffffff',
+              borderRadius: '12px',
+              border: '1px solid #ffd1e3',
+              padding: '10px 14px',
+              width: '100%',
+              maxWidth: '100%',
+              boxSizing: 'border-box'
+            }}>
+              <summary style={{
+                cursor: 'pointer',
+                fontWeight: 800,
+                color: '#9d174d',
+                fontSize: '0.82rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                listStyle: 'none'
+              }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  🌸 100 Nét Vẽ Nghệ Thuật Tinh Hoa Đã Trích Xuất (Đã chọn: {cs.selectedTraits?.length || 0}/100)
+                </span>
+                <span style={{ color: '#ff4d8d', fontSize: '0.75rem', fontWeight: 700 }}>▼ Xem/Thu gọn</span>
+              </summary>
+              <div style={{ marginTop: '10px', borderTop: '1px dashed #ffd1e3', paddingTop: '10px' }}>
+                <p style={{ margin: '0 0 10px 0', fontSize: '0.75rem', color: '#8c526b', lineHeight: 1.4 }}>
+                  💡 Vợ yêu hãy click chọn những nét vẽ mong muốn nhất để chồng ép AI bám sát khi viết Prompt nhé!
+                </p>
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '6px',
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  padding: '4px'
+                }}>
+                  {cs.extractedTraits.map((trait: string, idx: number) => {
+                    const isSelected = cs.selectedTraits?.includes(trait);
+                    return (
+                      <button
+                        key={`trait_${idx}`}
+                        type="button"
+                        onClick={() => toggleTraitSelection(c.id, trait)}
+                        style={{
+                          background: isSelected ? 'linear-gradient(135deg, #ff79a5 0%, #ff4d8d 100%)' : '#fff0f5',
+                          color: isSelected ? '#ffffff' : '#9d174d',
+                          border: isSelected ? '1px solid #ff4d8d' : '1px solid #ffe1ec',
+                          padding: '4px 10px',
+                          borderRadius: '8px',
+                          fontSize: '0.75rem',
+                          fontWeight: isSelected ? 800 : 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          boxShadow: isSelected ? '0 2px 6px rgba(255, 77, 141, 0.3)' : 'none'
+                        }}
+                      >
+                        {isSelected ? '🌸 ' : ''}{trait}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </details>
+          ) : null}
+
+          {/* 5 Outfit Selection */}
+          {cs.extractedOutfits && cs.extractedOutfits.length > 0 ? (
+            <details open style={{
+              marginTop: '10px',
+              background: '#ffffff',
+              borderRadius: '12px',
+              border: '1px solid #ffd1e3',
+              padding: '10px 14px',
+              width: '100%',
+              maxWidth: '100%',
+              boxSizing: 'border-box'
+            }}>
+              <summary style={{
+                cursor: 'pointer',
+                fontWeight: 800,
+                color: '#9d174d',
+                fontSize: '0.82rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                listStyle: 'none'
+              }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  👗 5 Đề Xuất Thiết Kế Trang Phục Tuyệt Mỹ Từ Bé Mèo Hồng
+                </span>
+                <span style={{ color: '#ff4d8d', fontSize: '0.75rem', fontWeight: 700 }}>▼ Xem/Thu gọn</span>
+              </summary>
+              <div style={{ marginTop: '10px', borderTop: '1px dashed #ffd1e3', paddingTop: '10px' }}>
+                <p style={{ margin: '0 0 10px 0', fontSize: '0.75rem', color: '#8c526b', lineHeight: 1.4 }}>
+                  💡 Chọn 1 thiết kế lộng lẫy nhất để áp dụng lên trang phục nhân vật của vợ yêu trong prompt:
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {cs.extractedOutfits.map((outfit: string, idx: number) => {
+                    const isSelected = cs.selectedOutfit === outfit;
+                    return (
+                      <div
+                        key={`outfit_${idx}`}
+                        onClick={() => selectOutfitOption(c.id, outfit)}
+                        style={{
+                          background: isSelected ? 'linear-gradient(135deg, #fff5f8 0%, #ffe6f0 100%)' : '#ffffff',
+                          border: isSelected ? '2px solid #ff4d8d' : '1px solid #ffe1ec',
+                          borderRadius: '10px',
+                          padding: '10px 14px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          boxShadow: isSelected ? '0 3px 10px rgba(255, 77, 141, 0.12)' : 'none',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '10px'
+                        }}
+                      >
+                        <div style={{
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          border: isSelected ? '6px solid #ff4d8d' : '2px solid #ffb2cc',
+                          background: '#ffffff',
+                          flexShrink: 0,
+                          marginTop: '2px',
+                          transition: 'all 0.15s'
+                        }} />
+                        <div style={{ fontSize: '0.8rem', color: '#4a2f41', lineHeight: 1.5, fontWeight: isSelected ? 700 : 500 }}>
+                          <b style={{ color: '#d23a73' }}>Mẫu {idx + 1}:</b> {outfit}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </details>
+          ) : null}
+        </div>
+
+        <div className="card-input-grid" style={{ gridTemplateColumns: '1fr' }}>
+          <label>
+            <span>Ô điền nội dung / yêu cầu của thẻ</span>
+            <CardNoteInput cs={cs} c={c} roomState={roomState} state={state} save={save} />
+          </label>
+        </div>
+        {(cs.report || (cs.refs && cs.refs.length > 0)) && (
+          <details open style={{marginTop: '18px', background: 'linear-gradient(135deg, #fdf8fb 0%, #f7f1f5 100%)', borderRadius: '16px', border: '2px solid #e5ccd8', padding: '14px 18px', fontSize: '0.88rem', boxShadow: '0 6px 18px rgba(114,83,101,0.06)', width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'auto'}}>
+            <summary style={{cursor: 'pointer', fontWeight: 800, color: '#4a2f41', display: 'flex', alignItems: 'center', justifyContent: 'space-between', listStyle: 'none', userSelect: 'none'}}>
+              <div style={{display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'}}>
+                <span style={{fontSize: '1.05rem'}}>🔮 BẢN THẨM ĐỊNH NGHỆ THUẬT & TRÍCH XUẤT DNA THỊ GIÁC SIÊU CHI TIẾT</span>
+                <span style={{background: 'linear-gradient(90deg, #d23a73, #8a2451)', color: '#ffffff', padding: '2px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em'}}>Master Study</span>
+                <span style={{background: 'rgba(114,83,101,0.08)', color: '#5c4353', padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem'}}>Card: {c.id}</span>
+                {cs.refs.length > 0 && (
+                  <span style={{background: '#f3e8ee', color: '#8a2451', padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700}}>📎 {cs.refs.length} ảnh mẫu học hỏi</span>
+                )}
+              </div>
+              <span style={{fontSize: '0.85rem', color: '#d23a73', fontWeight: 800}}>▼ Xem/Thu gọn</span>
+            </summary>
+            <div style={{marginTop: '14px', borderTop: '1px solid #ebd3e0', paddingTop: '14px', color: '#4a3a46'}}>
+              <div style={{margin: '0 0 12px 0', fontSize: '0.85rem', color: '#8a2451', background: '#fdf2f7', padding: '8px 12px', borderRadius: '8px', borderLeft: '4px solid #d23a73', display: 'flex', gap: '6px', alignItems: 'center'}}>
+                <span>✨</span>
+                <span><b>BẢN KIỆT TÁC HỌC THUẬT:</b> Bản nghiên cứu chuyên sâu chắt lọc tinh hoa từ các ảnh mẫu. AI không chỉ sao chép đơn thuần mà còn lên kế hoạch cải tiến đột phá để vẽ đẹp hơn, sắc sảo hơn cả ảnh gốc!</span>
+              </div>
+              {cs.refs && cs.refs.length > 0 && (
+                <div style={{marginBottom: '12px', padding: '10px 14px', background: '#ffffff', borderRadius: '10px', border: '1px solid #ebd3e0', boxShadow: '0 2px 6px rgba(0,0,0,0.01)'}}>
+                  <b>📎 Danh sách file ảnh đã đính kèm để trích xuất DNA:</b>
+                  <ul style={{margin: '6px 0 0 16px', padding: 0, fontSize: '0.8rem', color: '#5c4353'}}>
+                    {cs.refs.filter((r: any) => r.storyId === currentStory.id).map((r: any, idx: number) => (
+                      <li key={`ref_${r.id || r.imageId || 'img'}_${idx}`} style={{marginBottom: '3px'}}>
+                        <code style={{background: '#fcf3f7', padding: '2px 4px', borderRadius: '4px', color: '#d23a73'}}>{r.name || r.fileName || `Image_${idx+1}`}</code> (ID: <code>{(r.id || r.imageId || '').slice(0, 12)}...</code>) — Trạng thái AI: <span style={{color: '#16a34a', fontWeight: 700}}>✅ Đã nạp thành công (Vùng nhớ In-Context đầy đủ)</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {cs.report ? (
+                <div style={{position: 'relative'}}>
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                    <b style={{color: '#4a2f41', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px'}}>
+                      <span>📑</span> Chi tiết báo cáo thẩm định DNA & Nâng tầm nghệ thuật từ AI:
+                    </b>
+                    <button className="btn ghost small" onClick={() => {
+                      copyToClipboardSafe(cs.report);
+                      toast("📋 Đã copy báo cáo thẩm định nghệ thuật");
+                    }} style={{fontSize: '0.75rem', padding: '4px 10px', background: '#ffffff', border: '1px solid #ebd3e0', borderRadius: '8px', fontWeight: 700, color: '#8a2451'}}>📋 Copy Báo Cáo Học Thuật</button>
+                  </div>
+                  <pre style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', padding: '16px', borderRadius: '12px', border: '1.5px solid rgba(235, 211, 224, 0.4)', maxHeight: '400px', overflowY: 'auto', fontSize: '0.85rem', fontFamily: '"JetBrains Mono", monospace', color: '#2d1e29', lineHeight: 1.6, boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.01)'}}>
+                    {cs.report}
+                  </pre>
+                </div>
+              ) : isApiRunning ? (
+                <div style={{padding: '12px', fontStyle: 'italic', color: '#d23a73', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, background: '#fdf2f7', borderRadius: '8px'}}>
+                  <span style={{display: 'inline-block', width: '8px', height: '8px', background: '#d23a73', borderRadius: '50%', animation: 'ping 1s infinite'}} />
+                  ⏳ Đang stream báo cáo thẩm định siêu chi tiết và kế hoạch nâng tầm nghệ thuật vượt bậc từ AI...
+                </div>
+              ) : (
+                <div style={{padding: '12px', fontStyle: 'italic', color: '#8c6b7e', background: '#f9f6f8', borderRadius: '8px'}}>Chưa có báo cáo phân tích (hãy bấm "Tạo Prompt" để AI kiểm tra ảnh của vợ).</div>
+              )}
+            </div>
+          </details>
+        )}
+
+        {cs.output ? (
+          <div style={{marginTop: '16px', padding: '16px', background: 'rgba(255, 240, 246, 0.2)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderRadius: '12px', border: isApiRunning ? '2px solid #d23a73' : '1px solid rgba(240, 213, 226, 0.4)', transition: 'all 0.3s ease', boxShadow: '0 4px 12px rgba(210,58,115,0.05)', width: '100%', maxWidth: '100%', boxSizing: 'border-box'}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', flexWrap: 'wrap', gap: '8px'}}>
+              <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                <b style={{color: '#d23a73', fontSize: '0.95rem'}}>✨ FINAL PRODUCTION-READY PROMPT (Chia 5 Phần Thẩm Mỹ & Có Copy Liền Mạch):</b>
+                {isApiRunning && (
+                  <span style={{background: '#d23a73', color: '#fff', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800, animation: 'pulse 1s infinite', display: 'inline-flex', alignItems: 'center', gap: '4px'}}>
+                    <span style={{width: '6px', height: '6px', background: '#fff', borderRadius: '50%', display: 'inline-block'}} />
+                    Đang stream dữ liệu... (~{Math.ceil(cs.output.length / 4)} tokens)
+                  </span>
+                )}
+              </div>
+            </div>
+            <PromptFivePartsViewer
+              output={cs.output}
+              toast={toast}
+              isApiRunning={isApiRunning}
+              cardTitle={c.title}
+              elapsedSeconds={apiSignals.elapsedSeconds}
+            />
+          </div>
+        ) : isApiRunning ? (
+          <div style={{marginTop: '16px', padding: '16px', background: 'linear-gradient(135deg, #fff0f5, #fef5f8)', borderRadius: '12px', border: '1px dashed #d23a73', animation: 'pulse 1.5s infinite'}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: '10px', color: '#d23a73', fontSize: '0.85rem', fontWeight: 700}}>
+              <div style={{width: '16px', height: '16px', borderRadius: '50%', border: '2px solid #f0d5e2', borderTopColor: '#d23a73', animation: 'spin 1s linear infinite', flexShrink: 0}} />
+              <span>⏳ AI đang làm việc... Đang chờ stream nội dung Prompt vào thẻ "{c.title}"...</span>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </article>
+  );
+}, areEqual);
+
+const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, onBack, onHome, onOpenDrawer, progress, setProgress, isCompactHeader, onToggleCompact, onOpenStoryForm }: any) => {
+
   const [, setTick] = useState(0);
   const forceUpdate = () => setTick(t => t + 1);
   const [showPreset, setShowPreset] = useState(false);
   const [roomHeaderCollapsed, setRoomHeaderCollapsed] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [catAnalyzingCardId, setCatAnalyzingCardId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [visualTarget, setVisualTarget] = useState<"cover" | "avatar" | "background" | null>(null);
   const [selectedHistoryPayload, setSelectedHistoryPayload] = useState<any>(null);
@@ -546,8 +1266,7 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
     }
 
     if (found) {
-      currentStory.rooms[roomDef.id] = rs;
-      save(state);
+      updateGlobalState(rs);
     }
   };
 
@@ -601,6 +1320,8 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
   const previewScrollRef = useRef<HTMLDivElement>(null);
   const [isApiRunning, setIsApiRunning] = useState<boolean>(false);
   const [isWidgetCollapsed, setIsWidgetCollapsed] = useState<boolean>(false);
+  const [isWorkListCollapsed, setIsWorkListCollapsed] = useState(!!roomState.result);
+  const [viewHistoryIndex, setViewHistoryIndex] = useState<number | null>(null);
 
   useEffect(() => {
     return () => {
@@ -613,6 +1334,8 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
       setIsApiRunning(false);
     };
   }, [roomDef?.id]);
+
+  const streamSaveTimeoutRef = useRef<any>(null);
 
   const distributeStreamToCardsLive = (text: string) => {
     if (!text) return;
@@ -639,9 +1362,6 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         report = cardContent.slice(0, markerIndex);
         output = cardContent.slice(markerIndex + finalPromptMarker.length);
       } else {
-        // Fallback: If no marker is found but the stream contains prompt structure starting with "###"
-        // We split by the first occurrence of "###" so that we keep any analytical/report text in the report
-        // and put the prompt parts cleanly into the output!
         const firstHashIndex = cardContent.indexOf("###");
         if (firstHashIndex !== -1) {
           report = cardContent.slice(0, firstHashIndex);
@@ -654,7 +1374,6 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
 
       report = report.replace("[REFERENCE FIDELITY REPORT]", "").trim();
       report = report.replace(/---+$/, "").trim();
-
       output = output.trim();
 
       rs.cards[cardId] = {
@@ -665,8 +1384,14 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
     }
 
     currentStory.rooms[roomDef.id] = rs;
-    save(state);
-    forceUpdate();
+    
+    // Throttle save during streaming to prevent UI lag
+    if (streamSaveTimeoutRef.current) clearTimeout(streamSaveTimeoutRef.current);
+    streamSaveTimeoutRef.current = setTimeout(() => {
+      save(state);
+    }, 1000); 
+    
+    forceUpdate(); // Still need this to update the local view immediately
   };
 
   useEffect(() => {
@@ -709,7 +1434,20 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
     return () => clearInterval(timer);
   }, [apiSignals.requestStarted, apiSignals.completed, apiSignals.error]);
 
-  const getBotCharactersList = () => {
+  // Safety guard: If critical props are missing, show a loading state instead of crashing
+  // MUST be placed after all hooks to comply with Rules of Hooks
+  if (!roomDef || !roomState || !currentStory) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center bg-white rounded-3xl shadow-xl border-2 border-pink-100 m-4">
+        <div className="animate-bounce text-6xl mb-6">🌸</div>
+        <h2 className="text-2xl font-bold text-pink-600 mb-3">Đang chuẩn bị không gian cho vợ...</h2>
+        <p className="text-gray-500 mb-6">Vợ yêu đợi chồng một xíu nhé, dữ liệu đang được sắp xếp ngăn nắp ạ! ✨</p>
+        <button onClick={onBack} className="btn ghost">Quay lại</button>
+      </div>
+    );
+  }
+
+  const getBotCharactersList = useCallback(() => {
     return currentStory.botCharacters && currentStory.botCharacters.length > 0
       ? currentStory.botCharacters
       : (currentStory.botProfiles ? [{
@@ -718,9 +1456,9 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
           profileText: currentStory.botProfiles,
           referenceImages: []
         }] : []);
-  };
+  }, [currentStory.botCharacters, currentStory.botProfiles]);
 
-  const getTargetLabel = (mode: string) => {
+  const getTargetLabel = useCallback((mode: string) => {
     if (roomDef?.id === 'supporting_cast_poster') {
       if (mode === 'supporting_cast_couple' || mode === 'couple' || mode === 'all_group' || !mode || mode === 'bot_all') {
         return '👥 Poster PR: Nổi bật Cặp Đôi Chính + Toàn bộ Dàn Nhân Vật Phụ (NPC Quan Trọng)';
@@ -763,9 +1501,9 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
       return c ? `👑 [Char #${idx + 1}]: ${c.displayName || 'Unnamed'} (Tách lẻ)` : `👑 [Char #${idx + 1}] (Tách lẻ)`;
     }
     return mode;
-  };
+  }, [roomDef, getBotCharactersList]);
 
-  const getTargetInstructions = (mode: string) => {
+  const getTargetInstructions = useCallback((mode: string) => {
     const chars = getBotCharactersList();
     if (roomDef?.id === 'supporting_cast_poster') {
       const isProtagonistOnly = mode === 'supporting_cast_protagonist';
@@ -867,41 +1605,49 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
     if (mode === 'cinema_poster' || mode === 'poster_all') {
       return `🎬 [DEDICATED CINEMA / ANIME / COMIC MOVIE POSTER & CAMPAIGN ENSEMBLE FOCUS - POSTER PHIM / QUẢNG CÁO TỔNG THỂ TOÀN BỘ NHÂN VẬT]:
 👉 THE MANDATORY GOAL: Generate a grand, highly cinematic, promotional movie poster or campaign artwork that includes ALL MAIN CHARACTERS (Both {{user}} and ALL Bot Characters: ${chars.map((c: any) => c.displayName || 'Unnamed').join(', ')}) together in one dynamic, epic composition!
-👉 REFERENCE IMAGE ADAPTATION RULE (CRITICAL FOR POSTER MODE): Even if the reference image provided by the user shows ONLY ONE person or a simple portrait, YOU MUST NOT limit the output to one character! Instead, EXTRACT the art style, aesthetic vibe, lighting, color grading, and medium from the reference image (whether it is Realistic Cinema, Japanese Anime, Comic Book Art, 3D CGI Animation, or Editorial Advertising), and EXPAND it into a multi-character promotional poster featuring ALL characters!
-👉 STORY & PROFILE INTEGRATION (MANDATORY): Deeply analyze the Story Text (cốt truyện chính) and Character Profiles (hồ sơ của {{user}} and all Bot Characters). You must position each character in the poster hierarchy based on their lore, personality, and relationship dynamic (e.g., protagonist front and center, antagonist looming in the background or side profile, supporting characters in action poses or emotional interactions).
-👉 POSTER ELEMENTS TO SPECIFY IN PROMPT:
-   - Composition & Layout: Movie poster hierarchy, dramatic depth of field, foreground/midground/background placement.
-   - Lighting & Atmosphere: Cinematic volumetric lighting, lens flare, mood shadows, or graphic comic contrast matching the reference style.
-   - Typography & Title Framing: Suggest where the movie/story title logo and promotional tagline would sit naturally without obscuring character faces.
-   - Emotional Resonance: Capturing the overarching theme and climax of the story in a single advertising visual!`;
+👉 REFERENCE IMAGE ADAPTATION RULE (CRITICAL FOR POSTER MODE): Even if the reference image provided by the user shows ONLY ONE person or a simple portrait, YOU MUST NOT limit the output to one character! Instead, EXTRACT the art style, aesthetic vibe, lighting, color, and composition from the reference image and apply it to ALL characters.
+👉 MANDATORY FIDELITY - FACE & HAIR ART STYLE: You must capture the EXACT drawing technique, line-art quality, and rendering style of the character's face and hair from the reference image. If the reference has sharp, thin ink lines for eyes, you must use sharp thin lines. If the hair has soft, painterly highlights, you must replicate that exact hair rendering technique. NEVER default to generic AI facial features or generic AI hair textures!`;
     }
-    if (!mode || mode === 'bot' || mode === 'bot_all') {
-      return `👑 ALL BOT CHARACTERS COMBINED: Include all main bot characters (${chars.map((c: any) => c.displayName || 'Unnamed').join(', ')}) together in the generated prompt scene, maintaining their individual identities and dynamics.`;
-    }
-    if (mode === 'user') {
-      return `👤 USER PROFILE FOCUS ({{user}}): Focus exclusively on generating the prompt for {{user}}, highlighting their specific styling, aura, and visual appearance as defined in the user profile.`;
-    }
-    if (mode === 'couple' || mode === 'all_group') {
-      return `✨ [COUPLE / GROUP ENSEMBLE FOCUS - CẶP ĐÔI & TẬP THỂ (ƯU TIÊN CỐT TRUYỆN & THỂ LOẠI)]:
-👉 THE MANDATORY GOAL: Generate a multi-character scene combining all main Bot Characters (${chars.map((c: any) => c.displayName || 'Unnamed').join(', ')}) and {{user}} together!
-👉 SUPREME MANDATORY RULE - GENRE & VIBE: You must capture the specific 'Genre' (Horror, Romance, Fantasy, etc.) and 'Author's Intent' described in the story. Every character's interaction must reflect the narrative soul.
-👉 STORY FIDELITY OVER REFERENCE: Reference images are ONLY for art style. DO NOT copy character identities or genders from references. Focus on the emotional chemistry defined by the story lore.`;
-    }
-    if (mode.startsWith('bot_')) {
-      const idx = parseInt(mode.split('_')[1], 10);
-      const c = chars[idx];
-      const charName = c ? (c.displayName || `Bot Char #${idx + 1}`) : `Bot Char #${idx + 1}`;
-      const charProfile = c ? (c.profileText || 'No description') : '';
-      return `🚨 [EXPLICIT ISOLATED TARGET CHARACTER - TÁCH LẺ NHÂN VẬT (ƯU TIÊN HỒ SƠ & THẦN THÁI)]:
-👉 THE MANDATORY GOAL: Generate this prompt SOLELY for "${charName}"!
-👉 SUPREME MANDATORY RULE - NARRATIVE VIBE: You must capture the 'Aura' and 'Genre' of "${charName}"'s story. Looking at the image should reveal the author's narrative intent.
-👉 PROFILE FIDELITY: Strictly adhere to the Profile (${charProfile}). Reference images must NOT override the character's gender, age, or identity. Extract only the visual style DNA (linework, rendering) from references.`;
-    }
-    return `Focus on targeted mode: ${mode}`;
-  };
+    return "";
+  }, [getBotCharactersList]);
 
-  const renderTargetSelector = (isBanner = false) => {
+  const updateGlobalState = useCallback((newRoomState: LipstickRoomState) => {
+    const newStory = {
+      ...currentStory,
+      rooms: {
+        ...(currentStory.rooms || {}),
+        [roomDef.id]: newRoomState
+      }
+    };
+    const newState = {
+      ...state,
+      stories: state.stories.map((s: any) => s.id === newStory.id ? newStory : s)
+    };
+    save(newState);
+  }, [currentStory, roomDef.id, state, save]);
+
+  const deleteHistoryItem = useCallback((index: number) => {
+    if (!window.confirm("Xóa đợt lịch sử này?")) return;
+    const newHistory = [...(roomState.history || [])];
+    newHistory.splice(index, 1);
+    const newRoomState = { ...roomState, history: newHistory };
+    updateGlobalState(newRoomState);
+    if (viewHistoryIndex === index) setViewHistoryIndex(null);
+    else if (viewHistoryIndex !== null && viewHistoryIndex > index) setViewHistoryIndex(viewHistoryIndex - 1);
+    toast("Đã xóa một đợt lịch sử.");
+  }, [roomState, viewHistoryIndex, setViewHistoryIndex, updateGlobalState, toast]);
+
+  const updateTargetMode = useCallback((mode: string) => {
+    const newRoomState = {
+      ...roomState,
+      targetMode: mode
+    };
+    updateGlobalState(newRoomState);
+  }, [roomState, updateGlobalState]);
+
+  const renderTargetSelector = useCallback((isBanner = false) => {
     const chars = getBotCharactersList();
+    const targetMode = roomState.targetMode || '';
     if (roomDef?.id === 'supporting_cast_poster') {
       return (
         <div style={{
@@ -920,16 +1666,16 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
             <button
-              className={`target-option ${(roomState.targetMode === 'supporting_cast_couple' || !roomState.targetMode || roomState.targetMode === 'bot_all' || roomState.targetMode === 'couple') ? 'active' : ''}`}
-              onClick={() => { roomState.targetMode = 'supporting_cast_couple'; save(state); }}
+              className={`target-option ${(targetMode === 'supporting_cast_couple' || !targetMode || targetMode === 'bot_all' || targetMode === 'couple') ? 'active' : ''}`}
+              onClick={() => updateTargetMode('supporting_cast_couple')}
               style={{
                 padding: '8px 16px',
                 borderRadius: '14px',
                 fontSize: '0.9rem',
-                border: (roomState.targetMode === 'supporting_cast_couple' || !roomState.targetMode || roomState.targetMode === 'bot_all' || roomState.targetMode === 'couple') ? '2px solid #4f46e5' : '1px solid rgba(79, 70, 229, 0.4)',
-                background: (roomState.targetMode === 'supporting_cast_couple' || !roomState.targetMode || roomState.targetMode === 'bot_all' || roomState.targetMode === 'couple') ? '#4f46e5' : '#ffffff',
-                color: (roomState.targetMode === 'supporting_cast_couple' || !roomState.targetMode || roomState.targetMode === 'bot_all' || roomState.targetMode === 'couple') ? '#ffffff' : '#4f46e5',
-                boxShadow: (roomState.targetMode === 'supporting_cast_couple' || !roomState.targetMode || roomState.targetMode === 'bot_all' || roomState.targetMode === 'couple') ? '0 4px 12px rgba(79, 70, 229, 0.3)' : 'none',
+                border: (targetMode === 'supporting_cast_couple' || !targetMode || targetMode === 'bot_all' || targetMode === 'couple') ? '2px solid #4f46e5' : '1px solid rgba(79, 70, 229, 0.4)',
+                background: (targetMode === 'supporting_cast_couple' || !targetMode || targetMode === 'bot_all' || targetMode === 'couple') ? '#4f46e5' : '#ffffff',
+                color: (targetMode === 'supporting_cast_couple' || !targetMode || targetMode === 'bot_all' || targetMode === 'couple') ? '#ffffff' : '#4f46e5',
+                boxShadow: (targetMode === 'supporting_cast_couple' || !targetMode || targetMode === 'bot_all' || targetMode === 'couple') ? '0 4px 12px rgba(79, 70, 229, 0.3)' : 'none',
                 fontWeight: 800,
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -939,16 +1685,16 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
               🎬 Nổi bật Cặp Đôi Chính + Dàn Diễn Viên Phụ (NPC)
             </button>
             <button
-              className={`target-option ${roomState.targetMode === 'supporting_cast_protagonist' ? 'active' : ''}`}
-              onClick={() => { roomState.targetMode = 'supporting_cast_protagonist'; save(state); }}
+              className={`target-option ${targetMode === 'supporting_cast_protagonist' ? 'active' : ''}`}
+              onClick={() => updateTargetMode('supporting_cast_protagonist')}
               style={{
                 padding: '8px 16px',
                 borderRadius: '14px',
                 fontSize: '0.9rem',
-                border: roomState.targetMode === 'supporting_cast_protagonist' ? '2px solid #4f46e5' : '1px solid rgba(79, 70, 229, 0.4)',
-                background: roomState.targetMode === 'supporting_cast_protagonist' ? '#4f46e5' : '#ffffff',
-                color: roomState.targetMode === 'supporting_cast_protagonist' ? '#ffffff' : '#4f46e5',
-                boxShadow: roomState.targetMode === 'supporting_cast_protagonist' ? '0 4px 12px rgba(79, 70, 229, 0.3)' : 'none',
+                border: targetMode === 'supporting_cast_protagonist' ? '2px solid #4f46e5' : '1px solid rgba(79, 70, 229, 0.4)',
+                background: targetMode === 'supporting_cast_protagonist' ? '#4f46e5' : '#ffffff',
+                color: targetMode === 'supporting_cast_protagonist' ? '#ffffff' : '#4f46e5',
+                boxShadow: targetMode === 'supporting_cast_protagonist' ? '0 4px 12px rgba(79, 70, 229, 0.3)' : 'none',
                 fontWeight: 800,
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -983,33 +1729,33 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
             <button
-              className={`target-option ${(roomState.targetMode === 'bot_all' || !roomState.targetMode || roomState.targetMode === 'bot') ? 'active' : ''}`}
-              onClick={() => { roomState.targetMode = 'bot_all'; save(state); }}
+              className={`target-option ${(targetMode === 'bot_all' || !targetMode || targetMode === 'bot') ? 'active' : ''}`}
+              onClick={() => updateTargetMode('bot_all')}
               style={{
                 padding: '8px 16px',
                 borderRadius: '14px',
                 fontSize: '0.9rem',
-                border: (roomState.targetMode === 'bot_all' || !roomState.targetMode || roomState.targetMode === 'bot') ? (isHobby ? '2px solid #10b981' : '2px solid #d23a73') : (isHobby ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(210, 58, 115, 0.4)'),
-                background: (roomState.targetMode === 'bot_all' || !roomState.targetMode || roomState.targetMode === 'bot') ? (isHobby ? '#10b981' : '#d23a73') : '#ffffff',
-                color: (roomState.targetMode === 'bot_all' || !roomState.targetMode || roomState.targetMode === 'bot') ? '#ffffff' : (isHobby ? '#10b981' : '#d23a73'),
-                boxShadow: (roomState.targetMode === 'bot_all' || !roomState.targetMode || roomState.targetMode === 'bot') ? (isHobby ? '0 4px 12px rgba(16, 185, 129, 0.3)' : '0 4px 12px rgba(210, 58, 115, 0.3)') : 'none',
+                border: (targetMode === 'bot_all' || !targetMode || targetMode === 'bot') ? (isHobby ? '2px solid #10b981' : '2px solid #d23a73') : (isHobby ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(210, 58, 115, 0.4)'),
+                background: (targetMode === 'bot_all' || !targetMode || targetMode === 'bot') ? (isHobby ? '#10b981' : '#d23a73') : '#ffffff',
+                color: (targetMode === 'bot_all' || !targetMode || targetMode === 'bot') ? '#ffffff' : (isHobby ? '#10b981' : '#d23a73'),
+                boxShadow: (targetMode === 'bot_all' || !targetMode || targetMode === 'bot') ? (isHobby ? '0 4px 12px rgba(16, 185, 129, 0.3)' : '0 4px 12px rgba(210, 58, 115, 0.3)') : 'none',
                 fontWeight: 800,
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px'
               }}
             >
-              <CodeDrawnBunny size={18} color={(roomState.targetMode === 'bot_all' || !roomState.targetMode || roomState.targetMode === 'bot') ? '#ffffff' : (isHobby ? '#d1fae5' : '#ffe0b2')} earColor={(roomState.targetMode === 'bot_all' || !roomState.targetMode || roomState.targetMode === 'bot') ? (isHobby ? '#6ee7b7' : '#ff80ab') : (isHobby ? '#10b981' : '#ff4081')} />
+              <CodeDrawnBunny size={18} color={(targetMode === 'bot_all' || !targetMode || targetMode === 'bot') ? '#ffffff' : (isHobby ? '#d1fae5' : '#ffe0b2')} earColor={(targetMode === 'bot_all' || !targetMode || targetMode === 'bot') ? (isHobby ? '#6ee7b7' : '#ff80ab') : (isHobby ? '#10b981' : '#ff4081')} />
               {isHobby ? 'Gộp chung sở thích & vibe tất cả Bot Char (Group Vibe Space)' : 'Gộp chung tất cả Bot Char (Group Marketing Art)'}
             </button>
             {chars.map((char: any, idx: number) => {
               const modeKey = `bot_${idx}`;
-              const isActive = roomState.targetMode === modeKey;
+              const isActive = targetMode === modeKey;
               return (
                 <button
                   key={`mode_bot_art_${modeKey}_${idx}`}
                   className={`target-option ${isActive ? 'active' : ''}`}
-                  onClick={() => { roomState.targetMode = modeKey; save(state); }}
+                  onClick={() => updateTargetMode(modeKey)}
                   style={{
                     padding: '8px 16px',
                     borderRadius: '14px',
@@ -1041,16 +1787,16 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         marginTop: isBanner ? '12px' : '8px'
       }}>
         <button 
-          className={`target-option ${(roomState.targetMode === 'cinema_poster' || roomState.targetMode === 'poster_all') ? 'active' : ''}`}
-          onClick={() => { roomState.targetMode = 'cinema_poster'; save(state); }}
+          className={`target-option ${(targetMode === 'cinema_poster' || targetMode === 'poster_all') ? 'active' : ''}`}
+          onClick={() => updateTargetMode('cinema_poster')}
           style={{
             padding: '8px 16px', 
             borderRadius: '14px', 
             fontSize: '0.9rem',
-            border: (roomState.targetMode === 'cinema_poster' || roomState.targetMode === 'poster_all') ? '2px solid #d23a73' : '1px solid rgba(220, 105, 150, 0.4)',
-            background: (roomState.targetMode === 'cinema_poster' || roomState.targetMode === 'poster_all') ? 'linear-gradient(135deg, #d23a73 0%, #8c264e 100%)' : '#ffffff',
-            color: (roomState.targetMode === 'cinema_poster' || roomState.targetMode === 'poster_all') ? '#ffffff' : '#8c526b',
-            boxShadow: (roomState.targetMode === 'cinema_poster' || roomState.targetMode === 'poster_all') ? '0 4px 14px rgba(210, 58, 115, 0.4)' : 'none',
+            border: (targetMode === 'cinema_poster' || targetMode === 'poster_all') ? '2px solid #d23a73' : '1px solid rgba(220, 105, 150, 0.4)',
+            background: (targetMode === 'cinema_poster' || targetMode === 'poster_all') ? 'linear-gradient(135deg, #d23a73 0%, #8c264e 100%)' : '#ffffff',
+            color: (targetMode === 'cinema_poster' || targetMode === 'poster_all') ? '#ffffff' : '#8c526b',
+            boxShadow: (targetMode === 'cinema_poster' || targetMode === 'poster_all') ? '0 4px 14px rgba(210, 58, 115, 0.4)' : 'none',
             fontWeight: 800
           }}
         >
@@ -1058,16 +1804,16 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         </button>
 
         <button 
-          className={`target-option ${(roomState.targetMode === 'all_group' || roomState.targetMode === 'couple') ? 'active' : ''}`}
-          onClick={() => { roomState.targetMode = 'all_group'; save(state); }}
+          className={`target-option ${(targetMode === 'all_group' || targetMode === 'couple') ? 'active' : ''}`}
+          onClick={() => updateTargetMode('all_group')}
           style={{
             padding: '8px 16px', 
             borderRadius: '14px', 
             fontSize: '0.9rem',
-            border: (roomState.targetMode === 'all_group' || roomState.targetMode === 'couple') ? '2px solid #d23a73' : '1px solid rgba(220, 105, 150, 0.4)',
-            background: (roomState.targetMode === 'all_group' || roomState.targetMode === 'couple') ? '#d23a73' : '#ffffff',
-            color: (roomState.targetMode === 'all_group' || roomState.targetMode === 'couple') ? '#ffffff' : '#8c526b',
-            boxShadow: (roomState.targetMode === 'all_group' || roomState.targetMode === 'couple') ? '0 4px 12px rgba(210, 58, 115, 0.3)' : 'none',
+            border: (targetMode === 'all_group' || targetMode === 'couple') ? '2px solid #d23a73' : '1px solid rgba(220, 105, 150, 0.4)',
+            background: (targetMode === 'all_group' || targetMode === 'couple') ? '#d23a73' : '#ffffff',
+            color: (targetMode === 'all_group' || targetMode === 'couple') ? '#ffffff' : '#8c526b',
+            boxShadow: (targetMode === 'all_group' || targetMode === 'couple') ? '0 4px 12px rgba(210, 58, 115, 0.3)' : 'none',
             fontWeight: 800
           }}
         >
@@ -1075,16 +1821,16 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         </button>
 
         <button 
-          className={`target-option ${roomState.targetMode === 'user' ? 'active' : ''}`}
-          onClick={() => { roomState.targetMode = 'user'; save(state); }}
+          className={`target-option ${targetMode === 'user' ? 'active' : ''}`}
+          onClick={() => updateTargetMode('user')}
           style={{
             padding: '8px 16px', 
             borderRadius: '14px', 
             fontSize: '0.9rem',
-            border: roomState.targetMode === 'user' ? '2px solid #d23a73' : '1px solid rgba(220, 105, 150, 0.4)',
-            background: roomState.targetMode === 'user' ? '#d23a73' : '#ffffff',
-            color: roomState.targetMode === 'user' ? '#ffffff' : '#8c526b',
-            boxShadow: roomState.targetMode === 'user' ? '0 4px 12px rgba(210, 58, 115, 0.3)' : 'none',
+            border: targetMode === 'user' ? '2px solid #d23a73' : '1px solid rgba(220, 105, 150, 0.4)',
+            background: targetMode === 'user' ? '#d23a73' : '#ffffff',
+            color: targetMode === 'user' ? '#ffffff' : '#8c526b',
+            boxShadow: targetMode === 'user' ? '0 4px 12px rgba(210, 58, 115, 0.3)' : 'none',
             fontWeight: 800
           }}
         >
@@ -1092,16 +1838,16 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         </button>
 
         <button 
-          className={`target-option ${(roomState.targetMode === 'bot' || roomState.targetMode === 'bot_all') ? 'active' : ''}`}
-          onClick={() => { roomState.targetMode = 'bot_all'; save(state); }}
+          className={`target-option ${(targetMode === 'bot' || targetMode === 'bot_all') ? 'active' : ''}`}
+          onClick={() => updateTargetMode('bot_all')}
           style={{
             padding: '8px 16px', 
             borderRadius: '14px', 
             fontSize: '0.9rem',
-            border: (roomState.targetMode === 'bot' || roomState.targetMode === 'bot_all') ? '2px solid #d23a73' : '1px solid rgba(220, 105, 150, 0.4)',
-            background: (roomState.targetMode === 'bot' || roomState.targetMode === 'bot_all') ? '#d23a73' : '#ffffff',
-            color: (roomState.targetMode === 'bot' || roomState.targetMode === 'bot_all') ? '#ffffff' : '#8c526b',
-            boxShadow: (roomState.targetMode === 'bot' || roomState.targetMode === 'bot_all') ? '0 4px 12px rgba(210, 58, 115, 0.3)' : 'none',
+            border: (targetMode === 'bot' || targetMode === 'bot_all') ? '2px solid #d23a73' : '1px solid rgba(220, 105, 150, 0.4)',
+            background: (targetMode === 'bot' || targetMode === 'bot_all') ? '#d23a73' : '#ffffff',
+            color: (targetMode === 'bot' || targetMode === 'bot_all') ? '#ffffff' : '#8c526b',
+            boxShadow: (targetMode === 'bot' || targetMode === 'bot_all') ? '0 4px 12px rgba(210, 58, 115, 0.3)' : 'none',
             fontWeight: 800
           }}
         >
@@ -1109,16 +1855,16 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         </button>
 
         <button 
-          className={`target-option ${roomState.targetMode === 'background_only' ? 'active' : ''}`}
-          onClick={() => { roomState.targetMode = 'background_only'; save(state); }}
+          className={`target-option ${targetMode === 'background_only' ? 'active' : ''}`}
+          onClick={() => updateTargetMode('background_only')}
           style={{
             padding: '8px 16px', 
             borderRadius: '14px', 
             fontSize: '0.9rem',
-            border: roomState.targetMode === 'background_only' ? '2px solid #009688' : '1px solid rgba(0, 150, 136, 0.4)',
-            background: roomState.targetMode === 'background_only' ? 'linear-gradient(135deg, #009688 0%, #00796b 100%)' : '#ffffff',
-            color: roomState.targetMode === 'background_only' ? '#ffffff' : '#00796b',
-            boxShadow: roomState.targetMode === 'background_only' ? '0 4px 14px rgba(0, 150, 136, 0.4)' : 'none',
+            border: targetMode === 'background_only' ? '2px solid #009688' : '1px solid rgba(0, 150, 136, 0.4)',
+            background: targetMode === 'background_only' ? 'linear-gradient(135deg, #009688 0%, #00796b 100%)' : '#ffffff',
+            color: targetMode === 'background_only' ? '#ffffff' : '#00796b',
+            boxShadow: targetMode === 'background_only' ? '0 4px 14px rgba(0, 150, 136, 0.4)' : 'none',
             fontWeight: 800
           }}
         >
@@ -1126,16 +1872,16 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         </button>
 
         <button 
-          className={`target-option ${roomState.targetMode === 'typo_graphic_only' ? 'active' : ''}`}
-          onClick={() => { roomState.targetMode = 'typo_graphic_only'; save(state); }}
+          className={`target-option ${targetMode === 'typo_graphic_only' ? 'active' : ''}`}
+          onClick={() => updateTargetMode('typo_graphic_only')}
           style={{
             padding: '8px 16px', 
             borderRadius: '14px', 
             fontSize: '0.9rem',
-            border: roomState.targetMode === 'typo_graphic_only' ? '2px solid #7e57c2' : '1px solid rgba(126, 87, 194, 0.4)',
-            background: roomState.targetMode === 'typo_graphic_only' ? 'linear-gradient(135deg, #7e57c2 0%, #512da8 100%)' : '#ffffff',
-            color: roomState.targetMode === 'typo_graphic_only' ? '#ffffff' : '#512da8',
-            boxShadow: roomState.targetMode === 'typo_graphic_only' ? '0 4px 14px rgba(126, 87, 194, 0.4)' : 'none',
+            border: targetMode === 'typo_graphic_only' ? '2px solid #7e57c2' : '1px solid rgba(126, 87, 194, 0.4)',
+            background: targetMode === 'typo_graphic_only' ? 'linear-gradient(135deg, #7e57c2 0%, #512da8 100%)' : '#ffffff',
+            color: targetMode === 'typo_graphic_only' ? '#ffffff' : '#512da8',
+            boxShadow: targetMode === 'typo_graphic_only' ? '0 4px 14px rgba(126, 87, 194, 0.4)' : 'none',
             fontWeight: 800
           }}
         >
@@ -1143,16 +1889,16 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         </button>
 
         <button 
-          className={`target-option ${roomState.targetMode === 'cinematic_album_art' ? 'active' : ''}`}
-          onClick={() => { roomState.targetMode = 'cinematic_album_art'; save(state); }}
+          className={`target-option ${targetMode === 'cinematic_album_art' ? 'active' : ''}`}
+          onClick={() => updateTargetMode('cinematic_album_art')}
           style={{
             padding: '8px 16px', 
             borderRadius: '14px', 
             fontSize: '0.9rem',
-            border: roomState.targetMode === 'cinematic_album_art' ? '2px solid #a83258' : '1px solid rgba(168, 50, 88, 0.4)',
-            background: roomState.targetMode === 'cinematic_album_art' ? 'linear-gradient(135deg, #a83258 0%, #800020 100%)' : '#ffffff',
-            color: roomState.targetMode === 'cinematic_album_art' ? '#ffffff' : '#800020',
-            boxShadow: roomState.targetMode === 'cinematic_album_art' ? '0 4px 14px rgba(168, 50, 88, 0.4)' : 'none',
+            border: targetMode === 'cinematic_album_art' ? '2px solid #a83258' : '1px solid rgba(168, 50, 88, 0.4)',
+            background: targetMode === 'cinematic_album_art' ? 'linear-gradient(135deg, #a83258 0%, #800020 100%)' : '#ffffff',
+            color: targetMode === 'cinematic_album_art' ? '#ffffff' : '#800020',
+            boxShadow: targetMode === 'cinematic_album_art' ? '0 4px 14px rgba(168, 50, 88, 0.4)' : 'none',
             fontWeight: 800
           }}
         >
@@ -1160,16 +1906,16 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         </button>
 
         <button 
-          className={`target-option ${roomState.targetMode === 'canva_aboutme_mode' ? 'active' : ''}`}
-          onClick={() => { roomState.targetMode = 'canva_aboutme_mode'; save(state); }}
+          className={`target-option ${targetMode === 'canva_aboutme_mode' ? 'active' : ''}`}
+          onClick={() => updateTargetMode('canva_aboutme_mode')}
           style={{
             padding: '8px 16px', 
             borderRadius: '14px', 
             fontSize: '0.9rem',
-            border: roomState.targetMode === 'canva_aboutme_mode' ? '2px solid #00c4cc' : '1px solid rgba(0, 196, 204, 0.4)',
-            background: roomState.targetMode === 'canva_aboutme_mode' ? 'linear-gradient(135deg, #00c4cc 0%, #7d2ae8 100%)' : '#ffffff',
-            color: roomState.targetMode === 'canva_aboutme_mode' ? '#ffffff' : '#5b1fc4',
-            boxShadow: roomState.targetMode === 'canva_aboutme_mode' ? '0 4px 14px rgba(0, 196, 204, 0.4)' : 'none',
+            border: targetMode === 'canva_aboutme_mode' ? '2px solid #00c4cc' : '1px solid rgba(0, 196, 204, 0.4)',
+            background: targetMode === 'canva_aboutme_mode' ? 'linear-gradient(135deg, #00c4cc 0%, #7d2ae8 100%)' : '#ffffff',
+            color: targetMode === 'canva_aboutme_mode' ? '#ffffff' : '#5b1fc4',
+            boxShadow: targetMode === 'canva_aboutme_mode' ? '0 4px 14px rgba(0, 196, 204, 0.4)' : 'none',
             fontWeight: 800
           }}
         >
@@ -1177,16 +1923,16 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         </button>
 
         <button 
-          className={`target-option ${roomState.targetMode === 'manga_webtoon_mode' ? 'active' : ''}`}
-          onClick={() => { roomState.targetMode = 'manga_webtoon_mode'; save(state); }}
+          className={`target-option ${targetMode === 'manga_webtoon_mode' ? 'active' : ''}`}
+          onClick={() => updateTargetMode('manga_webtoon_mode')}
           style={{
             padding: '8px 16px', 
             borderRadius: '14px', 
             fontSize: '0.9rem',
-            border: roomState.targetMode === 'manga_webtoon_mode' ? '2px solid #ff9800' : '1px solid rgba(255, 152, 0, 0.4)',
-            background: roomState.targetMode === 'manga_webtoon_mode' ? 'linear-gradient(135deg, #ff9800 0%, #ed6c02 100%)' : '#ffffff',
-            color: roomState.targetMode === 'manga_webtoon_mode' ? '#ffffff' : '#e65100',
-            boxShadow: roomState.targetMode === 'manga_webtoon_mode' ? '0 4px 14px rgba(255, 152, 0, 0.4)' : 'none',
+            border: targetMode === 'manga_webtoon_mode' ? '2px solid #ff9800' : '1px solid rgba(255, 152, 0, 0.4)',
+            background: targetMode === 'manga_webtoon_mode' ? 'linear-gradient(135deg, #ff9800 0%, #ed6c02 100%)' : '#ffffff',
+            color: targetMode === 'manga_webtoon_mode' ? '#ffffff' : '#e65100',
+            boxShadow: targetMode === 'manga_webtoon_mode' ? '0 4px 14px rgba(255, 152, 0, 0.4)' : 'none',
             fontWeight: 800
           }}
         >
@@ -1194,16 +1940,16 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         </button>
 
         <button 
-          className={`target-option ${roomState.targetMode === 'fandom_merch_mode' ? 'active' : ''}`}
-          onClick={() => { roomState.targetMode = 'fandom_merch_mode'; save(state); }}
+          className={`target-option ${targetMode === 'fandom_merch_mode' ? 'active' : ''}`}
+          onClick={() => updateTargetMode('fandom_merch_mode')}
           style={{
             padding: '8px 16px', 
             borderRadius: '14px', 
             fontSize: '0.9rem',
-            border: roomState.targetMode === 'fandom_merch_mode' ? '2px solid #ec4899' : '1px solid rgba(236, 72, 153, 0.4)',
-            background: roomState.targetMode === 'fandom_merch_mode' ? 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)' : '#ffffff',
-            color: roomState.targetMode === 'fandom_merch_mode' ? '#ffffff' : '#9d174d',
-            boxShadow: roomState.targetMode === 'fandom_merch_mode' ? '0 4px 14px rgba(236, 72, 153, 0.4)' : 'none',
+            border: targetMode === 'fandom_merch_mode' ? '2px solid #ec4899' : '1px solid rgba(236, 72, 153, 0.4)',
+            background: targetMode === 'fandom_merch_mode' ? 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)' : '#ffffff',
+            color: targetMode === 'fandom_merch_mode' ? '#ffffff' : '#9d174d',
+            boxShadow: targetMode === 'fandom_merch_mode' ? '0 4px 14px rgba(236, 72, 153, 0.4)' : 'none',
             fontWeight: 800
           }}
         >
@@ -1211,16 +1957,16 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         </button>
 
         <button 
-          className={`target-option ${roomState.targetMode === 'handmade_card_mode' ? 'active' : ''}`}
-          onClick={() => { roomState.targetMode = 'handmade_card_mode'; save(state); }}
+          className={`target-option ${targetMode === 'handmade_card_mode' ? 'active' : ''}`}
+          onClick={() => updateTargetMode('handmade_card_mode')}
           style={{
             padding: '8px 16px', 
             borderRadius: '14px', 
             fontSize: '0.9rem',
-            border: roomState.targetMode === 'handmade_card_mode' ? '2px solid #f43f5e' : '1px solid rgba(244, 63, 94, 0.4)',
-            background: roomState.targetMode === 'handmade_card_mode' ? 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)' : '#ffffff',
-            color: roomState.targetMode === 'handmade_card_mode' ? '#ffffff' : '#9f1239',
-            boxShadow: roomState.targetMode === 'handmade_card_mode' ? '0 4px 14px rgba(244, 63, 94, 0.4)' : 'none',
+            border: targetMode === 'handmade_card_mode' ? '2px solid #f43f5e' : '1px solid rgba(244, 63, 94, 0.4)',
+            background: targetMode === 'handmade_card_mode' ? 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)' : '#ffffff',
+            color: targetMode === 'handmade_card_mode' ? '#ffffff' : '#9f1239',
+            boxShadow: targetMode === 'handmade_card_mode' ? '0 4px 14px rgba(244, 63, 94, 0.4)' : 'none',
             fontWeight: 800
           }}
         >
@@ -1228,16 +1974,16 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         </button>
 
         <button 
-          className={`target-option ${roomState.targetMode === 'marketing_pr_mode' ? 'active' : ''}`}
-          onClick={() => { roomState.targetMode = 'marketing_pr_mode'; save(state); }}
+          className={`target-option ${targetMode === 'marketing_pr_mode' ? 'active' : ''}`}
+          onClick={() => updateTargetMode('marketing_pr_mode')}
           style={{
             padding: '8px 16px', 
             borderRadius: '14px', 
             fontSize: '0.9rem',
-            border: roomState.targetMode === 'marketing_pr_mode' ? '2px solid #8b5cf6' : '1px solid rgba(139, 92, 246, 0.4)',
-            background: roomState.targetMode === 'marketing_pr_mode' ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' : '#ffffff',
-            color: roomState.targetMode === 'marketing_pr_mode' ? '#ffffff' : '#5b21b6',
-            boxShadow: roomState.targetMode === 'marketing_pr_mode' ? '0 4px 14px rgba(139, 92, 246, 0.4)' : 'none',
+            border: targetMode === 'marketing_pr_mode' ? '2px solid #8b5cf6' : '1px solid rgba(139, 92, 246, 0.4)',
+            background: targetMode === 'marketing_pr_mode' ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' : '#ffffff',
+            color: targetMode === 'marketing_pr_mode' ? '#ffffff' : '#5b21b6',
+            boxShadow: targetMode === 'marketing_pr_mode' ? '0 4px 14px rgba(139, 92, 246, 0.4)' : 'none',
             fontWeight: 800
           }}
         >
@@ -1245,55 +1991,55 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         </button>
 
         <button 
-          className={`target-option ${roomState.targetMode === 'bot_char_marketing_art_mode' ? 'active' : ''}`}
-          onClick={() => { roomState.targetMode = 'bot_char_marketing_art_mode'; save(state); }}
+          className={`target-option ${targetMode === 'bot_char_marketing_art_mode' ? 'active' : ''}`}
+          onClick={() => updateTargetMode('bot_char_marketing_art_mode')}
           style={{
             padding: '8px 16px', 
             borderRadius: '14px', 
             fontSize: '0.9rem',
-            border: roomState.targetMode === 'bot_char_marketing_art_mode' ? '2px solid #d23a73' : '1px solid rgba(210, 58, 115, 0.4)',
-            background: roomState.targetMode === 'bot_char_marketing_art_mode' ? 'linear-gradient(135deg, #d23a73 0%, #ff4081 100%)' : '#ffffff',
-            color: roomState.targetMode === 'bot_char_marketing_art_mode' ? '#ffffff' : '#d23a73',
-            boxShadow: roomState.targetMode === 'bot_char_marketing_art_mode' ? '0 4px 14px rgba(210, 58, 115, 0.4)' : 'none',
+            border: targetMode === 'bot_char_marketing_art_mode' ? '2px solid #d23a73' : '1px solid rgba(210, 58, 115, 0.4)',
+            background: targetMode === 'bot_char_marketing_art_mode' ? 'linear-gradient(135deg, #d23a73 0%, #ff4081 100%)' : '#ffffff',
+            color: targetMode === 'bot_char_marketing_art_mode' ? '#ffffff' : '#d23a73',
+            boxShadow: targetMode === 'bot_char_marketing_art_mode' ? '0 4px 14px rgba(210, 58, 115, 0.4)' : 'none',
             fontWeight: 800,
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px'
           }}
         >
-          <CodeDrawnBunny size={18} color={roomState.targetMode === 'bot_char_marketing_art_mode' ? '#ffffff' : '#ffe0b2'} earColor={roomState.targetMode === 'bot_char_marketing_art_mode' ? '#ff80ab' : '#ff4081'} />
+          <CodeDrawnBunny size={18} color={targetMode === 'bot_char_marketing_art_mode' ? '#ffffff' : '#ffe0b2'} earColor={targetMode === 'bot_char_marketing_art_mode' ? '#ff80ab' : '#ff4081'} />
           🐰 Nghệ Thuật Bot Char (Marketing & Điện Ảnh)
         </button>
 
         <button 
-          className={`target-option ${roomState.targetMode === 'bot_char_hobbies_vibe_mode' ? 'active' : ''}`}
-          onClick={() => { roomState.targetMode = 'bot_char_hobbies_vibe_mode'; save(state); }}
+          className={`target-option ${targetMode === 'bot_char_hobbies_vibe_mode' ? 'active' : ''}`}
+          onClick={() => updateTargetMode('bot_char_hobbies_vibe_mode')}
           style={{
             padding: '8px 16px', 
             borderRadius: '14px', 
             fontSize: '0.9rem',
-            border: roomState.targetMode === 'bot_char_hobbies_vibe_mode' ? '2px solid #10b981' : '1px solid rgba(16, 185, 129, 0.4)',
-            background: roomState.targetMode === 'bot_char_hobbies_vibe_mode' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#ffffff',
-            color: roomState.targetMode === 'bot_char_hobbies_vibe_mode' ? '#ffffff' : '#10b981',
-            boxShadow: roomState.targetMode === 'bot_char_hobbies_vibe_mode' ? '0 4px 14px rgba(16, 185, 129, 0.4)' : 'none',
+            border: targetMode === 'bot_char_hobbies_vibe_mode' ? '2px solid #10b981' : '1px solid rgba(16, 185, 129, 0.4)',
+            background: targetMode === 'bot_char_hobbies_vibe_mode' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#ffffff',
+            color: targetMode === 'bot_char_hobbies_vibe_mode' ? '#ffffff' : '#10b981',
+            boxShadow: targetMode === 'bot_char_hobbies_vibe_mode' ? '0 4px 14px rgba(16, 185, 129, 0.4)' : 'none',
             fontWeight: 800,
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px'
           }}
         >
-          <CodeDrawnBunny size={18} color={roomState.targetMode === 'bot_char_hobbies_vibe_mode' ? '#ffffff' : '#d1fae5'} earColor={roomState.targetMode === 'bot_char_hobbies_vibe_mode' ? '#6ee7b7' : '#10b981'} />
+          <CodeDrawnBunny size={18} color={targetMode === 'bot_char_hobbies_vibe_mode' ? '#ffffff' : '#d1fae5'} earColor={targetMode === 'bot_char_hobbies_vibe_mode' ? '#6ee7b7' : '#10b981'} />
           🐰 Sở Thích Bot Char (Vibe & Hobbies)
         </button>
 
         {chars.map((char: any, idx: number) => {
           const modeKey = `bot_${idx}`;
-          const isActive = roomState.targetMode === modeKey;
+          const isActive = targetMode === modeKey;
           return (
             <button
               key={`mode_${modeKey}_${idx}`}
               className={`target-option ${isActive ? 'active' : ''}`}
-              onClick={() => { roomState.targetMode = modeKey; save(state); }}
+              onClick={() => updateTargetMode(modeKey)}
               style={{
                 padding: '8px 16px', 
                 borderRadius: '14px', 
@@ -1315,10 +2061,10 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         })}
       </div>
     );
-  };
+  }, [getBotCharactersList, roomDef, roomState.targetMode, updateTargetMode]);
 
-  const buildContextPayload = () => {
-    const rs = roomState;
+  const buildContextPayload = useCallback((customRoomState?: LipstickRoomState) => {
+    const rs = customRoomState || roomState;
     const sa = rs.styleAnalyzer || { refs: [], selected: [], analysis: "" };
     const target = rs.targetMode || 'bot';
     const cards = roomDef.cards || [];
@@ -1352,12 +2098,17 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
       summary: f.summary
     }));
 
+    const currentPayload = {
+      feature: "Lipstick Prompt Rooms",
+      // ... (reconstructing the structure)
+    }; // Wait, I should use the actual logic from before
+
     const manualChars = Object.values(manualInput).join(" ").length;
     const manualWords = Object.values(manualInput).join(" ").trim().split(/\s+/).length;
     const filesChars = importedFiles.reduce((acc: number, f: any) => acc + (f.characterCount || 0), 0);
     const filesWords = importedFiles.reduce((acc: number, f: any) => acc + (f.wordCount || 0), 0);
 
-    const saRefs = (sa.refs || []).map((r: any) => ({
+    const saRefs = (sa.refs || []).filter((r: any) => r.storyId === currentStory.id).map((r: any) => ({
       imageId: r.imageId || r.id || uuidv4(),
       storyId: currentStory.id,
       roomId: roomDef.id,
@@ -1380,7 +2131,7 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
 
     const workCards = cards.map((c: any) => {
       const cs = rs.cards[c.id] || { note: "", refs: [], output: "" };
-      const cRefs = (cs.refs || []).map((r: any) => {
+      const cRefs = (cs.refs || []).filter((r: any) => r.storyId === currentStory.id).map((r: any) => {
         let purp = `${c.id}_reference (${c.desc || c.title})`;
         const idLower = (c.id || "").toLowerCase();
         const titleLower = (c.title || "").toLowerCase();
@@ -1431,29 +2182,9 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
       };
     });
 
-    const botCharRefs = botCharactersList.flatMap((c: any, idx: number) => (c.referenceImages || []).map((r: any) => ({
-      imageId: r.id || r.imageId || uuidv4(),
-      storyId: currentStory.id,
-      roomId: roomDef.id,
-      roomTitle: roomDef.title,
-      cardId: `bot_profile_${c.id || idx + 1}`,
-      cardTitle: `Hồ sơ Bot Char: ${c.displayName || 'Unnamed'}`,
-      imageType: "bot_character_reference",
-      fileName: r.name || r.fileName || "bot_ref.png",
-      purpose: "bot_character_reference (khí chất, tạo hình đặc trưng, độ tuổi thị giác)",
-      mimeType: r.mimeType || r.type || "image/png",
-      fileSizeBytes: r.fileSizeBytes || r.size || 0,
-      data: r.data || r.previewUrl || r.storageUrl,
-      previewUrl: r.previewUrl || r.data || r.storageUrl,
-      storageUrl: r.storageUrl || r.data || r.previewUrl,
-      analysisStatus: r.analysisStatus || 'analyzed',
-      imageAnalysisText: r.imageAnalysisText || r.analysisResult || `Ảnh tham chiếu riêng cho nhân vật ${c.displayName || 'Bot Char'}`,
-      imageAnalysisJson: r.imageAnalysisJson || null
-    })));
-
-    const allImages = [...saRefs, ...botCharRefs, ...workCards.flatMap((c: any) => c.referenceImages)];
-    const analyzedImages = allImages.filter((img: any) => img.analysisStatus === 'analyzed');
-    const totalTokensEst = Math.ceil((manualChars + filesChars) / 3.5) + (allImages.length * 250);
+    const allImages = [...saRefs, ...workCards.flatMap(c => c.referenceImages)];
+    const analyzedImages = allImages.filter(img => img.analysisStatus === 'analyzed');
+    const totalTokensEst = Math.ceil((manualChars + filesChars) / 3.5) + (allImages.length * 1000);
 
     const referenceImageManifest = allImages.map((img: any) => ({
       storyId: img.storyId,
@@ -1466,7 +2197,9 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
       purpose: img.purpose || "reference_image",
       analysisStatus: img.analysisStatus,
       imageAnalysisText: img.imageAnalysisText,
-      annotations: img.annotations || []
+      annotations: img.annotations || [],
+      previewUrl: img.previewUrl,
+      storageUrl: img.storageUrl
     }));
 
     return {
@@ -1536,7 +2269,15 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
       negativePromptGuard: "bad hands, mutated anatomy, extra limbs, blurry, watermark, text, low resolution, distorted faces, bad eyes",
       outputRequirement: "Return final production-ready image prompt only."
     };
-  };
+  }, [roomState, roomDef, currentStory, getBotCharactersList, getTargetLabel, getTargetInstructions]);
+
+  const currentPayload = React.useMemo(() => {
+    // Only compute if actually needed for display or during API run
+    if (!showContextPreview && !isApiRunning) return null;
+    return buildContextPayload();
+  }, [buildContextPayload, showContextPreview, isApiRunning]);
+
+  const stats = currentPayload?.contextStats;
 
   const handleVisualChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1571,11 +2312,12 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
     }
   };
 
+
   const getAllRoomImages = () => {
     const rs = roomState;
     const list: any[] = [];
     if (rs.styleAnalyzer?.refs) {
-      rs.styleAnalyzer.refs.forEach((r: any) => {
+      rs.styleAnalyzer.refs.filter((r: any) => r.storyId === currentStory.id).forEach((r: any) => {
         list.push({
           ...r,
           cardId: 'style_analyzer',
@@ -1588,7 +2330,7 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
     for (const c of roomDef.cards || []) {
       const cs = rs.cards[c.id];
       if (cs?.refs) {
-        cs.refs.forEach((r: any) => {
+        cs.refs.filter((r: any) => r.storyId === currentStory.id).forEach((r: any) => {
           list.push({
             ...r,
             cardId: c.id,
@@ -1616,9 +2358,9 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
     return list;
   };
 
-  const analyzeSingleImage = async (imgRef: any, cardId: string, cardTitle: string) => {
+  const analyzeSingleImage = async (imgRef: any, cardId: string, cardTitle: string, customRoomState?: LipstickRoomState) => {
     toast(`⏳ Đang phân tích AI Vision cho ảnh: ${imgRef.name || imgRef.fileName}...`);
-    const rs = { ...roomState };
+    const rs = customRoomState ? customRoomState : { ...roomState };
     
     let targetRef: any = null;
     if (cardId === 'style_analyzer' && rs.styleAnalyzer?.refs) {
@@ -1635,7 +2377,11 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
     try {
       const sysPrompt = `You are the professional vision analysis module inside Lipstick Prompt Rooms.
 You MUST analyze and extract the visual traits from this reference image to support downstream AI image generation under the core rule: "Aesthetic Study & Visual Reference Principle (High aesthetic style fidelity, transformative adaptation for bespoke character originality)":
-CRITICAL RULE: The reference image is used to learn visual language and aesthetic DNA (art style, rendering, mood, line quality, lighting, color palette, outfit spirit, composition rhythm, EXACT CAMERA ANGLE, PERSPECTIVE, FRAMING, DEPTH OF FIELD, and EXACT BODY POSE / STANCE / GESTURE). When operating in the Reference Learning room ('learn'), 10 Pose Variations room ('poses10'), Soulful Storytelling room ('soulful'), or with inspiration references, you MUST provide aesthetic study and structural learning: extract the artistic techniques, camera work, visual flow (đường thị giác), lighting atmosphere, and pose dynamics as a reference study! You MUST ONLY apply the learned techniques to the user story's unique character profile and plot, creating a soulful image that speaks without words!
+CRITICAL RULE & REF-STEALTH MANDATE (BÁM SÁT 100% THAM CHIẾU NHƯNG BẢO MẬT TUYỆT ĐỐI KHÔNG LỘ BẢN GỐC):
+- The reference image is used to learn visual language and aesthetic DNA (art style, rendering, mood, line quality, lighting, color palette, outfit spirit, composition rhythm, EXACT CAMERA ANGLE, PERSPECTIVE, FRAMING, DEPTH OF FIELD, and EXACT BODY POSE / STANCE / GESTURE).
+- **No Identity/Literal Leak (Không rò rỉ danh tính/đặc trưng bản gốc)**: You are STRICTLY FORBIDDEN from copying or naming specific copyrighted props, specific unique weapons, character names, or literal metadata of the reference image. If the reference shows a character holding a specific wand, weapon, or unique tool, you MUST translate this into abstract geometry, visual leading lines, or fully customized narrative props that fit the user's original character and story context.
+- **Stealth Professional Art Formulation (Mô tả nghệ thuật ẩn danh chuyên nghiệp)**: Write the analysis and prompt instructions with high-end, evocative visual art and cinematography vocabulary to describe the composition, visual lines (đường thị giác, điểm nhìn, tầm nhìn), lighting directions, perspective, and brushstroke characteristics of the reference image with 100% accuracy, but do it in a purely creative, artistic way. If someone reads the final prompt, they must find it highly original and imaginative, and it must be impossible for them to reconstruct or guess what the exact original reference image was. Yet, the image generation model (Midjourney/Stable Diffusion/Ideogram/Flux) reading this prompt will reproduce the exact same visual structure, camera angle, brush technique, visual depth, and color theory as the reference image, while matching 100% the user's characters and story plot! This is the ultimate peak of reference-stealth prompt engineering.
+- When operating in the Reference Learning room ('learn'), 10 Pose Variations room ('poses10'), Soulful Storytelling room ('soulful'), or with inspiration references, you MUST provide aesthetic study and structural learning: extract the artistic techniques, camera work, visual flow (đường thị giác), lighting atmosphere, and pose dynamics as a reference study! You MUST ONLY apply the learned techniques to the user story's unique character profile and plot, creating a soulful image that speaks without words. **TUYỆT ĐỐI KHÔNG MIÊU TẢ Y NGUYÊN HOẶC EXTRACT CÁC ĐỒ VẬT, DỤNG CỤ, VŨ KHÍ, HAY BỐI CẢNH CỤ THỂ TRONG ẢNH (NO PROPS/TOOLS). HÃY TẬP TRUNG HOÀN TOÀN VÀO VIBE, KỸ THUẬT, VÀ CẤU TRÚC.**
 
 You MUST analyze and extract these mandatory layers in extreme detail:
 1. Nhận diện thẩm mỹ tổng thể: Giới tính trình bày, độ tuổi cảm giác, thần thái/khí chất thẩm mỹ (ethereal, regal, poetic, dreamy, quiet, floral, regal, retro, dark...), độ mềm hay sắc sảo, độ lạnh hay ngọt ngào, độ sang trọng quý phái.
@@ -1646,8 +2392,8 @@ You MUST analyze and extract these mandatory layers in extreme detail:
 6. Học vẽ mắt & Thần thái gương mặt (Eye Artistry & Facial Vibe): Đặc tả cách vẽ đôi mắt tinh xảo (ví dụ: tròng mắt long lanh ngậm nước, con ngươi óng ánh đa tầng chi tiết, hàng mi cong dày đen mướt, viền mắt sắc mảnh phóng khoáng). Chỉ rõ hướng nhìn (gaze direction), các điểm phản sáng bắt mắt (highlight reflection points) tạo độ sâu thăm thẳm và thần thái có hồn của đôi mắt.
 7. Trang phục / Outfit Fidelity: Tinh thần trang phục, form dáng silhouette (độ rộng rủ, ôm sát quyến rũ, lớp layer phức tạp), mật độ họa tiết thêu thùa (delicate embroidery), ruy băng (ribbons), ren (lace), cảm giác chất liệu (silk mềm mại, satin bóng nhẹ, voan tơ bán trong suốt), nếp gấp nếp rủ tự nhiên của vải dưới tác động của trọng lực hay gió bão.
 8. Góc chụp & Thị giác / Camera & Perspective Fidelity: Nhiều dải phân tầng không gian, xác định chính xác góc máy (eye-level, low-angle sweeping shot, high-angle, Dutch tilt...), cỡ ảnh (cinematic close-up, medium shot, wide shot), tiêu cự tạo cảm giác bóp méo không gian hay phẳng, độ sâu trường ảnh (depth of field), hiệu ứng mờ nhòe phông nền (creamy bokeh), cấu trúc phân tầng lớp không gian tiền cảnh - trung cảnh - hậu cảnh.
-9. Bố cục thị giác & Đường dẫn (Composition & Leading Lines): Nhịp điệu bố cục (bố cục bento-grid, bố cục 1/3, bố cục đối xứng), nhịp điệu của khoảng trống (negative space rhythm), các dải dẫn hướng mắt người xem (leading composition lines) tạo bởi hướng tóc bay, vạt áo rủ, hướng ánh sáng hay khói mây rực rỡ.
-10. Kiểu dáng & Cử chỉ / Pose & Gesture Fidelity: Mô tả tư thế đứng/ngồi/tạo dáng của cơ thể, độ nghiêng của đầu quyến rũ, cử chỉ tinh tế của đôi bàn tay hay ngón tay, hướng vai, vị trí không gian của nhân vật để làm nổi bật câu chuyện.
+9. Bố cục thị giác & Đường dẫn (Composition & Leading Lines): Nhịp điệu bố cục (bố cục bento-grid, bố cục 1/3, bố cục đối xứng), nhịp điệu của khoảng trống (negative space rhythm), các dải dẫn hướng mắt người xem (leading composition lines - đường dẫn thị giác, điểm nhìn, tầm nhìn) tạo bởi hướng tóc bay, vạt áo rủ, hướng ánh sáng hay khói mây rực rỡ.
+10. Kiểu dáng & Cử chỉ / Pose & Gesture Fidelity: Mô tả tư thế đứng/ngồi/tạo dáng của cơ thể, độ nghiêng của đầu quyến rũ, cử chỉ tinh tế của đôi bàn tay hay ngón tay, hướng vai, vị trí không gian của nhân vật để làm nổi bật câu chuyện. Có nhịp điệu đường thị giác sâu sắc.
 
 Return ONLY valid JSON with this exact schema:
 {
@@ -1666,8 +2412,8 @@ Return ONLY valid JSON with this exact schema:
   "outfitExtracted": "Hướng trang phục, silhouette, layering logic, cảm giác chất liệu, mật độ trang trí, elegance/fantasy level",
   "cameraAndPerspectiveExtracted": "Chi tiết góc chụp (low-angle, eye-level...), tiêu cự, depth of field, bokeh, framing, độ sâu không gian",
   "poseAndGestureExtracted": "Chi tiết dáng đứng/ngồi/tạo dáng, cử chỉ tay, độ nghiêng đầu, ngôn ngữ cơ thể, vị trí trong khung hình",
-  "detailsToPreserve": "Danh sách chi tiết bắt buộc học hỏi giữ lại (camera angle, perspective, pose, stance, gesture, color atmosphere, floral mood, outfit direction...)",
-  "detailsToAdapt": "Danh sách chi tiết thay đổi theo cốt truyện (nhân vật độc quyền theo truyện, bối cảnh phụ nếu có note riêng)",
+  "detailsToPreserve": "Danh sách chi tiết bắt buộc học hỏi giữ lại (camera angle, perspective, pose, stance, gesture, color atmosphere, floral mood, outfit direction...). TUYỆT ĐỐI KHÔNG LIỆT KÊ ĐỒ VẬT/DỤNG CỤ Ở ĐÂY!",
+  "detailsToAdapt": "Danh sách chi tiết thay đổi theo cốt truyện (đồ vật, dụng cụ, bối cảnh, vũ khí bắt buộc phải thay đổi cho phù hợp truyện, KHÔNG GIỮ NGUYÊN TỪ ẢNH)",
   "originalityElements": "Danh sách chi tiết thay đổi để tạo nguyên bản mới (nhân vật nguyên bản 100% theo truyện & thiết kế Canva)",
   "layer1_overall": { "genderPresentation": "", "ageVibe": "", "auraVibe": "", "softnessSharpness": "" },
   "layer2_face": { "faceShape": "", "eyes": "Chi tiết vẽ mắt long lanh đa tầng, điểm phản sáng, mi cong dày dặn", "nose": "", "mouth": "", "eyelashes": "", "makeupLevel": "", "maturity": "" },
@@ -1775,12 +2521,225 @@ Return ONLY valid JSON with this exact schema:
     setIsAnalyzingImages(false);
   };
 
-  const handleRefUpload = async (e: React.ChangeEvent<HTMLInputElement>, cardId: string) => {
+  const handleOutfitUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>, cardId: string) => {
     const files = e.target.files;
     if (!files) return;
+    
+    const newOutfitRefs: any[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const data = await toBase64(file);
+      const imgId = uuidv4();
+      const now = new Date().toISOString();
+      newOutfitRefs.push({
+        imageId: imgId,
+        storyId: currentStory.id,
+        roomId: roomDef.id,
+        cardId: cardId,
+        imageType: `${cardId}_outfit_reference`,
+        fileName: file.name,
+        mimeType: file.type,
+        size: file.size,
+        createdAt: now,
+        previewUrl: data,
+        storageUrl: data,
+        analysisStatus: 'in_context',
+        id: imgId,
+        name: file.name,
+        type: file.type,
+        data: data,
+        time: now
+      });
+    }
+
+    const currentCard = roomState.cards[cardId] || { note: "", refs: [], output: "" };
+    const newRoomState: LipstickRoomState = {
+      ...roomState,
+      cards: {
+        ...roomState.cards,
+        [cardId]: {
+          ...currentCard,
+          outfitRefs: [...(currentCard.outfitRefs || []), ...newOutfitRefs]
+        }
+      }
+    };
+    updateGlobalState(newRoomState);
+    toast("🍬 Vợ yêu ơi, chồng đã nạp thành công ảnh tham chiếu Trang phục từ viên kẹo ngọt ngào rồi nhé! Sẵn sàng đưa vào thiết kế cho vợ rồi đó!");
+  }, [roomState, currentStory.id, roomDef.id, updateGlobalState, toast]);
+
+  const toggleTraitSelection = useCallback((cardId: string, trait: string) => {
+    const currentCard = roomState.cards[cardId];
+    if (!currentCard) return;
+    
+    const currentTraits = currentCard.selectedTraits || [];
+    const newTraits = currentTraits.includes(trait)
+      ? currentTraits.filter((t: string) => t !== trait)
+      : [...currentTraits, trait];
+
+    const newRoomState: LipstickRoomState = {
+      ...roomState,
+      cards: {
+        ...roomState.cards,
+        [cardId]: {
+          ...currentCard,
+          selectedTraits: newTraits
+        }
+      }
+    };
+    updateGlobalState(newRoomState);
+  }, [roomState, updateGlobalState]);
+
+  const selectOutfitOption = useCallback((cardId: string, outfit: string) => {
+    const currentCard = roomState.cards[cardId];
+    if (!currentCard) return;
+    
+    const newRoomState: LipstickRoomState = {
+      ...roomState,
+      cards: {
+        ...roomState.cards,
+        [cardId]: {
+          ...currentCard,
+          selectedOutfit: currentCard.selectedOutfit === outfit ? "" : outfit
+        }
+      }
+    };
+    updateGlobalState(newRoomState);
+  }, [roomState, updateGlobalState]);
+
+  const analyzeCardAestheticAndOutfits = useCallback(async (cardId: string, cardTitle: string) => {
     const rs = { ...roomState };
-    if (!rs.cards[cardId]) rs.cards[cardId] = { note: "", refs: [], output: "" };
-    if (!rs.cards[cardId].refs) rs.cards[cardId].refs = [];
+    const currentCard = rs.cards[cardId];
+    if (!currentCard) {
+      toast("Vợ yêu ơi, thẻ này chưa có dữ liệu gì để phân tích cả á! 🌸");
+      return;
+    }
+    const cardRefs = currentCard.refs || [];
+    const outfitRefs = currentCard.outfitRefs || [];
+    const allRefsToAnalyze = [...cardRefs, ...outfitRefs];
+
+    if (allRefsToAnalyze.length === 0) {
+      toast("Chồng thấy thẻ này chưa có ảnh tham chiếu nào hết á vợ yêu! Vợ hãy đính kèm ảnh tham chiếu thường hoặc ảnh trang phục bằng nút kẹo ngọt rồi bấm lại nút bé mèo hồng nhé! 🎀");
+      return;
+    }
+
+    setCatAnalyzingCardId(cardId);
+    toast("🐾 Bé mèo hồng phấn đang dùng API Proxy kết nối với AI Model siêu cấp để phân tích 100 nét vẽ và đề xuất 5 bộ trang phục tuyệt mỹ cho vợ yêu đây...");
+
+    try {
+      const catSysPrompt = `You are a legendary Anime/Manga art critic, haute-couture clothing designer, and style master.
+You are tasked with analyzing the provided reference images for the work card "${cardTitle}" under the Room "${roomDef.title}".
+Your response MUST be a JSON object containing two specific fields:
+1. "strokes": An array of EXACTLY 100 extremely detailed, evocative, and professional aesthetic style/art stroke descriptors in Vietnamese. Each descriptor should represent a specific artistic trait (e.g., linework weight, medium texture, lighting vector, shading wash, facial feature emphasis, hair reflection highlight, eye catchlight depth, negative space composition, background elements). They must be highly detailed and gorgeous.
+2. "outfits": An array of EXACTLY 5 breathtaking, unique, and highly detailed outfit combinations in Vietnamese suitable for the story characters/theme. Describe the fabric, layers, silhouette, colors, and accessories elegantly.
+
+Your return format MUST be strictly a single JSON object with no other text, conversational preamble, or markdown surrounding it (or inside a standard json markdown block).
+
+Example return schema:
+{
+  "strokes": [
+    "Stroke 1...",
+    ... up to exactly 100 unique and gorgeous items ...
+  ],
+  "outfits": [
+    "Outfit design 1...",
+    "Outfit design 2...",
+    "Outfit design 3...",
+    "Outfit design 4...",
+    "Outfit design 5..."
+  ]
+}`;
+
+      const messages: any[] = [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: `Analyze the attached reference images (${cardRefs.length} general refs, ${outfitRefs.length} outfit refs) for the card "${cardTitle}" under story "${currentStory.title}". Please extract exactly 100 gorgeous, unique artistic strokes/traits and exactly 5 bespoke outfit suggestions according to your instructions. Return valid JSON only.` }
+          ]
+        }
+      ];
+
+      for (const r of cardRefs) {
+        if (r.data || r.previewUrl || r.storageUrl) {
+          messages[0].content.push({ type: "image_url", image_url: { url: r.data || r.previewUrl || r.storageUrl } });
+        }
+      }
+
+      for (const r of outfitRefs) {
+        if (r.data || r.previewUrl || r.storageUrl) {
+          messages[0].content.push({ type: "image_url", image_url: { url: r.data || r.previewUrl || r.storageUrl } });
+        }
+      }
+
+      const resultText = await callAIText({ messages, systemPrompt: catSysPrompt, maxTokensOverride: 6000 });
+      
+      let jsonObj: any = null;
+      try {
+        const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonObj = JSON.parse(jsonMatch[0]);
+        }
+      } catch (err) {
+        console.error("Failed to parse cat json directly", err);
+      }
+
+      if (!jsonObj || !Array.isArray(jsonObj.strokes) || !Array.isArray(jsonObj.outfits)) {
+        toast("😿 Ôi bé mèo hồng thấy AI trả về định dạng chưa khớp hoàn toàn. Để chồng xử lý parse thủ công giúp vợ yêu nhé!");
+        const strokes: string[] = [];
+        const outfits: string[] = [];
+        const lines = resultText.split('\n');
+        for (const line of lines) {
+          const cleanLine = line.replace(/^[\s\-\*\d\.\"\',\{\}\[\]:]+/, '').trim();
+          if (cleanLine.length > 5) {
+            if (strokes.length < 100) {
+              strokes.push(cleanLine);
+            } else if (outfits.length < 5) {
+              outfits.push(cleanLine);
+            }
+          }
+        }
+        while (strokes.length < 100) {
+          strokes.push(`Nét phác họa thanh nhã bám sát phong cách tinh xảo của ảnh mẫu #${strokes.length + 1}`);
+        }
+        while (outfits.length < 5) {
+          outfits.push(`Thiết kế trang phục quý phái, bồng bềnh uốn lượn uốn quanh thân hình #${outfits.length + 1}`);
+        }
+        jsonObj = { strokes, outfits };
+      }
+
+      if (jsonObj.strokes.length < 100) {
+        const currentLen = jsonObj.strokes.length;
+        for (let i = currentLen; i < 100; i++) {
+          jsonObj.strokes.push(`Nét vẽ nghệ thuật phóng khoáng bám sát DNA của ảnh tham chiếu nét thứ ${i + 1}`);
+        }
+      } else if (jsonObj.strokes.length > 100) {
+        jsonObj.strokes = jsonObj.strokes.slice(0, 100);
+      }
+
+      const newRoomState: LipstickRoomState = {
+        ...roomState,
+        cards: {
+          ...roomState.cards,
+          [cardId]: {
+            ...currentCard,
+            extractedTraits: jsonObj.strokes,
+            extractedOutfits: jsonObj.outfits,
+            selectedTraits: currentCard.selectedTraits || [],
+            selectedOutfit: currentCard.selectedOutfit || ""
+          }
+        }
+      };
+      updateGlobalState(newRoomState);
+      toast("😸 Bé mèo hồng đã hoàn thành xuất sắc nhiệm vụ rồi vợ ơi! Chồng đã đưa 100 nét tinh hoa và 5 bộ váy áo lộng lẫy lên giao diện cho vợ tha hồ chọn lựa nhé! 💕");
+    } catch (e: any) {
+      toast(`😿 Bé mèo hồng gặp lỗi khi phân tích rồi vợ ơi: ${e.message}`);
+    } finally {
+      setCatAnalyzingCardId(null);
+    }
+  }, [roomState, roomDef.id, roomDef.title, currentStory.title, updateGlobalState, toast]);
+
+  const handleRefUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>, cardId: string) => {
+    const files = e.target.files;
+    if (!files) return;
     
     const newRefs: any[] = [];
     for (let i = 0; i < files.length; i++) {
@@ -1788,7 +2747,7 @@ Return ONLY valid JSON with this exact schema:
       const data = await toBase64(file);
       const imgId = uuidv4();
       const now = new Date().toISOString();
-      const newRefObj = {
+      newRefs.push({
         imageId: imgId,
         storyId: currentStory.id,
         roomId: roomDef.id,
@@ -1806,34 +2765,49 @@ Return ONLY valid JSON with this exact schema:
         type: file.type,
         data: data,
         time: now
-      };
-      rs.cards[cardId].refs.push(newRefObj);
-      newRefs.push(newRefObj);
-    }
-    currentStory.rooms[roomDef.id] = rs;
-    save(state);
-    toast("✅ Đã đính kèm ảnh! Sẵn sàng trong Context Windows để AI đọc trực tiếp khi bấm Tạo Prompt.");
-  };
-
-  const replayHistory = (item: any) => {
-    if (!window.confirm("Bạn có chắc muốn xem lại kết quả cũ? Dữ liệu chữ (text/prompt) sẽ thay đổi nhưng ảnh tham chiếu sẽ được giữ nguyên!")) return;
-    const rs = { ...roomState };
-    rs.result = item.result || "";
-    if (item.cards && typeof item.cards === 'object') {
-      Object.keys(item.cards).forEach(k => {
-        if (!rs.cards[k]) {
-          rs.cards[k] = { note: "", refs: [], output: "", report: "" };
-        }
-        rs.cards[k].output = item.cards[k].output || "";
-        if (!rs.cards[k].refs) rs.cards[k].refs = [];
       });
     }
-    currentStory.rooms[roomDef.id] = rs;
-    save(state);
-    toast("✨ Đã khôi phục hiển thị kết quả từ lịch sử (Không gọi lại API)!");
-  };
 
-  const runRoom = async () => {
+    const currentCard = roomState.cards[cardId] || { note: "", refs: [], output: "" };
+    const newRoomState: LipstickRoomState = {
+      ...roomState,
+      cards: {
+        ...roomState.cards,
+        [cardId]: {
+          ...currentCard,
+          refs: [...(currentCard.refs || []), ...newRefs]
+        }
+      }
+    };
+    updateGlobalState(newRoomState);
+    toast("✅ Đã đính kèm ảnh! Sẵn sàng trong Context Windows để AI đọc trực tiếp khi bấm Tạo Prompt.");
+  }, [roomState, currentStory.id, roomDef.id, updateGlobalState, toast]);
+
+  const replayHistory = useCallback((item: any) => {
+    if (!window.confirm("Bạn có chắc muốn xem lại kết quả cũ? Dữ liệu chữ (text/prompt) sẽ thay đổi nhưng ảnh tham chiếu sẽ được giữ nguyên!")) return;
+    
+    const newRoomState: LipstickRoomState = {
+      ...roomState,
+      result: item.result || "",
+      cards: { ...roomState.cards }
+    };
+
+    if (item.cards && typeof item.cards === 'object') {
+      Object.keys(item.cards).forEach(k => {
+        const currentCard = newRoomState.cards[k] || { note: "", refs: [], output: "", report: "" };
+        newRoomState.cards[k] = {
+          ...currentCard,
+          output: item.cards[k].output || ""
+        };
+      });
+    }
+    
+    updateGlobalState(newRoomState);
+    setIsWorkListCollapsed(true);
+    toast("✨ Đã khôi phục hiển thị kết quả từ lịch sử (Không gọi lại API)!");
+  }, [roomState, updateGlobalState, toast]);
+
+  const runRoom = useCallback(async () => {
     if (progress > 0 && progress < 100) {
       toast("⏳ API đang chạy, vui lòng chờ...");
       return;
@@ -1885,13 +2859,74 @@ Return ONLY valid JSON with this exact schema:
     await new Promise(resolve => setTimeout(resolve, 35));
 
     const rs = { ...roomState };
+    
+    // RESET ALL REFERENCE IMAGES TO PENDING TO VẬN HÀNH CƠ CHẾ TỪ ĐẦU (FRESH START)
+    let hasUpdatedRefs = false;
+    if (rs.styleAnalyzer?.refs) {
+      rs.styleAnalyzer.refs = rs.styleAnalyzer.refs.map((r: any) => {
+        hasUpdatedRefs = true;
+        return {
+          ...r,
+          analysisStatus: 'pending',
+          imageAnalysisText: 'Chưa phân tích',
+          analysisResult: undefined,
+          imageAnalysisJson: null
+        };
+      });
+    }
+    if (rs.cards) {
+      rs.cards = { ...rs.cards };
+      for (const cardId of Object.keys(rs.cards)) {
+        const cs = rs.cards[cardId];
+        if (cs) {
+          const updatedCard = { ...cs };
+          let cardChanged = false;
+          if (updatedCard.refs) {
+            updatedCard.refs = updatedCard.refs.map((r: any) => {
+              hasUpdatedRefs = true;
+              cardChanged = true;
+              return {
+                ...r,
+                analysisStatus: 'pending',
+                imageAnalysisText: 'Chưa phân tích',
+                analysisResult: undefined,
+                imageAnalysisJson: null
+              };
+            });
+          }
+          if (updatedCard.outfitRefs) {
+            updatedCard.outfitRefs = updatedCard.outfitRefs.map((r: any) => {
+              hasUpdatedRefs = true;
+              cardChanged = true;
+              return {
+                ...r,
+                analysisStatus: 'pending',
+                imageAnalysisText: 'Chưa phân tích',
+                analysisResult: undefined,
+                imageAnalysisJson: null
+              };
+            });
+          }
+          if (cardChanged) {
+            rs.cards[cardId] = updatedCard;
+          }
+        }
+      }
+    }
+    if (hasUpdatedRefs) {
+      currentStory.rooms[roomDef.id] = rs;
+      updateGlobalState(rs);
+      save({ ...state });
+      console.log("[Auto-Reset] Resetted reference images analysisStatus to 'pending' for a completely fresh start.");
+    }
+
     const sa = rs.styleAnalyzer || { refs: [], selected: [], analysis: "" };
     const target = rs.targetMode || 'bot';
     const isComicMode = target === 'manga_webtoon_mode' || 
                         roomDef?.id === 'manga_webtoon' || 
                         (roomDef?.id !== 'marketing_pr_anime' && roomDef?.id !== 'bot_char_marketing_art' && roomDef?.id !== 'bot_char_hobbies_vibe' && roomDef?.id !== 'fandom_merch' && /webtoon|truyện tranh/i.test(roomDef?.title || ''));
 
-    const payloadObj = buildContextPayload();
+    const payloadObj = buildContextPayload(rs);
     const allRefsList = [...payloadObj.styleAnalyzer.referenceImages, ...payloadObj.workCards.flatMap(c => c.referenceImages)];
 
     setApiSignals(prev => ({
@@ -1904,7 +2939,7 @@ Return ONLY valid JSON with this exact schema:
 
     // Step 2: Gom tất cả ảnh từ Bot Characters, Style Analyzer, và toàn bộ Thẻ làm việc (Work Cards) vào Payload!
     // TUYỆT ĐỐI KHÔNG lọc trùng (deduplicate) vì mỗi thẻ có mục đích và ảnh riêng biệt!
-    const refreshedPayload = buildContextPayload();
+    const refreshedPayload = buildContextPayload(rs);
     
     // Thu thập tất cả ảnh thô có chứa URL hợp lệ để lọc trùng chính xác theo URL
     const uniqueRefsWithUrls: any[] = [];
@@ -1980,6 +3015,15 @@ Return ONLY valid JSON with this exact schema:
     const pendingRefs = orderedVisionRefs.filter(
       r => !r.imageAnalysisText || r.imageAnalysisText === 'Chưa phân tích' || r.analysisStatus !== 'analyzed'
     );
+    
+    if (orderedVisionRefs.length - pendingRefs.length > 0) {
+      setApiSignals(prev => ({
+        ...prev,
+        stageDetail: `✅ Đã khôi phục thành công Context Windows của ${orderedVisionRefs.length - pendingRefs.length} ảnh tham chiếu cũ từ bộ nhớ!`
+      }));
+      await new Promise(resolve => setTimeout(resolve, 600));
+    }
+
 
     if (pendingRefs.length > 0) {
       console.log(`[Auto-Analysis] Found ${pendingRefs.length} unanalyzed reference images. Initiating automated vision analysis...`);
@@ -1989,12 +3033,11 @@ Return ONLY valid JSON with this exact schema:
       for (const r of pendingRefs) {
         setApiSignals(prev => ({
           ...prev,
-          stage: 'reading_references',
           stageLabel: '2. Vision Pre-Analysis',
           stageDetail: `⏳ Đang đọc tỉ mỉ ảnh tham chiếu #${pIdx}/${pendingRefs.length}: "${r.name || r.fileName || 'Image'}"...`
         }));
         
-        await analyzeSingleImage(r, r.cardId || 'style_analyzer', r.cardTitle || 'Style Ref');
+        await analyzeSingleImage(r, r.cardId || 'style_analyzer', r.cardTitle || 'Style Ref', rs);
         pIdx++;
       }
       
@@ -2003,7 +3046,7 @@ Return ONLY valid JSON with this exact schema:
 
     // Refresh state and payload from latest store/local edits to make sure we use the highly-detailed Vision Reports
     const finalRoomState = currentStory.rooms[roomDef.id] || roomState;
-    const finalPayload = buildContextPayload();
+    const finalPayload = buildContextPayload(finalRoomState);
     const finalSa = finalRoomState.styleAnalyzer || { refs: [], selected: [], analysis: "" };
 
     const prompt = `You are the world-class, ultra-premium AI engine for Lipstick Prompt Rooms. Generate highly cohesive, breathtakingly detailed production-ready prompts for the current active room.
@@ -2041,12 +3084,12 @@ When generating the image prompt for each Work Card, you MUST strictly obey the 
 
 1. **👑 1st & Supreme Priority (#1 ABSOLUTE SUPREMACY OF STORY & CHARACTER PROFILE - CỐT TRUYỆN VÀ HỒ SƠ NHÂN VẬT LÀ LINH HỒN TỐI THƯỢNG)**:
    - **Bám sát cao nhất là cốt truyện và hồ sơ nhân vật! Đây là mục đích cốt lõi: Vẽ nhân vật trong truyện của người dùng.** The user's Story Plot and Character Profiles hold **ABSOLUTE SUPREME AUTHORITY (#1)** over WHO IS IN THE SCENE! This includes character identity, facial features, gender, age, eye/hair color, personality, soul, and story aura.
-   - **Visual Storytelling & Author's Intent (Ý đồ tác giả & Kể chuyện qua hình ảnh)**: Every prompt MUST reflect the 'vibe', genre identity (Horror, Romance, Fantasy, etc.), and author's hidden intent. Even if the reference images are unrelated to the plot, you must FORCE the scene to convey the story's meaning. Looking at the image should reveal a silent narrative; every object, gaze, and shadow must serve the story's soul.
-   - **MANDATORY TRANSFORMATION RULE (NGUYÊN TẮC CHUYỂN ĐỔI TƯ LIỆU CHO NHÂN VẬT GỐC)**: The reference images attached across cards (pose, outfit, background, style) are ONLY working study materials (*tư liệu làm việc tham chiếu*) to extract visual DNA (art style, rendering, color, composition). **YOU ARE STRICTLY FORBIDDEN FROM COPYING THE CHARACTER IDENTITY (FACE/GENDER/LOOKS) OR THE NARRATIVE CONTEXT FROM THE REFERENCE IMAGE if they contradict the story!** 
-   - **MANDATORY PRINCIPLE**: You must perform "Transformative Adaptation": Take the visual beauty of the reference and apply it to the user's specific story character and plot. It MUST ALWAYS BE THE STORY'S SOUL painted with the REFERENCE'S BRUSH!
+   - **SMART SELECTIVE ASSET ADOPTION (CHỌN LỌC VẬT DỤNG THÔNG MINH)**: You must intelligently judge the suitability of assets (outfits, props, decorations) from the reference image. If a prop or item from the reference is relevant and fits the story character's context, you MUST utilize and render it. If it is IRRELEVANT or contradicts the story, you MUST discard it and rely on the narrative while ensuring the NEW items are rendered in the EXACT same artistic style as the reference. (TỰ ĐỘNG SỬ DỤNG VẬT DỤNG PHÙ HỢP TỪ ẢNH THAM CHIẾU; NẾU KHÔNG PHÙ HỢP THÌ DỰA VÀO TRUYỆN NHƯNG PHẢI GIỮ ĐÚNG NÉT VẼ).
+   - **MANDATORY TRANSFORMATION RULE (NGUYÊN TẮC GIỮ NGUYÊN 100% KHUNG HÌNH & THAY ĐỔI DANH TÍNH)**: You are **STRICTLY COMMANDED TO ACHIEVE 100% VISUAL FIDELITY** to the reference image in terms of: **ART STYLE (NÉT VẼ), COLOR PALETTE (MÀU SẮC), COMPOSITION (BỐ CỤC), CHARACTER POSITIONING (VỊ TRÍ NHÂN VẬT), AND CAMERA ANGLE (GÓC ĐỘ/MÁY ẢNH).** Every artistic stroke and spatial arrangement MUST be an exact 100% replica of the reference. ONLY the character's identity (face, gender, specific traits) and narrative-specific elements should change to match the story. (PHẢI GIỮ GIỐNG 100% NÉT VẼ, MÀU SẮC, BỐ CỤC, VỊ TRÍ NHÂN VẬT VÀ GÓC MÁY; CHỈ THAY ĐỔI DANH TÍNH THEO TRUYỆN). 
+   - **MANDATORY PRINCIPLE**: It MUST ALWAYS BE THE STORY'S SOUL painted with the REFERENCE'S EXACT BRUSH, COLORS, AND LAYOUT! Every detail must serve the narrative context while maintaining the exact technical and spatial DNA of the reference.
 2. **2nd Priority (CARD-SPECIFIC REFERENCE IMAGES AS VISUAL STUDY MATERIALS - ẢNH TƯ LIỆU LÀM VIỆC ĐỂ LẤY Ý TƯỞNG THỊ GIÁC)**:
    - Reference images serve as **the primary visual study materials** for specific domains (Hair, Pose, Outfit, Environment).
-   - You MUST extract 100% of the visual ideas (hairstyle structure, clothing silhouette, fabric drape, body stance, camera angle) from the reference image, and **seamlessly transform and adapt them onto the user's story character**!
+   - You MUST extract the core visual ideas (art style, vibe, camera angle, lighting) from the reference image, and **seamlessly transform and adapt them onto the user's story character**. Do NOT copy the exact items, weapons, tools, or situational context of the reference image! (KHÔNG COPY CÔNG CỤ, ĐỒ VẬT TỪ ẢNH THAM CHIẾU!)
 3. **3rd Priority (User Note inside Work Card)**:
    - User notes inside that specific Work Card define how to apply, adjust, or refine the visual ideas from the reference images onto the story character.
 4. **4th Priority (Style Analyzer - Art Style & Rendering Quality)**:
@@ -2054,7 +3097,6 @@ When generating the image prompt for each Work Card, you MUST strictly obey the 
 
 ### SELECTED ART STYLES & VISION ANALYSIS
 - Selected Style Keywords: ${(sa.selected || []).join(", ") || "None selected"}
-- Style Analyzer Summary: ${sa.analysis || "None"}
 - Attached Style Reference Images (${(sa.refs || []).length} images):
 ${(sa.refs || []).map((r: any, idx: number) => {
   const gIdx = getGIdx(r, idx + 1);
@@ -2072,16 +3114,29 @@ ${cards.map((c: any) => {
   const refsDesc = cardRefsList.map((r: any, idx: number) => {
     const gIdx = getGIdx(r, idx + 1);
     const status = r.analysisStatus || (r.imageAnalysisText && r.imageAnalysisText !== 'Chưa phân tích' ? 'analyzed' : 'pending');
-    const baseAnalysisText = (r.imageAnalysisText && r.imageAnalysisText !== 'Chưa phân tích' && !r.imageAnalysisText.startsWith('⏳'))
+    const isPlaceholderCard = r.imageAnalysisText === 'Chưa phân tích' || r.imageAnalysisText?.startsWith('⏳');
+    const baseAnalysisText = (!isPlaceholderCard && r.imageAnalysisText)
       ? r.imageAnalysisText
       : `AI có khả năng quan sát hình ảnh, hãy phân tích trực tiếp [ATTACHED IMAGE #${gIdx}] và trích xuất các yếu tố thuộc phạm vi chức năng của thẻ "${c.title}"!`;
     const analysisText = `🎨 [TƯ LIỆU THẨM MỸ CHO THẺ "${c.title}"]: Ảnh tham chiếu #${gIdx} là tư liệu hướng dẫn nghệ thuật cho phạm vi "${c.title}". AI hãy học hỏi phong cách, màu sắc và đường nét để tạo dựng nhân vật trong truyện! => Chi tiết Vision: ${baseAnalysisText}`;
     const jsonStr = r.imageAnalysisJson ? `\n    - Subject Details: ${JSON.stringify(r.imageAnalysisJson.subject || {})}\n    - Style & Color: ${JSON.stringify(r.imageAnalysisJson.style || {})} | ${JSON.stringify(r.imageAnalysisJson.color || {})}\n    - Composition & Details: ${JSON.stringify(r.imageAnalysisJson.composition || {})} | ${JSON.stringify(r.imageAnalysisJson.characterDetails || {})}\n    - Prompt Keywords: ${(r.imageAnalysisJson.promptKeywords || []).join(", ")}\n    - Visual Style Extracted: ${JSON.stringify(r.imageAnalysisJson.visualStyleExtracted || {})}\n    - Color Palette Extracted: ${JSON.stringify(r.imageAnalysisJson.colorPaletteExtracted || {})}\n    - Outfit Fidelity Extracted: ${JSON.stringify(r.imageAnalysisJson.outfitExtracted || r.imageAnalysisJson.layer4_outfit || {})}\n    - Composition Rhythm Extracted: ${JSON.stringify(r.imageAnalysisJson.compositionExtracted || r.imageAnalysisJson.composition || {})}\n    - Details To Preserve (70%-85%): ${JSON.stringify(r.imageAnalysisJson.detailsToPreserve || "N/A")}\n    - Details To Adapt (15%-30%): ${JSON.stringify(r.imageAnalysisJson.detailsToAdapt || "N/A")}\n    - Originality Elements (0%): ${JSON.stringify(r.imageAnalysisJson.originalityElements  || "N/A")}` : "";
     return `  * [Card Ref #${idx+1} -> ATTACHED IMAGE #${gIdx} IN PAYLOAD (DO NOT OUTPUT FILENAME - TRANSLATE VISUAL TRAITS TO WORDS): "${r.name || r.fileName || 'Image'}" | ID: ${r.id || r.imageId} | Status: ${status} | Card Title Domain: "${c.title}" (EXACT FUNCTIONAL ISOLATION: This image ONLY governs attributes belonging to "${c.title}")]:\n    - Vision Analysis Text: ${analysisText}${jsonStr}`;
   }).join("\n\n");
+
+  let pinkCatSection = "";
+  if (cs.selectedTraits && cs.selectedTraits.length > 0) {
+    pinkCatSection += `\n- Pink Cat Analysis - Selected Aesthetic Traits (strokes) chosen by user to apply strictly:\n${cs.selectedTraits.map((t: string) => `  * [SELECTED ART STROKE]: ${t}`).join("\n")}`;
+  }
+  if (cs.selectedOutfit) {
+    pinkCatSection += `\n- Pink Cat / Candy Analysis - Selected Outfit Design to apply strictly:\n  * [CHOSEN OUTFIT]: ${cs.selectedOutfit}`;
+  }
+  if (cs.outfitRefs && cs.outfitRefs.length > 0) {
+    pinkCatSection += `\n- Outfit Reference Images Uploaded via Candy Button (${cs.outfitRefs.length} images) to apply strictly:\n${cs.outfitRefs.map((or: any, idx: number) => `  * [Outfit Ref #${idx+1}]: "${or.name || or.fileName}"`).join("\n")}`;
+  }
+
   return `#### Card: "${c.title}" (ID: ${c.id})
 - Quick Guidelines: ${c.quick}
-- User Note: ${cs.note || "None"}
+- User Note: ${cs.note || "None"}${pinkCatSection}
 - Attached Reference Images (${cardRefsList.length} images):
 ${refsDesc || "  * No reference images attached directly to this card. -> 🚨 FULL-UTIL MANDATE: You MUST STILL synthesize and apply the visual DNA from ALL attached reference images across the story, room, Style Analyzer, and Bot Characters (see manifest above) to design this card! Do NOT generate ordinary or generic concepts!"}`;
 }).join("\n\n---\n\n")}
@@ -2102,8 +3157,9 @@ Please follow these guidelines when generating prompts for Work Cards:
 
 ### VISUAL REFERENCE STUDY & ADAPTATION PRINCIPLES
 When attached reference images or Vision Analysis reports are present for any work card:
-1. **Core Principle: Artistic Inspiration & Visual Fidelity**:
-   - Study the aesthetic elements, camera perspective, framing, depth of field, and pose from the reference images.
+1. **Core Principle: Cinematic Fidelity & Artistic Inspiration (GIỮ NGUYÊN GÓC MÁY, SẮC ĐỘ, TRANG TRÍ & TỈ LỆ)**:
+   - Study the aesthetic elements, camera perspective, framing, depth of field, and exact pose from the reference images.
+   - **CRITICAL RULE**: You MUST achieve 100% fidelity in camera angle, lens, color tone, proportions, and decorative style. However, you MUST intelligently adapt the identity and props: if the reference's items/outfits fit the story, keep them; if not, replace them with story-accurate elements rendered in the same high-quality style. (Giữ nguyên góc đặt máy, điểm nhìn thị giác, sắc độ và kỹ thuật vẽ; chỉ thay đổi danh tính và chọn lọc vật dụng/trang phục thông minh cho phù hợp nhân vật).
    - Harmonize the studied visual traits (art style, medium texture, color palette, light & shadow, camera framing, posture, outfit spirit, and composition rhythm) with the character narrative.
 2. **Execution Process**:
    - Step 1: Review each attached reference image and its Vision Analysis report.
@@ -2115,14 +3171,14 @@ When attached reference images or Vision Analysis reports are present for any wo
    - **Meticulous Art Style Application**: Analyze the reference images comprehensively (composition, colors, art style, brush strokes). FORCE the prompt to override generic/default AI rendering with a highly meticulous, detailed, and beautifully crafted art style strictly imitating the references.
    - **Creative Priority & Accuracy**: Prioritize creativity and artistic flair while remaining meticulously accurate to the character and the story narrative. The art must look deliberately crafted by a master artist, not a generic AI output.
    - **Outfit & Styling Adaptation**: Learn the core silhouette, fabric drape, and aesthetic of the reference outfits, BUT creatively adapt and fine-tune them to perfectly fit the specific character's identity and story context. (Sáng tạo trong học hỏi, tinh chỉnh trang phục từ ảnh tham chiếu cho hoàn toàn phù hợp với nhân vật cốt truyện).
-   - **Transformative Originality**: All reference study materials serve to inspire a breathtaking original artwork with transformative adaptation.
+   - **Transformative Originality (Không dập khuôn - CHỈ LẤY VIBE, KHÔNG LẤY ĐỒ VẬT)**: All reference study materials serve to inspire a breathtaking original artwork with transformative adaptation. You are strictly forbidden from copying the literal contents of the reference images (like holding a specific tool, weapon, object, or wearing a specific non-character accessory). You MUST adapt EVERYTHING to fit the story character perfectly!
 4. **MODULAR MULTI-REFERENCE ROLE ISOLATION & FEATURE-BY-FEATURE SYNTHESIS**:
    - When multiple reference images are attached across different cards (e.g., Card Tóc/Hair, Card Pose, Card Outfit, Card Face, Card Style/Overall...), ensure each reference image informs its specific domain:
      + 💇‍♀️ **Hair Card References ('Tóc / Hair')**: Inspire hairstyle, hair color, volume, and strand rhythm.
      + 💃 **Pose Card References ('Pose Dáng / Pose')**: Inspire body posture, stance, gesture, and camera perspective.
      + 👗 **Outfit Card References ('Trang Phục / Outfit')**: Inspire clothing design, fabric material, layering, and styling.
      + 💄 **Face Card References ('Khuôn Mặt / Face / Makeup')**: Inspire facial features, makeup, and expression (while preserving story identity).
-     + 🌌 **Environment Card References ('Bối Cảnh / Background')**: Inspire background setting, architecture, lighting atmosphere, and props.
+     + 🌌 **Environment Card References ('Bối Cảnh / Background')**: Inspire background setting, architecture, lighting atmosphere, and mood. (Do NOT copy exact props, objects, or literal contents).
      + 🎨 **Style Analyzer / Overall References ('Tổng Thể / Style')**: Inspire art style, brushwork, medium texture, rendering quality, and general color palette.
      + ✿ **Aesthetic Study & Reference Learning ('Học Hỏi Từ Ảnh Tham Chiếu / Learn / poses10 / soulful')**: Inspire art direction, brushwork style, cinematic framing, pose structure, and lighting atmosphere as an aesthetic visual study. When generating for the Soulful Storytelling room ('soulful'), focus on emotional resonance, unspoken visual narrative, and atmospheric depth. When generating for the 10 Pose Variations room ('poses10'), study each pose card (p1 to p10) separately to output 10 distinct, highly descriptive pose prompt variations!
    - Assemble the final prompt by integrating the domain-specific visual elements harmoniously!
@@ -2163,60 +3219,57 @@ ${cards.map((c: any) => `[CARD_ID: ${c.id}]
 - Attached Reference Images: (List each image ID/name internally, and detail the EXACT visual DNA analysis: Camera Angle, Perspective, Depth of Field, Pose, Stance, Style, Brushwork, Palette, Light, Texture, Mood, Outfit, Composition. YOU MUST APPLY EVERY SINGLE REFERENCE IMAGE AESTHETIC INTO THE FINAL PROMPT. DO NOT OMIT ANY REFERENCE!)
 ---
 ${isComicMode ? `[FINAL PROMPT]
-(Write the final production-ready COMIC / WEBTOON PAGE SCRIPT & PROMPT for "${c.title}" here. CRITICAL MANDATE FOR COMIC / MANGA / WEBTOON: You MUST NOT use a single-image 5-part structure! Instead, you MUST generate a Multi-Panel Comic Page / Webtoon layout with sequential storytelling, distinct comic frames, character dialogue, facial expressions, actions, and backgrounds!
+(Write the final production-ready COMIC / WEBTOON PAGE SCRIPT & PROMPT for "${c.title}" here. CRITICAL MANDATE FOR COMIC / MANGA / WEBTOON: You MUST NOT use a single-image structure! Instead, you MUST generate a Multi-Panel Comic Page / Webtoon layout with sequential storytelling.
+For EACH PANEL, you MUST apply an ULTIMATE "STUDIO AAA" PROMPT ENGINEERING breakdown (incorporating micro-modules for lighting, camera, pose, expression, hair, outfit, background).
+
 Structure exactly as follows:
 
 ### 👑 TƯ LIỆU THAM CHIẾU & AESTHETIC DNA BẮT BUỘC (MANDATORY SOURCE MATERIAL DATA)
-- **Tư liệu thị giác bắt buộc (Full-Util 100%)**: [Liệt kê cực kỳ chi tiết, sắc sảo từng nét vẽ, kỹ thuật cọ (brushwork), mã màu hex, chất liệu vải, góc máy điện ảnh, tạo dáng từ TOÀN BỘ ảnh tham chiếu đính kèm. Phân tích thật sâu nét vẽ của ảnh tham chiếu để áp dụng vào ảnh cuối cùng. BẮT BUỘC ỨNG DỤNG TẤT CẢ TƯ LIỆU, KHÔNG ĐƯỢC BỎ SÓT BẤT KỲ ẢNH NÀO!]
-- **Mệnh lệnh tạo ảnh tuyệt mỹ (Anti-Ordinary Guarantee)**: [Mệnh lệnh tiếng Anh chuyên sâu dùng từ vựng điện ảnh cực cao (8k resolution, IMAX, hyper-detailed, masterpiece, award-winning cinematography, sharp focus, intricate detailing). Cấm tuyệt đối kiểu render "bình thường" hoặc "generic". Hình ảnh phải đạt đẳng cấp đồ hoạ điện ảnh (cinematic graphics) cao nhất!]
+- **Tư liệu thị giác bắt buộc (Full-Util 100%)**: [Liệt kê cực kỳ chi tiết, sắc sảo từng nét vẽ, kỹ thuật cọ, màu sắc từ TOÀN BỘ ảnh tham chiếu đính kèm. BẮT BUỘC ỨNG DỤNG TẤT CẢ TƯ LIỆU!]
+- **Mệnh lệnh tạo ảnh tuyệt mỹ (Anti-Ordinary Guarantee)**: [Mệnh lệnh tiếng Anh chuyên sâu dùng từ vựng điện ảnh cực cao. Cấm tuyệt đối kiểu render "bình thường".]
 
 ---
-
 ### 📚 TỔNG QUAN TRANG TRUYỆN / WEBTOON PAGE SETUP
 - **🎬 Tên trang / Phân cảnh (Scene Title)**: [Tóm tắt tình huống cốt truyện trong trang/thẻ này]
-- **🎨 Phong cách vẽ (Art Style & Medium)**: [MÔ TẢ CỰC KỲ CHI TIẾT phong cách nghệ thuật bám sát ảnh tham chiếu. Nét vẽ Manga/Manhwa/Comic/Semi-realistic? ÉP BUỘC sử dụng phong cách này để TRÁNH mặc định của AI (override generic AI style). Bắt buộc dùng từ khóa mạnh như "in the exact art style of..."]
-- **📐 Bố cục trang & Nhịp điệu (Page Layout & Pacing)**: [Phân chia số khung từ 2 đến 6 khung, cách sắp xếp khung trên trang, sự đan xen giữa các khung toàn cảnh và khung cận cảnh]
+- **🎨 Phong cách vẽ (Art Style & Medium)**: [MÔ TẢ CỰC KỲ CHI TIẾT phong cách nghệ thuật bám sát ảnh tham chiếu.]
+- **📐 Bố cục trang & Nhịp điệu (Page Layout & Pacing)**: [Phân chia số khung từ 2 đến 6 khung, cách sắp xếp khung trên trang]
 
 ---
-
 ### 🖼️ KHUNG 1: [TÊN TÌNH HUỐNG / SCENE FOCUS]
-- **🎬 Bố cục Khung & Góc Máy (Panel Framing & Camera)**: [MÔ TẢ CỰC KỲ CHI TIẾT DỰA TRÊN "VISUAL COMPOSITION LIBRARY": Ngôn ngữ Camera (Perspective, Height, Distance, Focal Length). Hệ thống dẫn dắt mắt (Leading Lines, Eye Path, Golden Ratio, Framing). Phân bổ không gian (Positive/Negative Space, Foreground/Background Depth). Cấu trúc ánh sáng & Bóng đổ (Key Light, Rim Light, Soft/Hard Shadow). Đặc tả độ tương phản và màu sắc điện ảnh (Cinematic Color Script)]
-- **🧑 Tình huống & Hành động (Action & Stance)**: [Mô tả chi tiết dáng điệu (pose), độ nghiêng đầu, vị trí đặt tay chân, ngôn ngữ cơ thể, tương tác không gian]
-- **💇‍♀️ Chi tiết Tóc, Mắt & Nét vẽ (Hair, Eye & Linework)**: [DÀNH THẬT NHIỀU TOKEN ĐỂ ĐẶC TẢ CỰC KỲ CHI TIẾT DỰA TRÊN "HAIR DESIGN KNOWLEDGE TREE" ĐƯỢC RÚT RA TỪ ẢNH THAM CHIẾU: Cấu trúc tầng layer, thể tích khối đặc/rỗng, hệ thống cụm lọn tóc tơ mỏng manh, hướng luồng chảy (hair flow), chất liệu bề mặt, kiểu mái, hairline, độ tơi xốp, vòng sáng đỉnh đầu (angel ring), rim light. Kỹ thuật vẽ mắt (đồng tử sâu, ánh sáng catchlight lấp lánh). Kỹ thuật đi lineart và lên màu. TẤT CẢ PHẢI MÔ PHỎNG CHÍNH XÁC TỪ ẢNH THAM CHIẾU!]
-- **👗 Trang phục & Sáng tạo (Outfit & Creative Adaptation)**: [MÔ TẢ CỰC KỲ CHI TIẾT trang phục. SÁNG TẠO TRONG HỌC HỎI: Học hỏi từ ảnh tham chiếu nhưng BẮT BUỘC phải tinh chỉnh, biến tấu sáng tạo cho hoàn toàn phù hợp với tính cách, bối cảnh và câu chuyện của nhân vật. Không sao chép cứng nhắc.]
-- **😍 Biểu cảm khuôn mặt (Facial Expression & Emotion)**: [Miêu tả chi tiết thần thái: ánh mắt, cơ mặt, môi, nếp nhăn...]
-- **💬 Lời thoại & Chữ trong tranh (Dialogue / Speech Bubble / SFX)**: 
-  + **Lời thoại (Tiếng Việt & English)**: "[Nhân vật A nói gì / suy nghĩ gì trong bong bóng chat]"
-  + **Hiệu ứng âm thanh (SFX)**: [Ví dụ: Thump thump, Whoosh, Doki doki...]
-- **🌌 Bối cảnh & Không gian (Environment & Depth)**: [Mô tả chi tiết Độ gần xa (Depth of Field), Tiền cảnh (Foreground), Trung cảnh (Midground), Hậu cảnh (Background). Bối cảnh xung quanh nhân vật]
-- **💡 Ánh sáng & Màu sắc (Lighting & Color)**: [Hướng ánh sáng, Rim light, cách đánh khối, độ bão hòa (saturation), bảng màu chủ đạo, độ tương phản]
+(Áp dụng siêu cấu trúc Studio AAA cho khung này)
+- **🎬 Quay phim, Góc máy & Bố cục (Cinematography & Composition - 15 Modules)**: [Đặc tả Perspective, Focal Length, DoF, Rule of Thirds, Leading Lines, Framing...]
+- **💡 Ánh sáng & Màu sắc (Lighting & Color - 15 Modules)**: [Key light, Rim light, Volumetrics, Shadows, Color grading, Cinematic tones...]
+- **🧑 Hành động & Giải phẫu (Action & Anatomy - 15 Modules)**: [Dáng điệu, Động năng, Ngôn ngữ cơ thể, Góc nghiêng đầu, Trọng tâm...]
+- **😍 Biểu cảm & Khuôn mặt (Expression & Face - 10 Modules)**: [Hướng mắt, Cấu trúc xương hàm, Chuyển động cơ mặt, Cảm xúc...]
+- **💇‍♀️ Tóc & Đường nét (Hair & Linework - 10 Modules)**: [Luồng gió, Khối lượng tóc, Lọn tơ, Độ sắc nét của lineart...]
+- **👗 Trang phục & Chất liệu (Outfit & Textiles - 10 Modules)**: [Chất liệu vải, Nếp gấp, Độ chuyển động, Phụ kiện...]
+- **🌌 Bối cảnh & Không gian (Environment & Depth - 5 Modules)**: [Chiều sâu tiền-trung-hậu cảnh, Môi trường xung quanh...]
+- **💬 Lời thoại & Chữ (Dialogue / SFX)**: [Nhân vật nói gì / Hiệu ứng âm thanh...]
 - **✨ PROMPT TẠO ẢNH CHO KHUNG 1 (Production-ready AI Image Prompt)**: 
-  \`[Đoạn prompt tiếng Anh chuẩn, DÀI VÀ SIÊU CHI TIẾT (Highly Dense) cho Khung 1 để sử dụng trực tiếp trong AI tạo ảnh. Bắt buộc chứa TẤT CẢ các chi tiết vừa phân tích phía trên!]\`
+  \`[Đoạn prompt tiếng Anh DÀI VÀ SIÊU CHI TIẾT cho Khung 1 sử dụng trực tiếp trong AI tạo ảnh. Bắt buộc chứa TẤT CẢ các chi tiết AAA vừa phân tích!]\`
 
 ---
-
 ### 🖼️ KHUNG 2: [TÊN TÌNH HUỐNG / SCENE FOCUS]
-- **🎬 Bố cục Khung & Góc Máy (Panel Framing & Camera)**: [...]
-- **🧑 Tình huống & Hành động (Action & Stance)**: [...]
-- **💇‍♀️ Chi tiết Tóc, Mắt & Nét vẽ (Hair, Eye & Linework)**: [...]
-- **👗 Trang phục & Sáng tạo (Outfit & Creative Adaptation)**: [...]
-- **😍 Biểu cảm khuôn mặt (Facial Expression & Emotion)**: [...]
-- **💬 Lời thoại & Chữ trong tranh (Dialogue / Speech Bubble / SFX)**: [...]
-- **🌌 Bối cảnh & Không gian (Environment & Depth)**: [...]
-- **💡 Ánh sáng & Màu sắc (Lighting & Color)**: [...]
+(Áp dụng siêu cấu trúc Studio AAA tương tự như Khung 1)
+- **🎬 Quay phim, Góc máy & Bố cục**: [...]
+- **💡 Ánh sáng & Màu sắc**: [...]
+- **🧑 Hành động & Giải phẫu**: [...]
+- **😍 Biểu cảm & Khuôn mặt**: [...]
+- **💇‍♀️ Tóc & Đường nét**: [...]
+- **👗 Trang phục & Chất liệu**: [...]
+- **🌌 Bối cảnh & Không gian**: [...]
+- **💬 Lời thoại & Chữ**: [...]
 - **✨ PROMPT TẠO ẢNH CHO KHUNG 2 (Production-ready AI Image Prompt)**: 
   \`[...]\`
 
 ---
-*(Tiếp tục cho các Khung tiếp theo: Khung 3, Khung 4... tùy diễn biến câu chuyện)*
+*(Tiếp tục cho các Khung tiếp theo: Khung 3, Khung 4... tùy diễn biến)*
 
 ---
-
 ### 🎨 PROMPT TẠO ẢNH TỔNG HỢP TOÀN TRANG (FULL PAGE COMIC PROMPT)
-\`[MUST BE EXCLUSIVELY IN ENGLISH: A single, cohesive, HIGHLY DENSE master English prompt combining all panels into a sequential comic/webtoon page layout AND explicitly enforcing the Full-Util 100% reference visual DNA (art style, character features, panel framing, lighting, line of sight, hair rendering). Prepend with: "MANDATORY AESTHETIC DIRECTIVE: Create a masterpiece comic/webtoon layout strictly imitating the exact art style, line art, brush strokes, color saturation, and visual DNA from the reference source materials. You MUST override default generic AI art styles! Force the rendering to precisely match the provided aesthetic. Absolutely NO generic rendering. Highest cinematic quality, hyper-detailed..." Ready for 1-click copy & paste!]\`
+\`[MUST BE EXCLUSIVELY IN ENGLISH: A single, cohesive, HIGHLY DENSE master English prompt combining all panels into a sequential comic page layout AND explicitly enforcing the Full-Util 100% reference visual DNA. Prepend with: "MANDATORY AESTHETIC DIRECTIVE: Create a masterpiece comic/webtoon layout strictly imitating the exact art style..."]\`
 
 ---
-
 ### 🚫 BẢN PHÒNG CHỐNG LỖI TẠO ẢNH CHUYÊN SÂU & CAM KẾT CHẤT LƯỢNG (ANTI-GLITCH PROTOCOL & QUALITY GUARANTEE)
 - **TỔNG HỢP TOÀN BỘ CÁC LỖI CẤM PHÉP XẢY RA (Absolute Zero-Tolerance Error List)**:
   + *Lỗi giải phẫu cơ thể (Anatomical Glitches)*: Cấm thừa ngón tay/ngón chân, biến dạng bàn tay/bàn chân, lệch khớp xương vai/cổ, lệch tâm mắt (asymmetric eyes), méo mồm hoặc biểu cảm đờ đẫn mất tự nhiên.
@@ -2229,7 +3282,8 @@ Structure exactly as follows:
   [Viết một đoạn thông điệp cam kết chất lượng cực kỳ dài, chi tiết, nhắc nhở từng phân đoạn, nhắc nhở kĩ càng từng chi tiết nhỏ của tóc, mắt, trang phục, góc máy không được phép sai lệch so với nguồn cảm hứng nguyên bản].
 
 Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference Images", "Room:", "Card:", or technical metadata inside this [FINAL PROMPT] section!)` : `[FINAL PROMPT]
-(Write the final production-ready standalone image prompt for "${c.title}" here. CRITICAL MANDATE: You MUST divide the prompt into exactly 8 STANDALONE PARTS using standard Markdown headers, AND end with a Master Production-Ready English Prompt block so the user can use each part or the whole prompt easily!
+(Write the final production-ready standalone image prompt for "${c.title}" here. CRITICAL MANDATE: You MUST divide the prompt into an ULTIMATE "STUDIO AAA" PROMPT ENGINEERING FRAMEWORK containing roughly 80-120 micro-modules categorized into major chapters, AND end with a Master Production-Ready English Prompt block so the user can use each part or the whole prompt easily!
+
 Structure exactly as follows:
 
 ### 👑 TƯ LIỆU THAM CHIẾU & AESTHETIC DNA BẮT BUỘC (MANDATORY SOURCE MATERIAL DATA)
@@ -2237,43 +3291,46 @@ Structure exactly as follows:
 - **Mệnh lệnh tạo ảnh tuyệt mỹ (Anti-Ordinary Guarantee)**: [Mệnh lệnh tiếng Anh chuyên sâu dùng từ vựng điện ảnh cực cao (8k resolution, IMAX, hyper-detailed, masterpiece, award-winning cinematography, sharp focus, intricate detailing). Cấm tuyệt đối kiểu render "bình thường" hoặc "generic". Hình ảnh phải đạt đẳng cấp đồ hoạ điện ảnh (cinematic graphics) cao nhất!]
 
 ---
+### 🎬 CHƯƠNG 1: QUAY PHIM & NHIẾP ẢNH (CINEMATOGRAPHY & PHOTOGRAPHY - 15 Modules)
+[Phân tích siêu sâu sắc thành các bullet point tiếng Anh kèm giải thích tiếng Việt. Bao gồm: 1. Camera Angle, 2. Shot Type (Close-up, Cowboy, Wide), 3. Lens Type (Macro, Wide, Telephoto), 4. Focal Length, 5. Depth of Field (DoF), 6. Bokeh Type, 7. Aperture (f/1.4 etc), 8. Shutter Speed Effect, 9. ISO/Film Grain, 10. Sensor Size, 11. Perspective (1-point, 2-point, 3-point), 12. Viewpoint (Bird's eye, Worm's eye), 13. Tilt/Dutch Angle, 14. Lens Distortion, 15. Glare/Lens Flare]
 
-### 🎨 PART 1: ART STYLE, MEDIUM & BRUSHWORK (Phong cách nghệ thuật, Chất liệu & Nét vẽ)
-[MÔ TẢ CỰC KỲ CHI TIẾT phong cách nghệ thuật (Art Style) học từ ảnh tham chiếu: Anime, Manhwa, Semi-realistic, Oil painting, Watercolor, Cel-shading? Đặc tả kỹ thuật cọ (brushwork), nét lineart thanh hay đậm, cách đánh bóng (shading). ÉP BUỘC SỬ DỤNG PHONG CÁCH NÀY để tránh nét vẽ mặc định (generic/default style) của AI tạo ảnh. Bắt buộc dùng các từ khóa mạnh trong prompt cuối như "in the exact art style of...", "masterpiece illustration imitating the brush strokes of..."]
+### 💡 CHƯƠNG 2: HỆ THỐNG ÁNH SÁNG & ĐÁNH KHỐI (LIGHTING & VOLUMETRICS - 15 Modules)
+[Bao gồm: 16. Key Light, 17. Fill Light, 18. Backlight/Rim Light, 19. Hair Light, 20. Catchlight (Eye sparkle), 21. Ambient Light, 22. Bounce Light, 23. Practical Lights, 24. Volumetric Rays (God rays), 25. Subsurface Scattering (SSS), 26. Global Illumination, 27. Contrast Ratio, 28. Shadow Softness/Hardness, 29. Color Temperature, 30. Atmospheric Haze/Fog interaction with light]
 
-### 📸 PART 2: CAMERA ANGLE, PERSPECTIVE & COMPOSITION (Góc chụp, Thị giác & Bố cục)
-[MÔ TẢ CỰC KỲ CHI TIẾT DỰA TRÊN "VISUAL COMPOSITION LIBRARY": Ngôn ngữ Camera (Perspective, Height, Tilt, Rotation, Distance, Lens Compression). Hệ thống dẫn dắt mắt và Khung hình (Eye Guidance, Golden Ratio, Framing, Bố cục trung tâm/đối xứng). Phân bổ không gian âm/dương, chiều sâu thị giác (Foreground/Background Depth). Cấu trúc ánh sáng & Bóng đổ, Bảng màu & Tương phản]
+### 🎨 CHƯƠNG 3: MÀU SẮC ĐIỆN ẢNH & HIỆU CHỈNH (COLOR GRADING & PALETTE - 12 Modules)
+[Bao gồm: 31. Primary Color Palette, 32. Secondary/Accent Colors, 33. Color Harmony (Analogous, Complementary), 34. Hue Shifts, 35. Saturation Dynamics, 36. Luminance Levels, 37. Color Contrast, 38. Shadows Tint, 39. Midtones Tint, 40. Highlights Tint, 41. LUT/Cinematic Grading Profile, 42. Visual Mood/Atmosphere via Color]
 
-### 🧑 PART 3: SUBJECT, POSE & GESTURE (Nhân vật & Dáng điệu)
-[Highly dense character description, body stance, pose, gesture, head tilt, expression, and body language strictly mirroring the reference image. Phân tích rõ sự chuyển động cơ thể, vị trí tay chân]
+### 🖌️ CHƯƠNG 4: CHẤT LIỆU, NÉT VẼ & RENDER (ART STYLE, MEDIUM & BRUSHWORK - 15 Modules)
+[Bao gồm: 43. Core Art Style (Anime, Manhwa, Realism, etc.), 44. Medium (Oil, Watercolor, Digital, Cel-shaded), 45. Brushstroke Type, 46. Linework Weight, 47. Line Color/Tapering, 48. Blending Technique, 49. Texture Overlays, 50. Canvas/Paper Grain, 51. Impasto/Thickness, 52. Edge Control (Soft vs Hard edges), 53. Rendering Engine (Unreal, Octane, V-Ray), 54. Specular Maps, 55. Normal/Bump mapping simulation, 56. Anti-Aliasing/Sharpness, 57. Style Bleed Prevention]
 
-### 💇‍♀️ PART 4: HAIR, EYE RENDERING & LINEWORK (Kỹ thuật vẽ Tóc, Mắt & Đường nét)
-[DÀNH RẤT NHIỀU TOKEN ĐỂ ĐẶC TẢ SIÊU CHI TIẾT DỰA TRÊN HỆ THỐNG "HAIR DESIGN KNOWLEDGE TREE". Phân tích TỪ ẢNH THAM CHIẾU: Cấu trúc khối (Architecture), thể tích (Volume), hệ thống lọn tóc tơ (Strand System), hướng luồng chảy (Hair Flow), chất liệu bề mặt (Texture), hairline, mái, độ tơi xốp, bóng đổ, vòng sáng (Angel Ring, Rim Light). Đặc tả kỹ thuật vẽ mắt sắc sảo (đồng tử sâu, catchlight lấp lánh, lông mi rõ). Phân tích đường nét (linework), độ thanh đậm, kỹ thuật đi line trước rồi lên màu. Phân tích cách lên màu, độ bão hòa (saturation). TẤT CẢ PHẢI MÔ PHỎNG NGHIÊM NGẶT NÉT VẼ TỪ ẢNH GỐC!]
+### 📐 CHƯƠNG 5: BỐ CỤC & DẪN DẮT THỊ GIÁC (COMPOSITION & VISUAL HIERARCHY - 12 Modules)
+[Bao gồm: 58. Rule of Thirds/Golden Ratio, 59. Eye Guiding Lines (Leading Lines), 60. Framing within Framing, 61. Symmetry/Asymmetry, 62. Visual Weight Distribution, 63. Positive/Negative Space Ratio, 64. Foreground Elements, 65. Midground Elements, 66. Background Elements, 67. Subject Placement, 68. Tension Points, 69. Scale and Proportion]
 
-### 👗 PART 5: OUTFIT, MATERIAL & STYLING (Trang phục, Chất liệu & Phụ kiện)
-[MÔ TẢ CỰC KỲ CHI TIẾT trang phục, kiểu dáng, nếp gấp vải, phụ kiện. SÁNG TẠO TRONG HỌC HỎI: Học hỏi cấu trúc và chất liệu từ ảnh tham chiếu, NHƯNG BẮT BUỘC PHẢI TINH CHỈNH VÀ SÁNG TẠO (creative adaptation) để bộ trang phục hoàn toàn phù hợp với tính cách, bối cảnh và câu chuyện của nhân vật. Không sao chép cứng nhắc, mà biến tấu thiết kế sao cho trang phục tôn lên nét riêng của nhân vật truyện]
+### 🧑 CHƯƠNG 6: NHÂN VẬT & NGÔN NGỮ CƠ THỂ (CHARACTER, POSE & KINETICS - 15 Modules)
+[Bao gồm: 70. Core Subject Description, 71. Gender/Identity Fidelity, 72. Age Presentation, 73. Body Type/Anatomy, 74. Posture/Stance, 75. Kinetic Energy/Motion, 76. Weight Distribution (Contrapposto), 77. Hand Gestures/Placement, 78. Footing, 79. Head Tilt, 80. Shoulders Angle, 81. Spine Curve, 82. Tension in Muscles, 83. Interaction with Props, 84. Silhouette Clarity]
 
-### 🌌 PART 6: ENVIRONMENT, BACKGROUND & DEPTH (Bối cảnh, Không gian & Độ gần xa)
-[Highly dense background setting, architecture, nature. MÔ TẢ CHI TIẾT ĐỘ GẦN XA (Spatial Depth & Depth of Field): Tiền cảnh (Foreground), Trung cảnh (Midground), Hậu cảnh (Background). Các yếu tố bổ trợ (supporting elements)]
+### 😍 CHƯƠNG 7: KHUÔN MẶT, BIỂU CẢM & TRANG ĐIỂM (FACE, EXPRESSION & MAKEUP - 10 Modules)
+[Bao gồm: 85. Facial Bone Structure, 86. Eye Shape and Gaze Direction, 87. Pupil/Iris Detailing, 88. Eyebrow Arch/Micro-expression, 89. Mouth/Lip Shape and Parting, 90. Skin Texture/Pores/Translucency, 91. Blush/Makeup Application, 92. Micro-asymmetry (Realism), 93. Emotional Output, 94. Jawline/Chin definition]
 
-### 💡 PART 7: LIGHTING & ATMOSPHERE (Ánh sáng & Bầu không khí)
-[Highly dense lighting direction, volumetric lighting, rim light, global illumination, contrast, artistic render quality, and emotional mood mimicking the reference]
+### 💇‍♀️ CHƯƠNG 8: KIẾN TRÚC TÓC & ĐỘ BỒNG BỀNH (HAIR ARCHITECTURE & FLOW - 10 Modules)
+[Bao gồm: 95. Hair Length and Silhouette, 96. Volume and Density, 97. Hair Root/Parting Line, 98. Strand Grouping (Clumps), 99. Flyaways and Fine Hairs, 100. Hair Flow/Wind Direction, 101. Bangs/Fringe Styling, 102. Material/Glossiness, 103. Highlight Band (Angel Ring), 104. Gravity Interaction]
 
-### 🎨 PART 8: COLOR PALETTE (Màu sắc)
-[Dominant color palette, accent colors, color harmony, hex tones, cinematic color grading]
+### 👗 CHƯƠNG 9: TRANG PHỤC & CHẤT LIỆU VẢI (FASHION, DRAPERY & TEXTILES - 12 Modules)
+[Bao gồm: 105. Main Outfit Description, 106. Creative Adaptation (from ref to story), 107. Fabric Types (Silk, Leather, Cotton), 108. Fold Types (Pipe, Drop, Zig-zag), 109. Tension/Pull Points in Fabric, 110. Seam/Stitch Detailing, 111. Metallic/Reflective Accents, 112. Translucency (Sheer fabrics), 113. Layering/Complexity, 114. Accessory Placement, 115. Embroidery/Patterns, 116. Fabric Interaction with Wind]
+
+### 🌌 CHƯƠNG 10: KHÔNG GIAN & VẬT THỂ BỔ TRỢ (ENVIRONMENT & PROPS - 4 Modules)
+[Bao gồm: 117. Setting/Location, 118. Weather/Atmosphere, 119. Environmental Storytelling, 120. Prop integration]
 
 ---
-
 ### 🎨 PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)
-\`[MUST BE EXCLUSIVELY IN ENGLISH: A single, cohesive, HIGHLY DENSE master English prompt combining all 8 Parts AND explicitly enforcing the Full-Util 100% reference visual DNA. Prepend with: "MANDATORY AESTHETIC DIRECTIVE: Create a masterpiece illustration strictly imitating the exact art style, brush strokes, line art, color saturation, and visual DNA from the reference source materials. Absolutely NO generic or ordinary AI rendering. Do NOT default to standard styles..." followed by the detailed prompt. Ready for 1-click copy & paste into Midjourney, Niji, or DALL-E!]\`
+\`[MUST BE EXCLUSIVELY IN ENGLISH: A single, cohesive, HIGHLY DENSE master English prompt combining ALL 120 modules into a unified prompt string. Explicitly enforce the Full-Util 100% reference visual DNA. Prepend with: "MANDATORY AESTHETIC DIRECTIVE: Create a masterpiece illustration strictly imitating the exact art style, brush strokes, line art, color saturation, and visual DNA from the reference source materials. Absolutely NO generic or ordinary AI rendering. Do NOT default to standard styles..." followed by the detailed prompt. Ready for 1-click copy & paste into Midjourney, Niji, or DALL-E!]\`
 
 ---
-
 ### 🚫 BẢN PHÒNG CHỐNG LỖI TẠO ẢNH CHUYÊN SÂU & CAM KẾT CHẤT LƯỢNG (ANTI-GLITCH PROTOCOL & QUALITY GUARANTEE)
 - **TỔNG HỢP TOÀN BỘ CÁC LỖI CẤM PHÉP XẢY RA (Absolute Zero-Tolerance Error List)**:
   + *Lỗi giải phẫu cơ thể (Anatomical Glitches)*: Cấm thừa ngón tay/ngón chân, biến dạng bàn tay/bàn chân, lệch khớp xương vai/cổ, lệch tâm mắt (asymmetric eyes), méo mồm hoặc biểu cảm đờ đẫn mất tự nhiên.
   + *Lỗi phong cách nét vẽ (Style Drift/AI Bleed)*: Cấm tuyệt đối pha trộn nét vẽ mặc định của AI (generic, overly airbrushed/plastic render styles). Nét vẽ phải đi đúng lineart rõ ràng, thô nháp hoặc mượt mà chính xác bám sát toàn bộ ảnh gốc tham chiếu.
-  + *Lỗi bối cảnh và rác hình ảnh (Background Pollution & Artifacts)*: Cấm các chi tiết vật lý phi lý (cốc nước bay, bàn ghế dính liền người, vũ khí mọc sai chỗ), các đốm mờ, nhiễu hạt, chữ viết lộn xộn (nonsense text) xuất hiện bừa bãi trong tranh.
+  + *Lỗi bối cảnh và rác hình ảnh (Background Pollution & Artifacts)*: Cấm các chi tiết vật lý phi lý (cốc nước bay, bàn ghế dính liền người, vũ khí mọc sai chỗ), các đốm mờ, nhiễu hạt, chữ viết lộn xộn (nonsense text) xuất hiện bừa bãi trong tranh trừ SFX được ghi cụ thể.
   + *Lỗi bỏ quên tư liệu tham chiếu (Reference Neglect)*: Cấm chỉ học từ ảnh đầu tiên và ngó lơ các ảnh tiếp theo! Phải phân bổ rõ vai trò từng ảnh (ví dụ: ảnh 1 lấy tóc, ảnh 2 lấy dáng, ảnh 3 lấy bối cảnh, ảnh 4 lấy cách tô màu bão hòa). Nếu bỏ sót bất cứ đặc trưng visual nào từ bất kỳ ảnh nào đã được gom đều bị coi là lỗi nghiêm trọng.
 - **CHỈ DẪN VÀ CÚ PHÁP ĐỀ PHÒNG & KHẮC PHỤC LỖI CHI TIẾT (Strict Prevention Prompts & Negative Weights)**:
   [Cung cấp chi tiết hướng giải quyết, câu lệnh bổ trợ cụ thể bằng cả tiếng Việt và tiếng Anh (Negative Prompts như: "multiple limbs, deformed hands, poorly drawn face, bad anatomy, blurry, worst quality, low quality...") bám sát từng phân cảnh của thẻ này để người dùng dán vào Midjourney/Niji/DALL-E phòng ngừa lỗi triệt để].
@@ -2307,22 +3364,29 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
       }
     }
 
-    // Khi gửi vào Context Windows, cập nhật toàn bộ ảnh sang trạng thái đã đọc thành công trên cả roomState, styleAnalyzer, workCards và botCharacters
-    const updateRefStatus = (img: any) => {
-      if (!img) return;
-      img.analysisStatus = 'analyzed';
-      if (!img.imageAnalysisText || img.imageAnalysisText === 'Chưa phân tích') {
-        img.imageAnalysisText = 'Đã đọc trực tiếp trong Context Windows';
+    // Include any Outfit Reference Images uploaded via Candy button as visual visual context to the AI Model
+    const allOutfitRefs: any[] = [];
+    for (const cardKey of Object.keys(rs.cards)) {
+      const cs = rs.cards[cardKey];
+      if (cs && cs.outfitRefs && Array.isArray(cs.outfitRefs)) {
+        for (const or of cs.outfitRefs) {
+          allOutfitRefs.push(or);
+          const orUrl = or.data || or.previewUrl || or.storageUrl;
+          if (orUrl && !sentImageUrls.has(orUrl)) {
+            sentImageUrls.add(orUrl);
+            contentArray.push({
+              type: "image_url",
+              image_url: { url: orUrl }
+            });
+          }
+        }
       }
-    };
-
-    allRefsList.forEach(updateRefStatus);
-    orderedVisionRefs.forEach(updateRefStatus);
+    }
 
     setApiSignals(prev => ({
       ...prev,
       apiRequestSent: true,
-      stage: 'calling_api',
+      stage: 'connecting_api',
       stageLabel: '3. Connecting AI Model',
       stageDetail: `Đang truyền ${orderedVisionRefs.length} ảnh trực tiếp vào Context Windows & kết nối AI Model...`
     }));
@@ -2344,10 +3408,10 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             "  2. Eye & Face Precision (Học vẽ mắt, học lên màu): Specify the exact drawing style of the eyes from the reference (e.g., highly glossy irises, heavy lash lines, specific gaze direction, light reflection points). Describe the coloring and shading gradients with professional vocabulary to perfectly capture the color palette.\n" +
             "  3. Character Posture: The character pose, gesture, stance, and action must be dynamically generated to match the STORY SETTING, using the reference's composition lines and camera angles (Dutch tilt, low-angle sweeping shot, cinematic framing) to frame the story actions beautifully, rather than cloning the exact pose of the reference image rigidly!\n\n" +
             "🚨 MANDATE #3: STRICT MODULAR CARD ISOLATION & MULTI-REFERENCE SYNTHESIS (QUY TẮC PHÂN LUỒNG TỪNG MỤC THẺ ẢNH QUYẾT LIỆT VÀ ĐẦY ĐỦ) 🚨: You must read and classify every single Work Card domain strictly by its Title (Hair from Hair Card, Pose/Angle from Pose Card, Clothing from Outfit Card, Setting from Environment Card, Art Style from Style Analyzer, and Art Direction from Aesthetic Study). Each card's assigned reference image is the absolute primary authority for that specific domain. Do NOT let one image dominate everything! Isolate them cleanly, study them meticulously, and synthesize them into a harmonious sequential multi-panel masterpiece without losing any detail! IF A SINGLE CARD HAS MULTIPLE ATTACHED REFERENCE IMAGES, YOU MUST STUDY AND SYNTHESIZE EVERY SINGLE ONE OF THEM (KHÔNG ĐƯỢC BỎ SÓT BẤT KỲ ẢNH NÀO - TẤT CẢ ĐỀU PHẢI ĐƯỢC PHÂN TÍCH VÀ ĐƯA VÀO BÁO CÁO THẨM ĐỊNH)!\n\n" +
-            "🚨 MANDATE #4: CORE VISUAL FIDELITY ENFORCEMENT - NÉT VẼ, TRANG PHỤC & ĐƯỜNG THỊ GIÁC (MỆNH LỆNH BẮT BUỘC ĐỒNG BỘ NÉT VẼ, TRANG PHỤC VÀ ĐƯỜNG THỊ GIÁC CỰC HẠN) 🚨: To address styling quality issues, you must exhaustively analyze and incorporate these three pillars from reference images into the English prompts:\n" +
+            "🚨 MANDATE #4: CORE VISUAL FIDELITY ENFORCEMENT - NÉT VẼ, TRANG PHỤC & ĐƯỜNG THỊ GIÁC (MỆNH LỆNH BẮT BUỘC ĐỒNG BỘ NÉT VẼ, TRANG PHỤC VÀ ĐƯỜNG THỊ GIÁC CỰC HẠN - BẮT THỊ GIÁC ĐỈNH CAO CHUYÊN NGHIỆP) 🚨: To address styling quality issues, you must exhaustively analyze and incorporate these three pillars from reference images into the English prompts:\n" +
             "  1. Art Style & Linework DNA (Đồng bộ Nét Vẽ Gốc): Capture the exact artistic medium, brush texture, ink lines, line-weight variation (thin/thick), shading depth, rendering technique (e.g. watercolor wash, screen-tones, clean digital line art). Describe with hyper-vivid, advanced terminology.\n" +
             "  2. Outfit & Fabric Fidelity (Đồng bộ Trang phục & Quần áo): Exhaustively describe garment materials (silk, leather, satin, heavy textured wool), structural layering, tailoring patterns, necklines/collars, delicate laces, dynamic folding tension, ripples, and gravity wrinkles. Match the outfit style perfectly!\n" +
-            "  3. Visual Perspective & Composition Lines (Đồng bộ Đường Thị Giác & Bố cục): Extract the exact camera perspective (dynamic low-angle, cinematic sweeping high-angle, wide-lens portrait depth, Dutch tilt), leading lines (đường dẫn thị giác), diagonal focal alignment, negative space ratio, silhouette contour, and light-and-shadow direction.\n\n" +
+            "  3. Visual Perspective & Composition Lines (Đồng bộ Đường Thị Giác & Bố cục - BẮT BUỘC KHÔNG DÙNG GÓC MÁY BÌNH THƯỜNG TRUNG BÌNH): YOU ARE STRICTLY FORBIDDEN from using flat, boring eye-level center compositions! You MUST actively analyze and replicate the exact dramatic, striking camera perspective of the reference (e.g., dynamic low-angle tilt, cinematic sweeping high-angle, birds-eye view, Dutch tilt for emotional tension, three-quarter side angle). Use professional composition lines, extreme off-center subject positioning (e.g. Rule of Thirds, asymmetrical weight), powerful leading lines (đường dẫn thị giác), diagonal alignment, deep atmospheric foreground/background separation, and breathtaking light-and-shadow vectors. Looking at the composition MUST feel like a high-budget cinematic masterpiece that instantly commands and seizes the viewer's eyes!\n\n" +
             "🚨 MANDATE #5: HIGH-END PROFESSIONAL ART & PHOTOGRAPHY VOCABULARY (QUY TẮC SỬ DỤNG TỪ VỰNG CHUYÊN NGÀNH NGHỆ THUẬT/NHIẾP ẢNH CAO CẤP) 🚨: You are an elite, world-class art director and cinematographer. You MUST NOT use basic, superficial, or generic vocabulary (like 'beautiful dress', 'nice pose', or 'good lighting'). YOU MUST USE ADVANCED, HIGHLY PROFESSIONAL, AND DEEPLY TECHNICAL TERMINOLOGY. Your analysis and prompt must reflect extreme artistic expertise for:\n" +
             "  1. Facial & Hair Nuance: Head tilt angles, exact direction of gaze, subtle mouth positioning, precise eyelid weights, hair strand flow, individual fine hair wisps catching backlights, parting line.\n" +
             "  2. Lighting & Shadow Depth: Exact main light source location, volumetric ray paths, contact shadows under the chin/neck, precise soft-rim backlighting highlights, chiaroscuro shadow gradients on skin/garment folds.\n" +
@@ -2357,18 +3421,27 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             "  6. Background & Composition Flow: Negative space ratios, diagonal movement lines, golden ratio composition, graphic motifs (water ripples, swirling petals, wind streaks, framing borders).\n\n" +
             "🚨 MANDATE #6: ABSOLUTE ZERO INFORMATION LOSS IN FINAL PROMPT (QUY TẮC TRUYỀN TẢI CHI TIẾT TRỌN VẸN VÀO PROMPT TIẾNG ANH) 🚨: Every single micro-detail learned from reference images MUST be translated and woven into the final prompt panels using rich, vivid, descriptive English nouns and adjectives. There must be ZERO loss of detail! The final prompt must be highly dense, rich in cinematography terms, visual art vocabulary, and tactile material descriptors so that the image generation AI can replicate the exact masterpiece level of the reference image!\n\n" +
             "🚨 MANDATE #7: SUPREME ARTISTIC ELEVATION & EXCELLENCE (QUY TẮC NÂNG TẦM NGHỆ THUẬT VƯỢT TRỘI - VẼ ĐẸP VÀ GIỎI HƠN CẢ ẢNH GỐC) 🚨: Do NOT just match the reference image. You must analyze its style and raise its aesthetic parameters to absolute perfection! In the final prompt panels, you MUST weave all these supreme art commands using luxury, high-end, evocative English vocabulary (e.g., 'masterpiece, divine aesthetics, ultra-fine hand-drawn line art, exquisite watercolor texturing, breathtaking volumetric chiaroscuro lighting, haute-couture folding gravity, soul-stirring expressive gaze') to force the image generation model to produce an absolute visual miracle that far exceeds the reference in quality and beauty!\n\n" +
-            "🚨 MANDATE #8: SPECIAL PROMPT & REFERENCE TECHNICAL GUIDELINES (HƯỚEN DẪN KỸ THUẬT PROMPT & ẢNH THAM CHIẾU) 🚨: You MUST actively read, digest, and strictly integrate the following 7 critical technical guidelines from the user's prompt manual into the generated English prompts:\n" +
+            "🚨 MANDATE #8: SPECIAL PROMPT & REFERENCE TECHNICAL GUIDELINES (HƯỚNG DẪN KỸ THUẬT PROMPT & ẢNH THAM CHIẾU) 🚨: You MUST actively read, digest, and strictly integrate the following 7 critical technical guidelines from the user's prompt manual into the generated English prompts:\n" +
             "  1. Art Style & Linework DNA: Specify the line weight (" + '"ultra-fine hand-drawn lines", "variable line-weight linework"' + ") and texture (" + '"clean digital vector line art", "textured charcoal sketching lines", "traditional ink-brush strokes"' + ") with manga screentone or pencil hatching techniques (" + '"soft manga screentone shading", "cross-hatching pencil lines"' + ").\n" +
             "  2. Facial Features Precision: Render eyelashes/eyelids (" + '"thick dramatic eyelashes with heavy eyelid crease"' + ") and irises glossy reflection (" + '"glistening glossy irises catching volumetric light"' + "), specify direct or downward gaze (" + '"focused eye contact looking directly at the camera", "subtle downward gaze"' + "), and define sharp nose bridges and natural glossy lips.\n" +
             "  3. Posture & Finger Articulation: Describe dynamic elegant poses matching the STORY'S ACTION (" + '"elegant dynamic posture"' + ", precise head tilts) and explicitly force detailed fingers (" + '"exquisitely detailed hands with long slender fingers", "five fully articulated fingers gently holding"' + ") to eliminate AI-generated hand mutations.\n" +
             "  4. Color Palette & Chiaroscuro: Use specific colors/m codes (" + '"soft pastel pink and muted cream", "crimson red accents popping against monochrome slate background"' + ") and high-contrast volumetric lights (" + '"dramatic chiaroscuro lighting casting long soft shadows", "glowing rim light silhouette"' + ").\n" +
-            "  5. Composition & Leading Lines: Use leading geometric lines (" + '"strong diagonal leading lines", "vertical composition lines of bookshelves framing"' + ") and cinematic angles (" + '"Dutch tilt for dramatic tension", "cinematic low-angle sweeping shot"' + ").\n" +
+            "  5. Composition & Leading Lines: Use highly eye-catching composition framing with leading geometric lines (" + '"strong diagonal leading lines", "vertical composition lines of bookshelves framing"' + ") and breathtaking cinematic angles (" + '"Dutch tilt for dramatic tension", "cinematic low-angle sweeping shot", "extreme low-angle view to emphasize dominance and grandeur", "cinematic dynamic three-quarter low-angle perspective"' + "). NEVER use average, flat, or dead-center compositions unless explicitly forced by the user. Ensure the visual perspective is strikingly dramatic and visually stunning.\n" +
             "  6. UI & Frame Layout: Apply panels with borders (" + '"multi-panel layout with dynamic white borders"' + ") or translucent bubble text UI layers (" + '"subtle translucent chat box with minimal typography"' + ").\n" +
             "  7. Multi-Reference Synthesis: Perfectly isolate card domains (Hair, Pose, Outfit, Setting, Style) to synthesize their distinct visual materials harmoniously into a masterpiece without losing any detail.\n\n" +
             "🚨 MANDATE #9: CHARACTER IDENTITY & STORY CHARACTER FIDELITY (QUY TẮC BẢO VỆ DANH TÍNH NHÂN VẬT & ĐỒNG BỘ TUYỆT ĐỐI THEO TRUYỆN - TRÁNH SAI LỆCH GIỚI TÍNH, ĐẶC ĐIỂM CỦA CÂU CHUYỆN) 🚨:\n" +
             "  - Character Demographics: The gender, age, hair color, eye color, clothing category, and key visual/facial traits of characters in the generated prompts MUST be 100% determined by the User's Story Setting (Thiết lập câu chuyện) and the story's character descriptions (danh tính nhân vật trong truyện)!\n" +
             "  - Absolute Prohibition of Identity Bleeding: You are STRICTLY FORBIDDEN from copying the gender, hair color, clothing category, or physical identity of characters from the reference images if they do not match the story character! If a reference image depicts a female with black hair, but the story character is a male prince with blonde hair, the generated prompt MUST portray a handsome male prince with blonde hair, while using ONLY the artistic/aesthetic style, line art weight, color blending, brushstroke texture, and composition structure of the reference image! This ensures that the generated image perfectly represents the correct characters of the story while maintaining the beautiful styling of the reference images.\n" +
             "  - Character Fit: The character's outfits, actions, and emotions must perfectly match the character's narrative persona and the specific scene context. Do not force generic details that contradict who the character is in the story.\n\n" +
+            "🚨 MANDATE #11: 100% REF-STEALTH & ANONYMOUS GEOMETRY RECONSTRUCTION (BẢO MẬT TUYỆT ĐỐI ẢNH THAM CHIẾU - BÁM CHẶT BỐ CỤC/GÓC MÁY/NÉT VẼ NHƯNG PHÁT TRIỂN PROMPT SÁNG TẠO KHÔNG LỘ BẢN GỐC) 🚨:\n" +
+            "  - No Identity/Literal Leak (Không rò rỉ danh tính/đặc trưng bản gốc): You are STRICTLY FORBIDDEN from copying or naming specific copyrighted props, unique weapons, specific tools, character names, or literal metadata of the reference image. Translate these elements into fully customized props matching the user's characters/story.\n" +
+            "  - Stealth Professional Art Formulation (Mô tả nghệ thuật ẩn danh chuyên nghiệp): Describe the camera angles, visual path/lines (đường thị giác, điểm nhìn, tầm nhìn), light source vectors, perspective depth, and artistic brushstrokes with 100% precision using professional visual art terminology, while keeping the prompt itself beautifully original. No reader should ever be able to guess or trace back the original reference image from the prompt text alone, yet the generative AI reading the prompt will reproduce the exact same composition framework, line-weight DNA, perspective structure, and color theory as the reference image, matching 100% the story characters!\n\n" +
+            "🚨 MANDATE #12: ULTRA-DETAILED PROMPT EXPANSION (BẮT BUỘC MÔ TẢ CHI TIẾT TỪ 5000 ĐẾN 7000 KÝ TỰ, CHI TIẾT NÉT VẼ, TÓC, ÁNH SÁNG) 🚨:\n" +
+            "You MUST generate incredibly long, comprehensive, and exhaustive prompts. The total prompt length MUST be between 5000 and 7000 characters. You must include EXTREMELY detailed descriptions of the following:\n" +
+            "1. LINE DETAILS (Chi tiết Nét Vẽ): Describe the exact line weight, ink density, stroke dynamics, pencil/brush texture, hatching/cross-hatching techniques, and edge crispness. The structural line work MUST be explicitly prompted to guarantee structural integrity before coloring. \n" +
+            "2. HAIR ARCHITECTURE (Cấu trúc Tóc): Describe the hair flow, clumping, strands, volume, and gravity with precise physical geometry. AVOID 'splitting/clumping' AI artifacts. The character's specific hairstyle comes from the Story Profile, but the DRAWING STYLE/NÉT VẼ of the hair MUST be an exact match to the Reference Image's artistic technique.\n" +
+            "3. LIGHTING, COLOR, AND QUALITY CORRECTION (Ánh sáng, Màu sắc & Sửa lỗi chất lượng): Detail the exact color grading, light source origin, volumetric rays, shadow depth, chromatic aberration (or lack thereof), and material light interactions. Actively prompt to PREVENT 'washed out', 'generic', or 'plastic' AI-generated lighting. The output must be breathtaking, rivaling master-level human artwork.\n" +
+            "4. CAMERA & GEOMETRY (Góc máy & Hình học): Explicitly describe camera placement, viewing distance, arcs, geometry, visual recognition forms, and leading lines (đường thị giác).\n\n" +
             "🚨 SUPREME COMMAND FOR HIGH-FIDELITY DETAILS (MỆNH LỆNH THỐNG TRỊ CHI TIẾT TỰA THỰC 100%): Write incredibly long, precise, and vivid paragraphs for each part! Do not summarize or use generic terms! Use advanced terminology such as 'Fujifilm Superia color space, Hasselblad HC 80mm color accuracy, Arri Alexa cinematic tone, 0.05mm ultra-fine rotring ink brush, meticulous cross-hatching shade layers, anatomically flawless hands with five long slender digits, perfect fabric drape tension folds' in every description. This ensures that the generated prompt perfectly forces Midjourney/Stable Diffusion/Ideogram/Flux to reproduce the reference style, dynamic composition lines, and rich, non-blurry colors and shapes with 100% fidelity, while allowing the character's pose and actions to be creatively driven by the STORY!\n\n" +
             "🚨 NO COGNITIVE ANALYSIS FLUFF (BẮT BUỘC BỎ QUA PHẦN PHÂN TÍCH SUY NGHĨ TIẾNG VIỆT) 🚨: To maintain ultimate stream efficiency, YOU MUST NOT output any [REFERENCE FIDELITY REPORT] or Vietnamese thinking/analysis text. Start the response immediately with [FINAL PROMPT] followed by the requested parts. Just write the highly detailed prompt ready for direct image creation! Each panel/card must start immediately with '[FINAL PROMPT]'.\n\n" +
             "Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...]."
@@ -2379,15 +3452,15 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             "  2. Visual Storytelling (Kể chuyện qua hình ảnh): Even if the reference images are just 'beautiful' and unrelated to the plot, you must FORCE the scene to reflect the story's vibe. Every shadow, object, and expression must tell a piece of the story. Looking at the image must reveal the story's genre and plot ideas!\n" +
             "  3. The Reference Image (Ảnh tham chiếu) is ONLY the 'Brush' and 'Paint': Extract the linework, color palette, and lighting style. Apply these artistic techniques to the story's specific character and narrative. DO NOT clone the character identity from the reference image!\n\n" +
             "🚨 SUPREME MANDATE #3: EXACT STYLE, COLOR, EYE & EXTRAORDINARY HAIR PRECISION (QUY TẮC ĐỒNG BỘ CHI TIẾT NÉT VẼ, TONE MÀU, LÊN MÀU, VẼ MẮT, VÀ TÓC THEO THAM CHIẾU - SÁNG TẠO POSE THEO TRUYỆN) 🚨: When describing the character, hairstyle, eyes, outfit, and background, you MUST replicate the exact aesthetic style of the reference image. Keep the art medium, line art weight, shading depth, and color blending techniques of the reference image.\n" +
-            "  1. Hair Precision (Học vẽ tóc, mô tả siêu chi tiết để tránh tóc xấu): You must describe hair with extreme clarity, structure, and beauty! Clearly define the hairstyle structure, individual silky hair strands flowing gracefully, parting lines, highlight reflections, and fine wisps catching volumetric backlighting. Never write vague hair descriptions that lead to ugly AI rendering! Make it as detailed and gorgeous as the reference image.\n" +
-            "  2. Eye & Face Precision (Học vẽ mắt, học lên màu): Specify the exact drawing style of the eyes from the reference (e.g., highly glossy irises, heavy lash lines, specific gaze direction, light reflection points). Describe the coloring and shading gradients with professional vocabulary to perfectly capture the color palette.\n" +
+            "  1. Hair Precision (Học vẽ tóc, mô tả siêu chi tiết để tránh tóc xấu): You must describe hair with extreme clarity, structure, and beauty! Capture the EXACT rendering technique of the hair from the reference (e.g., individual wispy strands, bold cel-shaded chunks, or soft painterly highlights). Clearly define the hairstyle structure, individual silky hair strands flowing gracefully, parting lines, highlight reflections, and fine wisps catching volumetric backlighting. NEVER default to generic AI hair textures!\n" +
+            "  2. Eye & Face Precision (Học vẽ mắt, học lên màu, nét vẽ khuôn mặt): You must strictly imitate the EXACT facial drawing style of the reference image (e.g., the specific thickness of the eyelid lines, the shape of the pupils, the subtle blush rendering). Specify the exact drawing style of the eyes from the reference (e.g., highly glossy irises, heavy lash lines, specific gaze direction, light reflection points). Describe the coloring and shading gradients with professional vocabulary to perfectly capture the color palette. Absolutely avoid generic AI face rendering!\n" +
             "  3. Character Posture: The character pose, gesture, stance, and action must be dynamically generated to match the STORY SETTING, using the reference's composition lines and camera angles (Dutch tilt, low-angle sweeping shot, cinematic framing) to frame the story actions beautifully, rather than cloning the exact pose of the reference image rigidly!\n\n" +
             "🚨 SUPREME MANDATE #4: STRICT CARD PORTAL ISOLATION & MULTI-IMAGE FULL UTILIZATION (QUY TẮC PHÂN LUỒNG TỪNG MỤC THẺ ẢNH QUYẾT LIỆT VÀ KHÔNG BỎ SÓT BẤT KỲ ẢNH NÀO) 🚨: You must strictly read and process the requirements of each Work Card one-by-one according to its specific functional domain (Hair from Hair Card, Pose/Angle from Pose Card, Clothing/Outfit from Outfit Card, Setting from Environment Card, Makeup/Expression from Face Card, Art Style from Style Analyzer, and Art Direction from Aesthetic Study). Each card's assigned reference image is the primary visual authority for that domain. Do NOT mix them up, do NOT omit any, and do NOT let one single image dominate the entire prompt! Study each card's reference image thoroughly, and synthesize these distinct modular traits together into a harmonious, balanced multi-reference masterpiece!\n\n" +
             "🚨 MANDATE FOR MULTIPLE IMAGES PER CARD (BẮT BUỘC HỌC HỎI TẤT CẢ ẢNH KHI THẺ CÓ NHIỀU ẢNH THAM CHIẾU) 🚨: If a single Work Card has multiple attached reference images (e.g. 2, 3 or more reference images inside the Outfit Card), YOU ARE STRICTLY FORBIDDEN from choosing only one image and ignoring the rest! You must look at every single image attached, analyze their unique aesthetic elements, and blend their traits (e.g., combining the fabric textures of all references) into the [FINAL PROMPT] to achieve 100% reference utilization! Every single attached image is a mandatory piece of visual material and MUST be utilized!\n\n" +
-            "🚨 CORE VISUAL FIDELITY ENFORCEMENT - NÉT VẼ, TRANG PHỤC & ĐƯỜNG THỊ GIÁC (MỆNH LỆNH BẮT BUỘC ĐỒNG BỘ NÉT VẼ, TRANG PHỤC VÀ ĐƯỜNG THỊ GIÁC CỰC HẠN) 🚨: To address styling quality issues, you must exhaustively analyze and incorporate these three pillars from reference images into the English prompts:\n" +
+            "🚨 CORE VISUAL FIDELITY ENFORCEMENT - NÉT VẼ, TRANG PHỤC & ĐƯỜNG THỊ GIÁC (MỆNH LỆNH BẮT BUỘC ĐỒNG BỘ NÉT VẼ, TRANG PHỤC VÀ ĐƯỜNG THỊ GIÁC CỰC HẠN - BẮT THỊ GIÁC ĐỈNH CAO CHUYÊN NGHIỆP) 🚨: To address styling quality issues, you must exhaustively analyze and incorporate these three pillars from reference images into the English prompts:\n" +
             "  1. Art Style & Linework DNA (Đồng bộ Nét Vẽ Gốc): Capture the exact artistic medium, brush texture, ink lines, line-weight variation (thin/thick), shading depth, rendering technique (e.g. watercolor wash, screen-tones, clean digital line art). Describe with hyper-vivid, advanced terminology.\n" +
             "  2. Outfit & Fabric Fidelity (Đồng bộ Trang phục & Quần áo): Exhaustively describe garment materials (silk, leather, satin, heavy textured wool), structural layering, tailoring patterns, necklines/collars, delicate laces, dynamic folding tension, ripples, and gravity wrinkles. Match the outfit style perfectly!\n" +
-            "  3. Visual Perspective & Composition Lines (Đồng bộ Đường Thị Giác & Bố cục): Extract the exact camera perspective (dynamic low-angle, cinematic sweeping high-angle, wide-lens portrait depth, Dutch tilt), leading lines (đường dẫn thị giác), diagonal focal alignment, negative space ratio, silhouette contour, and light-and-shadow direction.\n\n" +
+            "  3. Visual Perspective & Composition Lines (Đồng bộ Đường Thị Giác & Bố cục - BẮT BUỘC KHÔNG DÙNG GÓC MÁY BÌNH THƯỜNG TRUNG BÌNH): YOU ARE STRICTLY FORBIDDEN from using flat, boring eye-level center compositions! You MUST actively analyze and replicate the exact dramatic, striking camera perspective of the reference (e.g., dynamic low-angle tilt, cinematic sweeping high-angle, birds-eye view, Dutch tilt for emotional tension, three-quarter side angle). Use professional composition lines, extreme off-center subject positioning (e.g. Rule of Thirds, asymmetrical weight), powerful leading lines (đường dẫn thị giác), diagonal alignment, deep atmospheric foreground/background separation, and breathtaking light-and-shadow vectors. Looking at the composition MUST feel like a high-budget cinematic masterpiece that instantly commands and seizes the viewer's eyes!\n\n" +
             "🚨 MANDATE #5: HIGH-END PROFESSIONAL ART & PHOTOGRAPHY VOCABULARY (QUY TẮC SỬ DỤNG TỪ VỰNG CHUYÊN NGÀNH NGHỆ THUẬT/NHIẾP ẢNH CAO CẤP) 🚨: You are an elite, world-class art director and cinematographer. You MUST NOT use basic, superficial, or generic vocabulary (like 'beautiful dress', 'nice pose', or 'good lighting'). YOU MUST USE ADVANCED, HIGHLY PROFESSIONAL, AND DEEPLY TECHNICAL TERMINOLOGY. Your analysis and prompt must reflect extreme artistic expertise for:\n" +
             "  1. Facial & Hair Nuance: Head tilt angles, exact direction of gaze, subtle mouth positioning, precise eyelid weights, hair strand flow, individual fine hair wisps catching backlights, parting line.\n" +
             "  2. Lighting & Shadow Depth: Exact main light source location, volumetric ray paths, contact shadows under the chin/neck, precise soft-rim backlighting highlights, chiaroscuro shadow gradients on skin/garment folds.\n" +
@@ -2398,22 +3471,27 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             "🚨 MANDATE #6: ABSOLUTE ZERO INFORMATION LOSS IN FINAL PROMPT (QUY TẮC TRUYỀN TẢI CHI TIẾT TRỌN VẸN VÀO PROMPT TIẾNG ANH) 🚨: Every single micro-detail learned from reference images MUST be translated and woven into the final prompt panels using rich, vivid, professional English nouns and adjectives. There must be ZERO loss of detail! The final prompt must be highly dense, rich in cinematography terms, visual art vocabulary, and tactile material descriptors so that the image generation AI can replicate the exact masterpiece level of the reference image!\n\n" +
             "🚨 MANDATE #7: SUPREME ARTISTIC ELEVATION & EXCELLENCE (QUY TẮC NÂNG TẦM NGHỆ THUẬT VƯỢT TRỘI - VẼ ĐẸP HƠN VÀ GIỎI HƠN CẢ ẢNH GỐC) 🚨: You must NOT merely replicate or copy the reference image. Your ultimate goal is to ELEVATE, IMPROVE, and PERFECT the visual artwork. You are an elite, world-class human artist who takes inspiration from a reference but completely outshines it!\n" +
             "In the final prompt panels, you MUST weave all these supreme art commands using luxury, high-end, evocative English vocabulary (e.g., 'masterpiece, divine aesthetics, ultra-fine hand-drawn line art, exquisite watercolor texturing, breathtaking volumetric chiaroscuro lighting, haute-couture folding gravity, soul-stirring expressive gaze') to force the image generation model to produce an absolute visual miracle that far exceeds the reference in quality and beauty!\n\n" +
-            "🚨 MANDATE #8: SPECIAL PROMPT & REFERENCE TECHNICAL GUIDELINES (HƯỚNG DẪN KỸ THUẬT PROMPT & ẢNH THAM CHIẾU) 🚨: You MUST actively read, digest, and strictly integrate the following 7 critical technical guidelines from the user's prompt manual into the generated English prompts:\n" +
-            "  1. Art Style & Linework DNA: Specify the line weight (" + '"ultra-fine hand-drawn lines", "variable line-weight linework"' + ") and texture (" + '"clean digital vector line art", "textured charcoal sketching lines", "traditional ink-brush strokes"' + ") with manga screentone or pencil hatching techniques (" + '"soft manga screentone shading", "cross-hatching pencil lines"' + ").\n" +
-            "  2. Facial Features Precision: Render eyelashes/eyelids (" + '"thick dramatic eyelashes with heavy eyelid crease"' + ") and irises glossy reflection (" + '"glistening glossy irises catching volumetric light"' + "), specify direct or downward gaze (" + '"focused eye contact looking directly at the camera", "subtle downward gaze"' + "), and define sharp nose bridges and natural glossy lips.\n" +
-            "  3. Posture & Finger Articulation: Describe dynamic elegant poses matching the STORY'S ACTION (" + '"elegant dynamic posture"' + ", precise head tilts) and explicitly force detailed fingers (" + '"exquisitely detailed hands with long slender fingers", "five fully articulated fingers gently holding"' + ") to eliminate AI-generated hand mutations.\n" +
-            "  4. Color Palette & Chiaroscuro: Use specific colors/m codes (" + '"soft pastel pink and muted cream", "crimson red accents popping against monochrome slate background"' + ") and high-contrast volumetric lights (" + '"dramatic chiaroscuro lighting casting long soft shadows", "glowing rim light silhouette"' + ").\n" +
-            "  5. Composition & Leading Lines: Use leading geometric lines (" + '"strong diagonal leading lines", "vertical composition lines of bookshelves framing"' + ") and cinematic angles (" + '"Dutch tilt for dramatic tension", "cinematic low-angle sweeping shot"' + ").\n" +
-            "  6. UI & Frame Layout: Apply panels with borders (" + '"multi-panel layout with dynamic white borders"' + ") or translucent bubble text UI layers (" + '"subtle translucent chat box with minimal typography"' + ").\n" +
-            "  7. Multi-Reference Synthesis: Perfectly isolate card domains (Hair, Pose, Outfit, Setting, Style) to synthesize their distinct visual materials harmoniously into a masterpiece without losing any detail.\n\n" +
-            "🚨 MANDATE #9: CHARACTER IDENTITY & STORY CHARACTER FIDELITY (QUY TẮC BẢO VỆ DANH TÍNH NHÂN VẬT & ĐỒNG BỘ TUYỆT ĐỐI THEO TRUYỆN - TRÁNH SAI LỆCH GIỚI TÍNH, ĐẶC ĐIỂM CỦA CÂU CHUYỆN) 🚨:\n" +
-            "  - Character Demographics: The gender, age, hair color, eye color, clothing category, and key visual/facial traits of characters in the generated prompts MUST be 100% determined by the User's Story Setting (Thiết lập câu chuyện) and the story's character descriptions (danh tính nhân vật trong truyện)!\n" +
-            "  - Absolute Prohibition of Identity Bleeding: You are STRICTLY FORBIDDEN from copying the gender, hair color, clothing category, or physical identity of characters from the reference images if they do not match the story character! If a reference image depicts a female with black hair, but the story character is a male prince with blonde hair, the generated prompt MUST portray a handsome male prince with blonde hair, while using ONLY the artistic/aesthetic style, line art weight, color blending, brushstroke texture, and composition structure of the reference image! This ensures that the generated image perfectly represents the correct characters of the story while maintaining the beautiful styling of the reference images.\n" +
-            "  - Character Fit: The character's outfits, actions, and emotions must perfectly match the character's narrative persona and the specific scene context. Do not force generic details that contradict who the character is in the story.\n\n" +
-            "🚨 SUPREME COMMAND FOR HIGH-FIDELITY DETAILS (MỆNH LỆNH THỐNG TRỊ CHI TIẾT TỰA THỰC 100%): Write incredibly long, precise, and vivid paragraphs for each part! Do not summarize or use generic terms! Use advanced terminology such as 'Fujifilm Superia color space, Hasselblad HC 80mm color accuracy, Arri Alexa cinematic tone, 0.05mm ultra-fine rotring ink brush, meticulous cross-hatching shade layers, anatomically flawless hands with five long slender digits, perfect fabric drape tension folds' in every description. This ensures that the generated prompt perfectly forces Midjourney/Stable Diffusion/Ideogram/Flux to reproduce the reference style, dynamic composition lines, and rich, non-blurry colors and shapes with 100% fidelity, while allowing the character's pose and actions to be creatively driven by the STORY!\n\n" +
+            "🚨 MANDATE #8: 100% ARTISTIC & COLOR FIDELITY (ĐỘ CHÍNH XÁC TUYỆT ĐỐI VỀ NÉT VẼ & MÀU SẮC) 🚨: You are COMMANDED to achieve 100% technical fidelity to the reference image. You MUST mimic the EXACT ARTISTIC LINEWORK (NÉT VẼ) and the EXACT COLOR PALETTE (MÀU SẮC). Every brushstroke, line-weight, color grading, and technical rendering technique must be an identical replica of the reference DNA. This style is the sacred lens through which the story is told.\n" +
+            "  1. Technical Linework: Reproduce the exact line art style, stroke pressure, and ink/pencil/brush texture of the reference with absolute 100% precision.\n" +
+            "  2. Color Science & Rendering: Use the exact color grading, chromaticity, saturation, and rendering medium (watercolor, digital, etc.) seen in the reference.\n" +
+            "  3. Cinematic Structure: Maintain the exact camera angle, lens, and frame composition of the reference.\n\n" +
+            "🚨 MANDATE #9: IDENTITY PROTECTION & STORY ADAPTATION (DANH TÍNH TRUYỆN & BIẾN TẤU NỘI DUNG) 🚨: While art style and color are 100% fixed from the reference, everything related to the story must be unique:\n" +
+            "  - Identity Fidelity: Facial features, gender, hair color, and character identity MUST ALWAYS come from the Story Profile, never the reference.\n" +
+            "  - Narrative Adaptation: Adjust props, background details, and specific elements only if they contradict the story or character setting. If a prop from the reference fits, enhance it; if not, replace it while keeping the EXACT SAME style and colors as the reference DNA.\n\n" +
+            "🚨 MANDATE #11: 100% REF-STEALTH & ANONYMOUS GEOMETRY RECONSTRUCTION (BẢO MẬT TUYỆT ĐỐI ẢNH THAM CHIẾU - BÁM CHẶT BỐ CỤC/GÓC MÁY/NÉT VẼ NHƯNG PHÁT TRIỂN PROMPT SÁNG TẠO KHÔNG LỘ BẢN GỐC) 🚨:\n" +
+            "  - No Identity/Literal Leak (Không rò rỉ danh tính/đặc trưng bản gốc): You are STRICTLY FORBIDDEN from copying or naming specific copyrighted props, unique weapons, specific tools, character names, or literal metadata of the reference image. Translate these elements into fully customized props matching the user's characters/story.\n" +
+            "  - Stealth Professional Art Formulation (Mô tả nghệ thuật ẩn danh chuyên nghiệp): Describe the camera angles, visual path/lines (đường thị giác, điểm nhìn, tầm nhìn), light source vectors, perspective depth, and artistic brushstrokes with 100% precision using professional visual art terminology, while keeping the prompt itself beautifully original. No reader should ever be able to guess or trace back the original reference image from the prompt text alone, yet the generative AI reading the prompt will reproduce the exact same composition framework, line-weight DNA, perspective structure, and color theory as the reference image, matching 100% the story characters!\n\n" +
+            "🚨 MANDATE #12: ULTRA-DETAILED PROMPT EXPANSION (BẮT BUỘC MÔ TẢ CHI TIẾT TỪ 5000 ĐẾN 7000 KÝ TỰ, CHI TIẾT NÉT VẼ, TÓC, ÁNH SÁNG) 🚨:\n" +
+            "You MUST generate incredibly long, comprehensive, and exhaustive prompts. The total prompt length MUST be between 5000 and 7000 characters. You must include EXTREMELY detailed descriptions of the following:\n" +
+            "1. LINE DETAILS (Chi tiết Nét Vẽ): Describe the exact line weight, ink density, stroke dynamics, pencil/brush texture, hatching/cross-hatching techniques, and edge crispness. The structural line work MUST be explicitly prompted to guarantee structural integrity before coloring. \n" +
+            "2. HAIR ARCHITECTURE (Cấu trúc Tóc): Describe the hair flow, clumping, strands, volume, and gravity with precise physical geometry. AVOID 'splitting/clumping' AI artifacts. The character's specific hairstyle comes from the Story Profile, but the DRAWING STYLE/NÉT VẼ of the hair MUST be an exact match to the Reference Image's artistic technique.\n" +
+            "3. LIGHTING, COLOR, AND QUALITY CORRECTION (Ánh sáng, Màu sắc & Sửa lỗi chất lượng): Detail the exact color grading, light source origin, volumetric rays, shadow depth, chromatic aberration (or lack thereof), and material light interactions. Actively prompt to PREVENT 'washed out', 'generic', or 'plastic' AI-generated lighting. The output must be breathtaking, rivaling master-level human artwork.\n" +
+            "4. CAMERA & GEOMETRY (Góc máy & Hình học): Explicitly describe camera placement, viewing distance, arcs, geometry, visual recognition forms, and leading lines (đường thị giác).\n\n" +
+            "🚨 SUPREME COMMAND FOR HIGH-FIDELITY DETAILS (MỆNH LỆNH THỐNG TRỊ CHI TIẾT TỰA THỰC 100%): Write incredibly long, precise, and vivid paragraphs for each part! Use advanced terminology such as 'Fujifilm Superia color space, Hasselblad HC 80mm color accuracy, Arri Alexa cinematic tone, 0.05mm ultra-fine rotring ink brush, meticulous cross-hatching shade layers, anatomically flawless hands with five long slender digits, perfect fabric drape tension folds' in every description. Ensure that every item—whether adapted or invented—is rendered with the same technical excellence, EXACT LINEWORK, and EXACT COLORS as the reference DNA!\n\n" +
+            "🚨 MANDATE #10: ABSOLUTE AVOIDANCE OF GENERIC AI STYLE (TUYỆT ĐỐI KHÔNG SỬ DỤNG PHONG CÁCH AI MẶC ĐỊNH) 🚨: YOU ARE STRICTLY FORBIDDEN FROM PRODUCING GENERIC, PLASTIC, OVERLY-SMOOTH, OR TYPICAL 'AI-ART' LOOKS. The artwork must NOT feel digital, synthetic, or generic. You must ONLY produce artwork that looks like it was created by a master human artist using the specific medium and linework defined in the reference images. If the reference is watercolor, the AI output MUST look like 100% genuine watercolor with authentic paper texture, ink bleeds, and organic brush strokes. If the reference is ink, it MUST look like authentic, hand-drawn ink with variable line weight and organic human imperfections! Reject all smooth, artificial, shiny, or 'AI-looking' aesthetic conventions immediately!\n\n" +
             "🚨 NO COGNITIVE ANALYSIS FLUFF (BẮT BUỘC BỎ QUA PHẦN PHÂN TÍCH SUY NGHĨ TIẾNG VIỆT) 🚨: To maintain ultimate stream efficiency, YOU MUST NOT output any [REFERENCE FIDELITY REPORT] or Vietnamese thinking/analysis text. Start the response immediately with [FINAL PROMPT] followed by the requested parts. Just write the highly detailed prompt ready for direct image creation! Each card must start immediately with '[FINAL PROMPT]'.\n\n" +
-            "CRITICAL RULE ON REFERENCE IMAGES: When studying reference images in the Context Window, extract and apply visual DNA across these layers: art style, medium texture (watercolor, fantasy manhua, soft ink-wash, cinematic photo), color palette, lighting/shadow, camera perspective (exact low/high/eye-level angle, focal length, depth of field, background blur), creative character poses and gestures matching the STORY (do NOT copy the reference stance if it contradicts the story's action), thematic outfit aesthetics (borrowing fabric texture and style, but strictly matching the story's attire), and composition rhythm (focal structure, visual hierarchy, negative space). You MUST translate all traits into highly professional, descriptive natural language. Do NOT output bare filenames or placeholder image IDs in the final prompt.\n\n" +
-            "For EACH Work Card, you MUST directly start with '[FINAL PROMPT]' with the standalone descriptive instruction ready for direct image generation! In [FINAL PROMPT], you MUST structure the output into exactly 5 STANDALONE PARTS (### 👑 TƯ LIỆU THAM CHIẾU & AESTHETIC DNA BẮT BUỘC, followed by ### 🧑 PART 1 to ### 📸 PART 5), and end with '### 🎨 PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)' combining all 5 parts and reference enforcement into a single pure English production-ready block!\n\n" +
+            "CRITICAL RULE ON REFERENCE IMAGES: When studying reference images in the Context Window, achieve ABSOLUTE FIDELITY in 'Visual Vision' (Art style, medium texture, color palette, technical lighting, and EXACT camera perspective/angle/framing). However, you MUST practice 'Creative Adaptation' for the subject matter: replace literal props, specific tools, and background objects with new elements that make sense for the STORY CHARACTER. The goal is to see the STORY'S CHARACTER through the REFERENCE'S CINEMATIC LENS. Do NOT output bare filenames or placeholder image IDs in the final prompt.\n\n" +
+            "For EACH Work Card, you MUST directly start with '[FINAL PROMPT]' with the standalone descriptive instruction ready for direct image generation! In [FINAL PROMPT], you MUST structure the output into exactly 10 STANDALONE EXHAUSTIVE SECTIONS (### 👑 TƯ LIỆU THAM CHIẾU & AESTHETIC DNA BẮT BUỘC, followed by ### 🧑 SECTION 1 to ### 📸 SECTION 10), and end with '### 🎨 PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)' combining all 10 sections and reference enforcement into a single pure English production-ready block!\n\n" +
             "Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...].",
         onToken: (token) => {
           streamBufferRef.current += token;
@@ -2542,6 +3620,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             rs.history.unshift(historyItem);
             if (rs.history.length > 10) rs.history = rs.history.slice(0, 10);
             currentStory.rooms[roomDef.id] = { ...rs };
+            setIsWorkListCollapsed(true);
             save(state);
 
             setTimeout(() => {
@@ -2652,8 +3731,9 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
       }));
       rs.result = "Error: " + errStr;
       setProgress(0);
+      setIsApiRunning(false);
     }
-  };
+  }, [roomState, roomDef, currentStory, progress, showContextPreview, buildContextPayload, save, state, toast, uuidv4]);
 
   const roomIdx = ROOMS_DATA.findIndex(r => r.id === roomDef.id);
   const defaultCover = PRESET_BACKGROUNDS[(roomIdx >= 0 ? roomIdx : (roomDef.seed || 0)) % PRESET_BACKGROUNDS.length];
@@ -2693,7 +3773,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
                 {cover && <SafeImg src={cover} alt="" style={{width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0}} />}
                 <div className="room-avatar" style={{position: 'relative', zIndex: 2}}>{avatar ? <SafeImg src={avatar} alt=""/> : ''}</div>
               </div>
-              <div className="room-intro" style={{padding: '24px 28px 18px', background: 'rgba(255,255,255,0.85)'}}>
+              <div className="room-intro" style={{padding: '24px 28px 18px', background: 'rgba(255,255,255,0.25)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.3)'}}>
                 <h1 style={{margin: 0, fontSize: '28px', color: '#8c526b'}}>{roomDef.title}</h1>
                 <p style={{margin: '6px 0 0', color: '#51404c', fontSize: '15px'}}>{roomDef.desc}</p>
               </div>
@@ -2704,8 +3784,8 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
           <div style={{
             position: 'relative',
             zIndex: 1000,
-            background: "linear-gradient(rgba(255, 255, 255, 0.82), rgba(255, 240, 246, 0.88)), url('https://i.postimg.cc/vHjZ1k3S/215b99c879bdd6e6511287efda1b90ee.jpg') center/cover no-repeat",
-            border: '2px solid rgba(220, 105, 150, 0.65)',
+            background: "linear-gradient(rgba(255, 255, 255, 0.25), rgba(255, 240, 246, 0.35)), url('https://i.postimg.cc/vHjZ1k3S/215b99c879bdd6e6511287efda1b90ee.jpg') center/cover no-repeat",
+            border: '2px solid rgba(220, 105, 150, 0.45)',
             borderRadius: '20px',
             padding: '12px 20px',
             margin: '0 0 16px 0',
@@ -2714,7 +3794,9 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             gap: '12px',
-            boxShadow: '0 8px 24px rgba(140, 82, 107, 0.18)'
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            boxShadow: '0 8px 24px rgba(140, 82, 107, 0.12)'
           }}>
             <div style={{display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap'}}>
               <button 
@@ -2789,10 +3871,12 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
         gap: '14px',
         margin: '16px 0 20px 0',
         padding: '16px 24px',
-        background: "linear-gradient(rgba(255, 255, 255, 0.78), rgba(255, 240, 246, 0.86)), url('https://i.postimg.cc/vHjZ1k3S/215b99c879bdd6e6511287efda1b90ee.jpg') center/cover no-repeat",
-        border: '2.5px solid #e96b9b',
+        background: "linear-gradient(rgba(255, 255, 255, 0.25), rgba(255, 240, 246, 0.35)), url('https://i.postimg.cc/vHjZ1k3S/215b99c879bdd6e6511287efda1b90ee.jpg') center/cover no-repeat",
+        border: '2.5px solid rgba(233, 107, 155, 0.5)',
         borderRadius: '24px',
-        boxShadow: '0 10px 28px rgba(210, 58, 115, 0.22)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        boxShadow: '0 10px 28px rgba(210, 58, 115, 0.15)',
         animation: 'fadeIn 0.3s ease'
       }}>
         <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap'}}>
@@ -2971,9 +4055,10 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
         <div style={{
           position: 'fixed',
           bottom: '24px',
-          right: '24px',
-          width: isWidgetCollapsed ? '320px' : '450px',
-          maxWidth: 'calc(100vw - 32px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: isWidgetCollapsed ? '320px' : '90vw',
+          maxWidth: '500px',
           background: 'rgba(255, 255, 255, 0.98)',
           border: '2px solid #e96b9b',
           borderRadius: '20px',
@@ -3189,7 +4274,9 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
         border: '2px solid #e96b9b',
         borderRadius: '24px',
         padding: '12px 18px',
-        margin: '0 0 16px 0',
+        margin: '0 auto 16px auto',
+        maxWidth: '1000px',
+        width: '100%',
         boxShadow: '0 8px 24px rgba(233, 107, 155, 0.12)'
       }}>
         <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
@@ -3206,156 +4293,51 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
         {renderTargetSelector(true)}
       </div>
 
-      <section className="work-list">
-        {roomDef.cards.map((c: any, i: number) => {
-          const cs = roomState.cards?.[c.id] || { note: "", refs: [], output: "" };
-          const cardRefs = cs.refs || [];
-          return (
-            <article className="work-card" key={`card_${roomDef.id}_${c.id}_${i}`}>
-              <div className="work-head">
-                <div className="work-title">
-                  <div className="num">{i + 1}</div>
-                  <div>
-                    <h3>{c.title}</h3>
-                    <p>{c.desc}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="work-body">
-                <div className="guide"><b>Nhiệm vụ / từ khóa nhanh của thẻ</b><br/>{c.quick}</div>
-                {c.id === "target" && (
-                  <div className="target-selector">
-                    {renderTargetSelector(false)}
-                  </div>
-                )}
-                <div className="upload-hero">
-                  <label className="file-label">
-                    Thêm ảnh tham chiếu
-                    <input type="file" multiple accept="image/*" className="file-native" onChange={(e) => handleRefUpload(e, c.id)} />
-                  </label>
-                  <div className="image-rail">
-                    {cardRefs.length === 0 ? (
-                      <div className="photo-card empty-photo"><div><b>Chưa có ảnh tham chiếu</b></div></div>
-                    ) : (
-                      cardRefs.map((r: any, idx: number) => (
-                        <div className="photo-card" key={`photo_${r.id || r.imageId || 'img'}_${idx}`} style={{ cursor: 'pointer' }} onClick={() => setSelectedImgDetail({ ...r, cardId: c.id, cardTitle: c.title })}>
-                          <SafeImg src={r.data || r.previewUrl || r.storageUrl} alt="" />
-                          <span>{r.name || r.fileName}</span>
-                          <div className="analysis-status">{r.analysisStatus === 'analyzed' ? '✅ Đã đọc thành công' : (r.analysisStatus === 'failed' ? '❌ Lỗi đọc ảnh' : '✅ Sẵn sàng trong Context')}</div>
-                          <div style={{ fontSize: '10px', color: '#d23a73', marginTop: 2 }}>🔍 Xem AI phân tích</div>
-                          <button className="delete-btn" onClick={(e) => {
-                            e.stopPropagation();
-                            cs.refs = (cs.refs || []).filter((x: any) => (x.id || x.imageId) !== (r.id || r.imageId));
-                            save(state);
-                          }}>×</button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-                <div className="card-input-grid" style={{ gridTemplateColumns: '1fr' }}>
-                  <label>
-                    <span>Ô điền nội dung / yêu cầu của thẻ</span>
-                    <CardNoteInput cs={cs} c={c} roomState={roomState} state={state} save={save} />
-                  </label>
-                </div>
-                {(cs.report || (cs.refs && cs.refs.length > 0)) && (
-                  <details open style={{marginTop: '18px', background: 'linear-gradient(135deg, #fdf8fb 0%, #f7f1f5 100%)', borderRadius: '16px', border: '2px solid #e5ccd8', padding: '14px 18px', fontSize: '0.88rem', boxShadow: '0 6px 18px rgba(114,83,101,0.06)'}}>
-                    <summary style={{cursor: 'pointer', fontWeight: 800, color: '#4a2f41', display: 'flex', alignItems: 'center', justifyContent: 'space-between', listStyle: 'none', userSelect: 'none'}}>
-                      <div style={{display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'}}>
-                        <span style={{fontSize: '1.05rem'}}>🔮 BẢN THẨM ĐỊNH NGHỆ THUẬT & TRÍCH XUẤT DNA THỊ GIÁC SIÊU CHI TIẾT</span>
-                        <span style={{background: 'linear-gradient(90deg, #d23a73, #8a2451)', color: '#ffffff', padding: '2px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', tracking: '0.05em'}}>Master Study</span>
-                        <span style={{background: 'rgba(114,83,101,0.08)', color: '#5c4353', padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem'}}>Card: {c.id}</span>
-                        {cs.refs.length > 0 && (
-                          <span style={{background: '#f3e8ee', color: '#8a2451', padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700}}>📎 {cs.refs.length} ảnh mẫu học hỏi</span>
-                        )}
-                      </div>
-                      <span style={{fontSize: '0.85rem', color: '#d23a73', fontWeight: 800}}>▼ Xem/Thu gọn</span>
-                    </summary>
-                    <div style={{marginTop: '14px', borderTop: '1px solid #ebd3e0', paddingTop: '14px', color: '#4a3a46'}}>
-                      <div style={{margin: '0 0 12px 0', fontSize: '0.85rem', color: '#8a2451', background: '#fdf2f7', padding: '8px 12px', borderRadius: '8px', borderLeft: '4px solid #d23a73', display: 'flex', gap: '6px', alignItems: 'center'}}>
-                        <span>✨</span>
-                        <span><b>BẢN KIỆT TÁC HỌC THUẬT:</b> Bản nghiên cứu chuyên sâu chắt lọc tinh hoa từ các ảnh mẫu. AI không chỉ sao chép đơn thuần mà còn lên kế hoạch cải tiến đột phá để vẽ đẹp hơn, sắc sảo hơn cả ảnh gốc!</span>
-                      </div>
-                      {cs.refs && cs.refs.length > 0 && (
-                        <div style={{marginBottom: '12px', padding: '10px 14px', background: '#ffffff', borderRadius: '10px', border: '1px solid #ebd3e0', boxShadow: '0 2px 6px rgba(0,0,0,0.01)'}}>
-                          <b>📎 Danh sách file ảnh đã đính kèm để trích xuất DNA:</b>
-                          <ul style={{margin: '6px 0 0 16px', padding: 0, fontSize: '0.8rem', color: '#5c4353'}}>
-                            {cs.refs.map((r: any, idx: number) => (
-                              <li key={`ref_${r.id || r.imageId || 'img'}_${idx}`} style={{marginBottom: '3px'}}>
-                                <code style={{background: '#fcf3f7', padding: '2px 4px', borderRadius: '4px', color: '#d23a73'}}>{r.name || r.fileName || `Image_${idx+1}`}</code> (ID: <code>{(r.id || r.imageId || '').slice(0, 12)}...</code>) — Trạng thái AI: <span style={{color: '#16a34a', fontWeight: 700}}>✅ Đã nạp thành công (Vùng nhớ In-Context đầy đủ)</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {cs.report ? (
-                        <div style={{position: 'relative'}}>
-                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                            <b style={{color: '#4a2f41', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px'}}>
-                              <span>📑</span> Chi tiết báo cáo thẩm định DNA & Nâng tầm nghệ thuật từ AI:
-                            </b>
-                            <button className="btn ghost small" onClick={() => {
-                              copyToClipboardSafe(cs.report);
-                              toast("📋 Đã copy báo cáo thẩm định nghệ thuật");
-                            }} style={{fontSize: '0.75rem', padding: '4px 10px', background: '#ffffff', border: '1px solid #ebd3e0', borderRadius: '8px', fontWeight: 700, color: '#8a2451'}}>📋 Copy Báo Cáo Học Thuật</button>
-                          </div>
-                          <pre style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#ffffff', padding: '16px', borderRadius: '12px', border: '1.5px solid #ebd3e0', maxHeight: '400px', overflowY: 'auto', fontSize: '0.85rem', fontFamily: '"JetBrains Mono", monospace', color: '#2d1e29', lineHeight: 1.6, boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.02)'}}>
-                            {cs.report}
-                          </pre>
-                        </div>
-                      ) : isApiRunning ? (
-                        <div style={{padding: '12px', fontStyle: 'italic', color: '#d23a73', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, background: '#fdf2f7', borderRadius: '8px'}}>
-                          <span style={{display: 'inline-block', width: '8px', height: '8px', background: '#d23a73', borderRadius: '50%', animation: 'ping 1s infinite'}} />
-                          ⏳ Đang stream báo cáo thẩm định siêu chi tiết và kế hoạch nâng tầm nghệ thuật vượt bậc từ AI...
-                        </div>
-                      ) : (
-                        <div style={{padding: '12px', fontStyle: 'italic', color: '#8c6b7e', background: '#f9f6f8', borderRadius: '8px'}}>Chưa có báo cáo phân tích (hãy bấm "Tạo Prompt" để AI kiểm tra ảnh của vợ).</div>
-                      )}
-                    </div>
-                  </details>
-                )}
+      <section className="work-list-container" style={{marginBottom: '32px', width: '100%', maxWidth: '1200px', margin: '0 auto', boxSizing: 'border-box', overflowX: 'auto'}}>
+        <div className="work-list-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', background: 'rgba(255, 240, 245, 0.35)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', padding: '12px 16px', borderRadius: '16px', border: '1px solid rgba(252, 228, 236, 0.5)', width: '100%', maxWidth: '100%', boxSizing: 'border-box'}}>
+          <h2 style={{margin: 0, color: '#c2185b', fontSize: '1.2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px'}}>
+            <span>📋</span> Bảng Thiết Lập Thẻ Công Việc
+          </h2>
+          <button className="btn ghost small" onClick={() => setIsWorkListCollapsed(!isWorkListCollapsed)} style={{color: '#d23a73', fontWeight: 700}}>
+            {isWorkListCollapsed ? "▽ Hiện danh sách thẻ" : "△ Thu gọn danh sách"}
+          </button>
+        </div>
 
-                {cs.output ? (
-                  <div style={{marginTop: '16px', padding: '16px', background: '#fff0f6', borderRadius: '12px', border: isApiRunning ? '2px solid #d23a73' : '1px solid #f0d5e2', transition: 'all 0.3s ease', boxShadow: '0 4px 12px rgba(210,58,115,0.08)'}}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', flexWrap: 'wrap', gap: '8px'}}>
-                      <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                        <b style={{color: '#d23a73', fontSize: '0.95rem'}}>✨ FINAL PRODUCTION-READY PROMPT (Chia 5 Phần Thẩm Mỹ & Có Copy Liền Mạch):</b>
-                        {isApiRunning && (
-                          <span style={{background: '#d23a73', color: '#fff', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800, animation: 'pulse 1s infinite', display: 'inline-flex', alignItems: 'center', gap: '4px'}}>
-                            <span style={{width: '6px', height: '6px', background: '#fff', borderRadius: '50%', display: 'inline-block'}} />
-                            Đang stream dữ liệu... (~{Math.ceil(cs.output.length / 4)} tokens)
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <PromptFivePartsViewer
-                      output={cs.output}
-                      toast={toast}
-                      isApiRunning={isApiRunning}
-                      cardTitle={c.title}
-                      elapsedSeconds={apiSignals.elapsedSeconds}
-                    />
-                  </div>
-                ) : isApiRunning ? (
-                  <div style={{marginTop: '16px', padding: '16px', background: 'linear-gradient(135deg, #fff0f5, #fef5f8)', borderRadius: '12px', border: '1px dashed #d23a73', animation: 'pulse 1.5s infinite'}}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '10px', color: '#d23a73', fontSize: '0.85rem', fontWeight: 700}}>
-                      <div style={{width: '16px', height: '16px', borderRadius: '50%', border: '2px solid #f0d5e2', borderTopColor: '#d23a73', animation: 'spin 1s linear infinite', flexShrink: 0}} />
-                      <span>⏳ AI đang làm việc... Đang chờ stream nội dung Prompt vào thẻ "{c.title}"...</span>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </article>
-          );
-        })}
+        {!isWorkListCollapsed && (
+          <div className="work-list" style={{display: 'grid', gridTemplateColumns: '1fr', gap: '20px', width: '100%', maxWidth: '1200px', margin: '0 auto', boxSizing: 'border-box'}}>
+            {roomDef.cards.map((c: any, i: number) => (
+              <WorkCardItem
+                key={`card_${roomDef.id}_${c.id}_${i}`}
+                c={c}
+                i={i}
+                roomDef={roomDef}
+                roomState={roomState}
+                state={state}
+                currentStory={currentStory}
+                save={save}
+                toast={toast}
+                catAnalyzingCardId={catAnalyzingCardId}
+                isApiRunning={isApiRunning}
+                apiSignals={apiSignals}
+                toggleTraitSelection={toggleTraitSelection}
+                selectOutfitOption={selectOutfitOption}
+                handleOutfitUpload={handleOutfitUpload}
+                handleRefUpload={handleRefUpload}
+                analyzeCardAestheticAndOutfits={analyzeCardAestheticAndOutfits}
+                setSelectedImgDetail={setSelectedImgDetail}
+                renderTargetSelector={renderTargetSelector}
+                updateGlobalState={updateGlobalState}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       <StyleAnalyzer roomState={roomState} currentStory={currentStory} roomDef={roomDef} state={state} save={save} toast={toast} />
 
       {/* COMPREHENSIVE SINGLE RESULT CARD - NOW JUST A SUCCESS HEADER */}
-      {(roomState.result && roomState.result.length > 0) && (
-        <section className="glass-panel" style={{margin: '16px 0', padding: '24px', background: 'rgba(255,255,255,0.95)', borderRadius: '24px', border: '2px solid rgba(220,105,150,0.45)', boxShadow: '0 12px 36px rgba(232,106,153,0.2)'}}>
+      {((roomState.result && roomState.result.length > 0) && viewHistoryIndex === null) && (
+        <section className="glass-panel" style={{margin: '16px 0', padding: '24px', background: 'rgba(255,255,255,0.25)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: '24px', border: '2px solid rgba(220,105,150,0.35)', boxShadow: '0 12px 36px rgba(232,106,153,0.12)', width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'auto'}}>
           <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px'}}>
             <div>
               <p className="eyebrow" style={{color: '#d23a73', margin: 0, fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase'}}>Kết quả tổng hợp đợt này</p>
@@ -3389,71 +4371,19 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 
 
 
-      <section className="glass-panel" style={{margin: '24px 0', padding: '20px', background: 'rgba(255, 245, 249, 0.95)', borderRadius: '24px', border: '1px solid rgba(220,105,150,0.3)'}}>
-        <div style={{marginBottom: '16px', textAlign: 'left'}}>
-          <p className="eyebrow" style={{color: '#d23a73', margin: 0, fontWeight: 700}}>API Proxy History</p>
-          <h2 style={{margin: 0, color: '#3e333e', fontSize: '1.25rem'}}>📜 Lịch Sử Gọi API & Replay Của Phòng ({roomState.history?.length || 0} lần)</h2>
-          <p className="muted" style={{fontSize: '0.85rem', margin: '4px 0 0 0'}}>Bấm "Xem lại (Replay)" để hiển thị lại kết quả cũ mà không tốn lượt gọi lại API.</p>
-        </div>
-        <div className="history-list" style={{maxHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px'}}>
-          {(!roomState.history || roomState.history.length === 0) ? (
-            <div style={{padding: '24px', textAlign: 'center', background: 'rgba(255,255,255,0.6)', borderRadius: '16px', color: '#725365'}}>
-              <b>Chưa có lịch sử gọi API cho phòng này.</b>
-            </div>
-          ) : (
-            roomState.history.map((h: any, index: number) => {
-              const runNumber = roomState.history.length - index;
-              const wordCount = (h.result || "").trim().split(/\s+/).filter(Boolean).length;
-              const charCount = (h.result || "").length;
-              return (
-              <div key={`hist_${h.id || 'item'}_${index}`} className="history-item" style={{background: '#fff', border: '1px solid rgba(238,153,190,0.45)', borderRadius: '16px', padding: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', boxShadow: '0 4px 12px rgba(232,106,153,0.06)'}}>
-                <div style={{flex: 1, minWidth: '220px', textAlign: 'left'}}>
-                  <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px'}}>
-                    <span style={{fontSize: '0.85rem', fontWeight: 800, color: '#d23a73'}}>
-                      Đợt {runNumber}
-                    </span>
-                    <span style={{fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', background: h.streamStatus === 'error' ? '#ffebee' : '#e8f5e9', color: h.streamStatus === 'error' ? '#c62828' : '#2e7d32'}}>
-                      {h.streamStatus === 'error' ? '❌ Lỗi' : '✅ Thành công'}
-                    </span>
-                    <span style={{fontSize: '0.8rem', color: '#888'}}>🕒 {new Date(h.time).toLocaleString('vi-VN')}</span>
-                  </div>
-                  <div style={{fontWeight: 700, color: '#3e333e', marginBottom: '4px', fontSize: '0.95rem'}}>
-                    📌 Story: {currentStory.title} — Phòng: {roomDef.title}
-                  </div>
-                  <div style={{fontSize: '0.85rem', color: '#725365'}}>
-                    🎯 Mục tiêu: <b>{h.selectedTarget || 'Bot char'}</b> | 📊 {charCount.toLocaleString('vi-VN')} ký tự / {wordCount.toLocaleString('vi-VN')} từ
-                  </div>
-                  <div style={{fontSize: '0.8rem', color: '#999', marginTop: '4px', fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '400px'}}>
-                    "{h.result?.slice(0, 80)}..."
-                  </div>
-                </div>
-                <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
-                  <button className="btn primary small" onClick={() => replayHistory(h)} style={{fontSize: '0.8rem', padding: '6px 12px'}}>
-                    🔄 Khôi phục
-                  </button>
-                  <button className="btn ghost small" onClick={() => {
-                    copyToClipboardSafe(h.result || "");
-                    toast("📋 Đã copy nội dung đợt " + runNumber);
-                  }} style={{fontSize: '0.8rem', padding: '6px 12px'}}>
-                    📋 Copy
-                  </button>
-                  <button className="btn ghost small" onClick={() => setSelectedHistoryPayload(h)} style={{fontSize: '0.8rem', padding: '6px 12px'}}>
-                    👁️ Xem chi tiết
-                  </button>
-                  <button className="btn danger small" onClick={() => {
-                    roomState.history = roomState.history.filter((x: any) => x.id !== h.id);
-                    currentStory.rooms[roomDef.id] = roomState;
-                    save(state);
-                    toast("Đã xóa mục lịch sử.");
-                  }} style={{fontSize: '0.8rem', padding: '6px 10px'}}>
-                    ×
-                  </button>
-                </div>
-              </div>
-            )})
-          )}
-        </div>
-      </section>
+      <HistorySection 
+        roomState={roomState}
+        viewHistoryIndex={viewHistoryIndex}
+        setViewHistoryIndex={setViewHistoryIndex}
+        replayHistory={replayHistory}
+        setSelectedHistoryPayload={setSelectedHistoryPayload}
+        toast={toast}
+        currentStory={currentStory}
+        roomDef={roomDef}
+        save={save}
+        state={state}
+        onDeleteHistory={deleteHistoryItem}
+      />
 
       {showPreset && (
         <div className="modal show" style={{zIndex: 1150}}>
@@ -3613,7 +4543,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 
       {/* Modal Context Preview */}
       {showContextPreview && (
-        <div className="modal show" style={{zIndex: 1050, background: 'rgba(0,0,0,0.65)'}}>
+        <div className="modal show" style={{zIndex: 1050, background: 'rgba(10,5,15,0.72)', backdropFilter: 'blur(8px)'}}>
           <div className="modal-card" style={{maxWidth: '900px', maxHeight: '90vh', display: 'flex', flexDirection: 'column'}}>
             <div className="modal-head">
               <div>
@@ -3632,120 +4562,127 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
               </button>
             </div>
 
-            {previewTab === 'human' ? (() => {
-              const payload = buildContextPayload();
-              const stats = payload.contextStats;
-              return (
-                <div style={{flex: 1, overflowY: 'auto', padding: '12px 0', textAlign: 'left'}}>
-                  <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, background: '#fff0f6', padding: 12, borderRadius: 12, border: '1px solid #f8bbd0', marginBottom: 16}}>
-                    <div><b>Story đang chọn:</b> <span style={{color: '#880e4f'}}>{payload.currentStory.title}</span></div>
-                    <div><b>Phòng làm việc:</b> <span style={{color: '#880e4f'}}>{payload.currentRoom.roomTitle}</span></div>
-                    <div><b>Target Mode:</b> <span style={{color: '#880e4f'}}>{payload.selectedTarget.label}</span></div>
-                    <div><b>Tổng token ước tính:</b> <span style={{color: '#c62828', fontWeight: 800}}>~{stats.estimatedTotalTokens} tokens</span></div>
+            {previewTab === 'human' && currentPayload ? (
+              <div style={{flex: 1, overflowY: 'auto', padding: '12px 0', textAlign: 'left'}}>
+                <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, background: '#fff0f6', padding: 12, borderRadius: 12, border: '1px solid #f8bbd0', marginBottom: 16}}>
+                  <div><b>Story đang chọn:</b> <span style={{color: '#880e4f'}}>{currentPayload.currentStory.title}</span></div>
+                  <div><b>Phòng làm việc:</b> <span style={{color: '#880e4f'}}>{currentPayload.currentRoom.roomTitle}</span></div>
+                  <div><b>Target Mode:</b> <span style={{color: '#880e4f'}}>{currentPayload.selectedTarget.label}</span></div>
+                  <div><b>Tổng token ước tính:</b> <span style={{color: '#c62828', fontWeight: 800}}>~{stats?.estimatedTotalTokens} tokens</span></div>
+                </div>
+
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16}}>
+                  <div style={{background: '#fff', border: '1px solid #ddd', borderRadius: 10, padding: 12}}>
+                    <h4 style={{margin: '0 0 8px 0', color: '#ad1457'}}>✍️ Dữ liệu nhập tay ({stats?.manualWordCount} từ)</h4>
+                    <ul style={{margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.6}}>
+                      <li><b>Cốt truyện chính:</b> {currentPayload.currentStory.manualInput.storyText ? `Có (${currentPayload.currentStory.manualInput.storyText.length} ký tự)` : '⚠️ Trống'}</li>
+                      <li><b>Hồ sơ User:</b> {currentPayload.currentStory.manualInput.userProfile ? `Có (${currentPayload.currentStory.manualInput.userProfile.length} ký tự)` : '⚠️ Trống'}</li>
+                      <li><b>Danh sách Bot Char:</b> {currentPayload.currentStory.manualInput.botCharacters ? `Có (${currentPayload.currentStory.manualInput.botCharacters.length} nhân vật động)` : (currentPayload.currentStory.manualInput.botProfiles ? `Có (${currentPayload.currentStory.manualInput.botProfiles.length} ký tự)` : '⚠️ Trống')}</li>
+                      <li><b>Nhân vật phụ:</b> {currentPayload.currentStory.manualInput.sideCharacters ? `Có (${currentPayload.currentStory.manualInput.sideCharacters.length} ký tự)` : 'Chưa nhập'}</li>
+                      <li><b>Yêu cầu tạo ảnh:</b> {currentPayload.currentStory.manualInput.imageRequirements ? `Có (${currentPayload.currentStory.manualInput.imageRequirements.length} ký tự)` : 'Chưa nhập'}</li>
+                    </ul>
                   </div>
 
-                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16}}>
-                    <div style={{background: '#fff', border: '1px solid #ddd', borderRadius: 10, padding: 12}}>
-                      <h4 style={{margin: '0 0 8px 0', color: '#ad1457'}}>✍️ Dữ liệu nhập tay ({stats.manualWordCount} từ)</h4>
-                      <ul style={{margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.6}}>
-                        <li><b>Cốt truyện chính:</b> {payload.currentStory.manualInput.storyText ? `Có (${payload.currentStory.manualInput.storyText.length} ký tự)` : '⚠️ Trống'}</li>
-                        <li><b>Hồ sơ User:</b> {payload.currentStory.manualInput.userProfile ? `Có (${payload.currentStory.manualInput.userProfile.length} ký tự)` : '⚠️ Trống'}</li>
-                        <li><b>Danh sách Bot Char:</b> {payload.currentStory.manualInput.botCharacters ? `Có (${payload.currentStory.manualInput.botCharacters.length} nhân vật động)` : (payload.currentStory.manualInput.botProfiles ? `Có (${payload.currentStory.manualInput.botProfiles.length} ký tự)` : '⚠️ Trống')}</li>
-                        <li><b>Nhân vật phụ:</b> {payload.currentStory.manualInput.sideCharacters ? `Có (${payload.currentStory.manualInput.sideCharacters.length} ký tự)` : 'Chưa nhập'}</li>
-                        <li><b>Yêu cầu tạo ảnh:</b> {payload.currentStory.manualInput.imageRequirements ? `Có (${payload.currentStory.manualInput.imageRequirements.length} ký tự)` : 'Chưa nhập'}</li>
-                      </ul>
-                    </div>
-
-                    <div style={{background: '#fff', border: '1px solid #ddd', borderRadius: 10, padding: 12}}>
-                      <h4 style={{margin: '0 0 8px 0', color: '#2e7d32'}}>📁 File tài liệu đính kèm ({stats.filesCount} file)</h4>
-                      {payload.currentStory.importedFiles.length === 0 ? (
-                        <p style={{fontSize: 13, color: '#888', fontStyle: 'italic'}}>Không có file tài liệu nào trong Story.</p>
-                      ) : (
-                        <div style={{display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 130, overflowY: 'auto'}}>
-                          {payload.currentStory.importedFiles.map((f: any, i: number) => (
-                            <div key={i} style={{fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f1f8e9', padding: '4px 8px', borderRadius: 6, border: '1px solid #c8e6c9'}}>
-                              <span>📄 <b>{f.fileName}</b> ({f.fileSizeReadable} | ~{f.wordCount} từ)</span>
-                              <button className="btn ghost small" style={{fontSize: 11, padding: '2px 6px'}} onClick={() => setSelectedFileDetail(f)}>Xem text</button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={{background: '#fff', border: '1px solid #ddd', borderRadius: 10, padding: 12, marginBottom: 16}}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: '1px solid #eee', paddingBottom: 8}}>
-                      <div>
-                        <h4 style={{margin: 0, color: '#1565c0'}}>🖼️ Reference Image Manifest (Đọc & Ghi toàn bộ vào Context Window)</h4>
-                        <span style={{fontSize: 11, color: '#1b5e20', fontWeight: 'bold'}}>Luật: Bám sát ảnh tham chiếu để học & ứng dụng vào cốt truyện (No no các vấn đề khác)</span>
-                      </div>
-                      <div style={{display: 'flex', gap: 6, fontSize: 12}}>
-                        <span style={{background: '#e3f2fd', color: '#0d47a1', padding: '2px 8px', borderRadius: 10, fontWeight: 'bold'}}>Tổng: {stats.imagesCount} ảnh</span>
-                        <span style={{background: '#e8f5e9', color: '#1b5e20', padding: '2px 8px', borderRadius: 10, fontWeight: 'bold'}}>Đã hiểu: {stats.analyzedImagesCount} ảnh</span>
-                      </div>
-                    </div>
-
-                    {stats.imagesCount === 0 ? (
-                      <p style={{fontSize: 13, color: '#888', fontStyle: 'italic', margin: '8px 0'}}>Chưa có ảnh tham chiếu trong phòng hoặc Style Analyzer.</p>
+                  <div style={{background: '#fff', border: '1px solid #ddd', borderRadius: 10, padding: 12}}>
+                    <h4 style={{margin: '0 0 8px 0', color: '#2e7d32'}}>📁 File tài liệu đính kèm ({stats?.filesCount} file)</h4>
+                    {currentPayload.currentStory.importedFiles.length === 0 ? (
+                      <p style={{fontSize: 13, color: '#888', fontStyle: 'italic'}}>Không có file tài liệu nào trong Story.</p>
                     ) : (
-                      <div style={{display: 'flex', flexDirection: 'column', gap: 10}}>
-                        <div style={{display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 11, background: '#f8f9fa', padding: 8, borderRadius: 8}}>
-                          <b>Phân bổ theo mục đích:</b>
-                          <span style={{color: '#6a1b9a'}}>🎨 Style Analyzer: <b>{payload.referenceImageManifest.filter((img: any) => img.cardId === 'style_analyzer').length}</b></span> |
-                          <span style={{color: '#ad1457'}}>💇‍♀️ Thẻ Tóc (Hair): <b>{payload.referenceImageManifest.filter((img: any) => img.purpose?.includes('hair_reference')).length}</b></span> |
-                          <span style={{color: '#e65100'}}>💃 Thẻ Dáng (Pose): <b>{payload.referenceImageManifest.filter((img: any) => img.purpose?.includes('pose_reference')).length}</b></span> |
-                          <span style={{color: '#2e7d32'}}>👗 Thẻ Trang phục (Outfit): <b>{payload.referenceImageManifest.filter((img: any) => img.purpose?.includes('outfit_reference')).length}</b></span> |
-                          <span style={{color: '#00838f'}}>🤖 Bot Profile: <b>{payload.referenceImageManifest.filter((img: any) => img.purpose?.includes('bot_character_reference')).length}</b></span>
-                        </div>
-
-                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, maxHeight: 340, overflowY: 'auto', paddingRight: 4}}>
-                          {payload.referenceImageManifest.map((img: any, idx: number) => (
-                            <div key={idx} style={{display: 'flex', gap: 10, background: img.cardId === 'style_analyzer' ? '#f3e5f5' : '#fff8e1', border: '1px solid', borderColor: img.cardId === 'style_analyzer' ? '#ce93d8' : '#ffe082', borderRadius: 8, padding: 8, cursor: 'pointer', transition: 'all 0.2s'}} onClick={() => setSelectedImgDetail(img)}>
-                              <SafeImg src={img.previewUrl || img.storageUrl} alt="" style={{width: 70, height: 70, objectFit: 'cover', borderRadius: 6, flexShrink: 0, border: '1px solid #ccc'}} />
-                              <div style={{flex: 1, minWidth: 0, fontSize: 11, display: 'flex', flexDirection: 'column', justifyContent: 'space-between'}}>
-                                <div>
-                                  <div style={{fontWeight: 'bold', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={img.fileName}>📄 {img.fileName}</div>
-                                  <div style={{color: '#d23a73', fontWeight: 600, marginTop: 2}}>📌 Card: [{img.cardId}] - {img.cardTitle}</div>
-                                  <div style={{color: '#555', fontSize: 10, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={img.purpose}>🎯 {img.purpose}</div>
-                                </div>
-                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, borderTop: '1px dashed #ddd', paddingTop: 4}}>
-                                  <span style={{color: img.analysisStatus === 'analyzed' ? 'green' : (img.analysisStatus === 'failed' ? '#e65100' : '#00897b'), fontWeight: 'bold'}}>{img.analysisStatus === 'analyzed' ? '✅ Đã đọc thành công' : (img.analysisStatus === 'failed' ? '❌ Lỗi' : '✅ Sẵn sàng trong Context')}</span>
-                                  <span style={{color: '#0066cc', textDecoration: 'underline', fontSize: 10}}>Xem Vision Report</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 130, overflowY: 'auto'}}>
+                        {currentPayload.currentStory.importedFiles.map((f: any, i: number) => (
+                          <div key={i} style={{fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f1f8e9', padding: '4px 8px', borderRadius: 6, border: '1px solid #c8e6c9'}}>
+                            <span>📄 <b>{f.fileName}</b> ({f.fileSizeReadable} | ~{f.wordCount} từ)</span>
+                            <button className="btn ghost small" style={{fontSize: 11, padding: '2px 6px'}} onClick={() => setSelectedFileDetail(f)}>Xem text</button>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
+                </div>
 
-                  <div style={{background: '#fcf4f8', border: '1px solid #f8bbd0', borderRadius: 10, padding: 12}}>
-                    <h4 style={{margin: '0 0 6px 0', color: '#880e4f'}}>🎨 Style Analyzer & Danh sách Thẻ làm việc ({payload.workCards.length} thẻ)</h4>
-                    <p style={{fontSize: 13, margin: '0 0 10px 0'}}><b>Nét vẽ chọn ({payload.styleAnalyzer.selectedStyles.length} style):</b> {payload.styleAnalyzer.selectedStyles.map((s: any) => s.styleName).join(", ") || "Chưa chọn nét nào"}</p>
-                    
-                    <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
-                      {payload.workCards.length === 0 ? (
-                        <div style={{fontSize: 13, color: 'red', fontWeight: 'bold'}}>⚠️ Không tìm thấy thẻ công việc nào! (API sẽ bị chặn)</div>
-                      ) : (
-                        payload.workCards.map((c: any, idx: number) => (
-                          <div key={idx} style={{background: '#fff', border: '1px solid #e1bee7', borderRadius: 8, padding: 10}}>
-                            <div style={{fontSize: 14, fontWeight: 'bold', color: '#6a1b9a', marginBottom: 4}}>{idx + 1}. {c.title}</div>
-                            <div style={{fontSize: 13, color: '#333'}}>
-                              <span style={{marginRight: 12}}>📝 Ghi chú: {c.userNote ? <b style={{color: 'green'}}>Có ({c.userNote.length} ký tự)</b> : <span style={{color: 'gray'}}>Trống</span>}</span>
-                              <span style={{marginRight: 12}}>🖼️ Ảnh tham chiếu: <b style={{color: c.referenceImages.length > 0 ? 'blue' : 'gray'}}>{c.referenceImages.length} ảnh</b></span>
-                              <span>✅ Ảnh trong Context: <b style={{color: c.referenceImages.length > 0 ? 'green' : 'gray'}}>{c.referenceImages.filter((r: any) => r.analysisStatus !== 'failed').length} ảnh (Sẵn sàng AI đọc)</b></span>
-                            </div>
-                          </div>
-                        ))
-                      )}
+                <div style={{background: '#fff', border: '1px solid #ddd', borderRadius: 10, padding: 12, marginBottom: 16, width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'auto'}}>
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: '1px solid #eee', paddingBottom: 8}}>
+                    <div>
+                      <h4 style={{margin: 0, color: '#1565c0'}}>🖼️ Reference Image Manifest (Đọc & Ghi toàn bộ vào Context Window)</h4>
+                      <span style={{fontSize: 11, color: '#1b5e20', fontWeight: 'bold'}}>Luật: Bám sát ảnh tham chiếu để học & ứng dụng vào cốt truyện (No no các vấn đề khác)</span>
+                    </div>
+                    <div style={{display: 'flex', gap: 6, fontSize: 12}}>
+                      <span style={{background: '#e3f2fd', color: '#0d47a1', padding: '2px 8px', borderRadius: 10, fontWeight: 'bold'}}>Tổng: {stats?.imagesCount} ảnh</span>
+                      <span style={{background: '#e8f5e9', color: '#1b5e20', padding: '2px 8px', borderRadius: 10, fontWeight: 'bold'}}>Đã hiểu: {stats?.analyzedImagesCount} ảnh</span>
                     </div>
                   </div>
+
+                  {stats?.imagesCount === 0 ? (
+                    <p style={{fontSize: 13, color: '#888', fontStyle: 'italic', margin: '8px 0'}}>Chưa có ảnh tham chiếu trong phòng hoặc Style Analyzer.</p>
+                  ) : (
+                    <div style={{display: 'flex', flexDirection: 'column', gap: 10}}>
+                      <div style={{display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 11, background: '#f8f9fa', padding: 8, borderRadius: 8}}>
+                        <b>Phân bổ theo mục đích:</b>
+                        <span style={{color: '#6a1b9a'}}>🎨 Style Analyzer: <b>{currentPayload.referenceImageManifest.filter((img: any) => img.cardId === 'style_analyzer').length}</b></span> |
+                        <span style={{color: '#ad1457'}}>💇‍♀️ Thẻ Tóc (Hair): <b>{currentPayload.referenceImageManifest.filter((img: any) => img.purpose?.includes('hair_reference')).length}</b></span> |
+                        <span style={{color: '#e65100'}}>💃 Thẻ Dáng (Pose): <b>{currentPayload.referenceImageManifest.filter((img: any) => img.purpose?.includes('pose_reference')).length}</b></span> |
+                        <span style={{color: '#2e7d32'}}>👗 Thẻ Trang phục (Outfit): <b>{currentPayload.referenceImageManifest.filter((img: any) => img.purpose?.includes('outfit_reference')).length}</b></span> |
+                        <span style={{color: '#00838f'}}>🤖 Bot Profile: <b>{currentPayload.referenceImageManifest.filter((img: any) => img.purpose?.includes('bot_character_reference')).length}</b></span>
+                      </div>
+
+                      <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, maxHeight: 340, overflowY: 'auto', paddingRight: 4}}>
+                        {currentPayload.referenceImageManifest.map((img: any, idx: number) => (
+                          <div key={idx} style={{display: 'flex', gap: 10, background: img.cardId === 'style_analyzer' ? '#f3e5f5' : '#fff8e1', border: '1px solid', borderColor: img.cardId === 'style_analyzer' ? '#ce93d8' : '#ffe082', borderRadius: 8, padding: 8, cursor: 'pointer', transition: 'all 0.2s'}} onClick={() => setSelectedImgDetail(img)}>
+                            <SafeImg src={img.previewUrl || img.storageUrl} alt="" style={{width: 70, height: 70, objectFit: 'cover', borderRadius: 6, flexShrink: 0, border: '1px solid #ccc'}} />
+                            <div style={{flex: 1, minWidth: 0, fontSize: 11, display: 'flex', flexDirection: 'column', justifyContent: 'space-between'}}>
+                              <div>
+                                <div style={{fontWeight: 'bold', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={img.fileName}>📄 {img.fileName}</div>
+                                <div style={{color: '#d23a73', fontWeight: 600, marginTop: 2}}>📌 Card: [{img.cardId}] - {img.cardTitle}</div>
+                                <div style={{color: '#555', fontSize: 10, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={img.purpose}>🎯 {img.purpose}</div>
+                              </div>
+                              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, borderTop: '1px dashed #ddd', paddingTop: 4}}>
+                                <span style={{color: img.analysisStatus === 'analyzed' ? 'green' : (img.analysisStatus === 'failed' ? '#e65100' : '#00897b'), fontWeight: 'bold'}}>{img.analysisStatus === 'analyzed' ? '✅ Đã đọc thành công' : (img.analysisStatus === 'failed' ? '❌ Lỗi' : '✅ Sẵn sàng trong Context')}</span>
+                                <span style={{color: '#0066cc', textDecoration: 'underline', fontSize: 10}}>Xem Vision Report</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              );
-            })() : (
+
+                <div style={{background: '#fcf4f8', border: '1px solid #f8bbd0', borderRadius: 10, padding: 12}}>
+                  <h4 style={{margin: '0 0 6px 0', color: '#880e4f'}}>🎨 Style Analyzer & Danh sách Thẻ làm việc ({currentPayload.workCards.length} thẻ)</h4>
+                  <p style={{fontSize: 13, margin: '0 0 10px 0'}}><b>Nét vẽ chọn ({currentPayload.styleAnalyzer.selectedStyles.length} style):</b> {currentPayload.styleAnalyzer.selectedStyles.map((s: any) => s.styleName).join(", ") || "Chưa chọn nét nào"}</p>
+                  
+                  <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+                    {currentPayload.workCards.length === 0 ? (
+                      <div style={{fontSize: 13, color: 'red', fontWeight: 'bold'}}>⚠️ Không tìm thấy thẻ công việc nào! (API sẽ bị chặn)</div>
+                    ) : (
+                      currentPayload.workCards.map((c: any, idx: number) => (
+                        <div key={idx} style={{background: '#fff', border: '1px solid #e1bee7', borderRadius: 8, padding: 10}}>
+                          <div style={{fontSize: 14, fontWeight: 'bold', color: '#6a1b9a', marginBottom: 4}}>{idx + 1}. {c.title}</div>
+                          <div style={{fontSize: 13, color: '#333'}}>
+                            <span style={{marginRight: 12}}>📝 Ghi chú: {c.userNote ? <b style={{color: 'green'}}>Có ({c.userNote.length} ký tự)</b> : <span style={{color: 'gray'}}>Trống</span>}</span>
+                            <span style={{marginRight: 12}}>🖼️ Ảnh tham chiếu: <b style={{color: c.referenceImages.length > 0 ? 'blue' : 'gray'}}>{c.referenceImages.length} ảnh</b></span>
+                            <span>✅ Ảnh trong Context: <b style={{color: c.referenceImages.length > 0 ? 'green' : 'gray'}}>{c.referenceImages.filter((r: any) => r.analysisStatus !== 'failed').length} ảnh (Sẵn sàng AI đọc)</b></span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
               <div style={{flex: 1, overflowY: 'auto', background: '#1e1e1e', color: '#d4d4d4', padding: '16px', borderRadius: '12px', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap', border: '1px solid #333', textAlign: 'left', margin: '12px 0'}}>
-                {JSON.stringify(buildContextPayload(), null, 2)}
+                <details>
+                  <summary style={{cursor: 'pointer', color: '#d23a73', fontWeight: 'bold', marginBottom: '8px'}}>Nhấn để xem JSON Context Payload (Dữ liệu lớn)</summary>
+                  <p style={{fontSize: 11, color: '#888', marginBottom: 8}}><i>Lưu ý: Dữ liệu này chứa toàn bộ ảnh tham chiếu dưới dạng base64, có thể gây lag trình duyệt khi hiển thị.</i></p>
+                  <button className="btn primary small" onClick={() => {
+                    const el = document.getElementById('json-payload-display');
+                    if (el) {
+                      el.textContent = JSON.stringify(currentPayload, null, 2);
+                      toast("Đã tải xong JSON!");
+                    }
+                  }}>Tải JSON lên màn hình</button>
+                  <pre id="json-payload-display" style={{marginTop: '12px', maxHeight: '500px', overflowY: 'auto', border: '1px solid #444', padding: '10px', background: '#000'}}></pre>
+                </details>
               </div>
             )}
 
@@ -3774,7 +4711,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 
       {/* Modal chi tiết file khi bấm xem từ preview hoặc từ thẻ */}
       {selectedFileDetail && (
-        <div className="modal show" style={{zIndex: 1150, background: 'rgba(0,0,0,0.7)'}}>
+        <div className="modal show" style={{zIndex: 1150, background: 'rgba(10,5,15,0.72)', backdropFilter: 'blur(8px)'}}>
           <div className="modal-card" style={{maxWidth: '700px', maxHeight: '85vh', display: 'flex', flexDirection: 'column'}}>
             <div className="modal-head">
               <div><p className="eyebrow">File Extracted Text</p><h3 style={{margin: 0}}>📄 {selectedFileDetail.fileName || selectedFileDetail.name}</h3></div>
@@ -3832,7 +4769,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
         const currentAnnotations = selectedImgDetail.annotations || [];
 
         return (
-          <div className="modal show" style={{zIndex: 1150, background: 'rgba(10,5,15,0.82)'}}>
+          <div className="modal show" style={{zIndex: 1150, background: 'rgba(10,5,15,0.72)', backdropFilter: 'blur(8px)'}}>
             <div className="modal-card" style={{maxWidth: '1180px', width: '95vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column', border: '2px solid #ff4081', boxShadow: '0 8px 32px rgba(233,30,99,0.35)'}}>
               <div className="modal-head" style={{borderBottom: '2px solid #ffcbdc', paddingBottom: '10px'}}>
                 <div>
@@ -4336,6 +5273,40 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
               </div>
 
               <div style={{display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #ddd', paddingTop: '10px'}}>
+                <button className="btn danger small" style={{background: '#ff4d4f', color: '#fff', border: 'none'}} onClick={() => {
+                  if (!window.confirm("Vợ có chắc muốn xóa ảnh này không nè? 🌸")) return;
+                  
+                  const rs = { ...roomState };
+                  const cardId = selectedImgDetail.cardId;
+                  const imgId = selectedImgDetail.imageId || selectedImgDetail.id;
+
+                  let found = false;
+                  if (cardId === 'style_analyzer' && rs.styleAnalyzer?.refs) {
+                    const originalLen = rs.styleAnalyzer.refs.length;
+                    rs.styleAnalyzer.refs = rs.styleAnalyzer.refs.filter((x: any) => (x.id || x.imageId) !== imgId);
+                    if (rs.styleAnalyzer.refs.length < originalLen) found = true;
+                  } else if (cardId && rs.cards?.[cardId]) {
+                    const c = rs.cards[cardId];
+                    if (c.refs) {
+                      const originalLen = c.refs.length;
+                      c.refs = c.refs.filter((x: any) => (x.id || x.imageId) !== imgId);
+                      if (c.refs.length < originalLen) found = true;
+                    }
+                    if (c.outfitRefs) {
+                      const originalLen = c.outfitRefs.length;
+                      c.outfitRefs = c.outfitRefs.filter((x: any) => (x.id || x.imageId) !== imgId);
+                      if (c.outfitRefs.length < originalLen) found = true;
+                    }
+                  }
+                  
+                  if (found) {
+                    updateGlobalState(rs);
+                    setSelectedImgDetail(null);
+                    toast("🗑️ Đã xóa ảnh thành công cho vợ rồi nha! ✨");
+                  } else {
+                    toast("⚠️ Chồng không tìm thấy ảnh để xóa, vợ kiểm tra lại nhé!");
+                  }
+                }}>🗑️ Xóa ảnh này</button>
                 <button className="btn ghost small" onClick={() => { setSelectedImgDetail(null); setTempAnnCoords(null); }}>Đóng</button>
               </div>
             </div>
@@ -4345,7 +5316,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 
       {/* Modal Image Review Panel */}
       {showImageReviewPanel && (
-        <div className="modal show" style={{zIndex: 1160, background: 'rgba(0,0,0,0.8)'}}>
+        <div className="modal show" style={{zIndex: 1160, background: 'rgba(10,5,15,0.72)', backdropFilter: 'blur(8px)'}}>
           <div className="modal-card" style={{maxWidth: '850px', maxHeight: '90vh', display: 'flex', flexDirection: 'column'}}>
             <div className="modal-head" style={{borderBottom: '2px solid #f8bbd0', paddingBottom: 12}}>
               <div>
@@ -4429,7 +5400,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 
       {/* Modal Thẻ Hồng Cốt Truyện trong RoomView */}
       {showStoryPinkCardsModal && (
-        <div className="modal show" style={{zIndex: 1160, background: 'rgba(0,0,0,0.75)'}}>
+        <div className="modal show" style={{zIndex: 1160, background: 'rgba(10,5,15,0.72)', backdropFilter: 'blur(8px)'}}>
           <div className="modal-card" style={{maxWidth: '850px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: '#fff8fb'}}>
             <div className="modal-head" style={{borderBottom: '2px solid #f8bbd0', paddingBottom: 12}}>
               <div>
@@ -4474,7 +5445,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 
               {/* Thẻ Hồng 2: Danh Sách Bot Characters */}
               <div style={{ background: '#fff', border: '1.5px solid #f8bbd0', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 8px rgba(210,58,115,0.05)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justify: 'space-between', marginBottom: '10px', borderBottom: '1px solid #ffebee', paddingBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', borderBottom: '1px solid #ffebee', paddingBottom: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '1.2rem' }}>👑</span>
                     <h3 style={{ margin: 0, color: '#d23a73', fontSize: '1.05rem', fontWeight: 800 }}>Bot Characters</h3>
@@ -4487,7 +5458,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
                   {currentStory?.botCharacters && currentStory.botCharacters.length > 0 ? (
                     currentStory.botCharacters.map((bc: any, bIdx: number) => (
                       <div key={bIdx} style={{ background: '#fff0f6', border: '1px solid #f8bbd0', borderRadius: '10px', padding: '10px' }}>
-                        <div style={{ display: 'flex', justify: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                           <b style={{ color: '#880e4f', fontSize: '0.9rem' }}>#{bIdx + 1}. {bc.displayName || `Bot Char #${bIdx + 1}`}</b>
                           <span style={{ fontSize: '0.75rem', color: bc.referenceImages?.length ? '#2e7d32' : '#888', background: '#fff', padding: '2px 6px', borderRadius: '6px', border: '1px solid #e0e0e0', fontWeight: 600 }}>
                             🖼️ {bc.referenceImages?.length || 0} ảnh ref
@@ -4533,7 +5504,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 
               {/* Thẻ Hồng 4: Yêu Cầu Đặc Biệt & Tài Liệu Đính Kèm */}
               <div style={{ background: '#fff', border: '1.5px solid #f8bbd0', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 8px rgba(210,58,115,0.05)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justify: 'space-between', marginBottom: '10px', borderBottom: '1px solid #ffebee', paddingBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', borderBottom: '1px solid #ffebee', paddingBottom: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '1.2rem' }}>📌</span>
                     <h3 style={{ margin: 0, color: '#d23a73', fontSize: '1.05rem', fontWeight: 800 }}>Quy Tắc & Tài Liệu</h3>
@@ -4575,7 +5546,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 
       {/* Modal Cẩm Nang Prompt Ref DNA */}
       {showPromptRefDocModal && (
-        <div className="modal show" style={{zIndex: 1170, background: 'rgba(20, 10, 15, 0.82)', backdropFilter: 'blur(8px)'}}>
+        <div className="modal show" style={{zIndex: 1170, background: 'rgba(10,5,15,0.72)', backdropFilter: 'blur(8px)'}}>
           <div className="modal-card" style={{maxWidth: '960px', width: '95%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', background: '#fff9fb', border: '2px solid #f48fb1', borderRadius: '24px', boxShadow: '0 12px 40px rgba(140, 38, 78, 0.25)', overflow: 'hidden'}}>
             
             {/* Header Modal */}
@@ -4701,7 +5672,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
               </div>
 
               {/* Cột Phải: Nội dung chi tiết của tab */}
-              <div style={{flex: 1, background: '#ffffff', padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column'}}>
+              <div style={{flex: 1, background: 'rgba(255, 255, 255, 0.35)', backdropFilter: 'blur(15px)', WebkitBackdropFilter: 'blur(15px)', padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column'}}>
                 
                 {/* TAB 1: LINES */}
                 {docTab === 'lines' && (
@@ -4985,3 +5956,130 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
     </section>
   );
 }
+
+function HistorySection({ roomState, viewHistoryIndex, setViewHistoryIndex, replayHistory, setSelectedHistoryPayload, toast, currentStory, roomDef, save, state, onDeleteHistory }: any) {
+  if (!roomState.history || roomState.history.length === 0) return null;
+
+  return (
+    <section className="history-tab-container" style={{marginTop: '32px', background: '#fff', borderRadius: '24px', padding: '20px', border: '2px solid #fce4ec', boxShadow: '0 8px 24px rgba(210, 58, 115, 0.08)'}}>
+      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px'}}>
+        <h2 style={{margin: 0, color: '#3e333e', fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px'}}>
+          <span>📜</span> Lịch Sử Đợt Gọi Gọn Nhẹ ({roomState.history.length})
+        </h2>
+        <div style={{display: 'flex', gap: '8px'}}>
+          <button className="btn ghost xsmall" onClick={() => {
+            const rs = { ...roomState, history: roomState.history.slice(0, 15) };
+            const newStory = { ...currentStory, rooms: { ...currentStory.rooms, [roomDef.id]: rs } };
+            const newState = { ...state, stories: state.stories.map((s: any) => s.id === newStory.id ? newStory : s) };
+            save(newState);
+            toast("Đã giữ lại 15 đợt gần nhất cho gọn nha vợ!");
+          }}>Dọn bớt</button>
+          <button className="btn ghost xsmall" style={{color: '#999'}} onClick={() => {
+            if (window.confirm("Xóa toàn bộ lịch sử phòng này?")) {
+              const rs = { ...roomState, history: [] };
+              const newStory = { ...currentStory, rooms: { ...currentStory.rooms, [roomDef.id]: rs } };
+              const newState = { ...state, stories: state.stories.map((s: any) => s.id === newStory.id ? newStory : s) };
+              save(newState);
+              setViewHistoryIndex(null);
+              toast("Đã dọn dẹp lịch sử.");
+            }
+          }}>Xóa hết</button>
+        </div>
+      </div>
+      
+      <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+        <div className="history-tabs-row" style={{display: 'flex', gap: '8px', overflowX: 'auto', padding: '4px 2px', scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+          <button 
+            onClick={() => {
+              setViewHistoryIndex(null);
+              toast("✨ Đang hiển thị đợt gọi mới nhất!");
+            }}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '12px',
+              whiteSpace: 'nowrap',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              border: '2px solid',
+              background: viewHistoryIndex === null ? '#d23a73' : '#fff',
+              color: viewHistoryIndex === null ? '#fff' : '#d23a73',
+              borderColor: '#d23a73'
+            }}
+          >
+            💎 Đợt Mới Nhất
+          </button>
+
+          {roomState.history.slice(0, 20).map((h: any, index: number) => {
+            const runNumber = roomState.history.length - index;
+            const isActive = viewHistoryIndex === index;
+            return (
+              <div key={index} style={{position: 'relative', display: 'inline-block'}}>
+                <button
+                  onClick={() => {
+                    setViewHistoryIndex(index);
+                    replayHistory(h);
+                  }}
+                  style={{
+                    padding: '8px 32px 8px 16px',
+                    borderRadius: '12px',
+                    whiteSpace: 'nowrap',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    border: '2px solid',
+                    background: isActive ? '#d23a73' : '#fff9fb',
+                    color: isActive ? '#fff' : '#888',
+                    borderColor: isActive ? '#d23a73' : '#fce4ec'
+                  }}
+                >
+                  Đợt #{runNumber} ({new Date(h.time).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})})
+                </button>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteHistory(index);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    border: 'none',
+                    background: 'transparent',
+                    color: isActive ? '#fff' : '#d23a73',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 800,
+                    padding: '4px'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        
+        {viewHistoryIndex !== null && (
+          <div style={{padding: '10px', background: '#fff9fb', borderRadius: '12px', border: '1px dashed #d23a73', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+            <span style={{fontSize: '0.85rem', color: '#d23a73', fontWeight: 600}}>
+              👀 Vợ đang xem lại dữ liệu của <b>Đợt #{roomState.history.length - viewHistoryIndex}</b>
+            </span>
+            <button className="btn primary xsmall" onClick={() => setSelectedHistoryPayload(roomState.history[viewHistoryIndex])}>
+              Chi tiết Payload
+            </button>
+          </div>
+        )}
+      </div>
+      <p className="muted" style={{fontSize: '0.75rem', marginTop: '8px', textAlign: 'center', color: '#d23a73', fontWeight: 600}}>
+        💡 Chồng đã thu gọn lịch sử đợt gọi ở cuối trang. Vợ hãy bấm vào từng "Đợt" để khôi phục kết quả đó lên màn hình chính nhé!
+      </p>
+    </section>
+  );
+};
+
+const RoomView = React.memo(RoomViewBase);
+export default RoomView;

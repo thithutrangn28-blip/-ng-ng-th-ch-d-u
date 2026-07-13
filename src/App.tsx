@@ -6,10 +6,12 @@ import HomeScreen from "./screens/HomeScreen";
 import ApiProxyScreen from "./screens/ApiProxyScreen";
 import PromptMarkdownSmartContextScreen from "./screens/prompt-studio/PromptMarkdownSmartContextScreen";
 import LipstickAppScreen from "./screens/lipstick-prompt/LipstickAppScreen";
+import AppUnlockScreen from "./screens/AppUnlockScreen";
 
 export default function App() {
   const [activeScreen, setActiveScreen] = useState("welcome");
   const [loading, setLoading] = useState(false);
+  const [pendingAppId, setPendingAppId] = useState("");
   const [time, setTime] = useState("00:00");
   const [dateStr, setDateStr] = useState("Hôm nay");
   const [homeDateStr, setHomeDateStr] = useState("");
@@ -57,6 +59,15 @@ export default function App() {
     }, 540);
   };
 
+  const handleOpenApp = (id: string) => {
+    if (id === "lipstick" || id === "promptMarkdown" || id === "apiProxy") {
+      setPendingAppId(id);
+      navigate("appUnlock");
+    } else {
+      navigate(id);
+    }
+  };
+
   return (
     <main className="app">
       <div className={`loading ${loading ? "" : "hide"}`} id="loading">
@@ -72,10 +83,18 @@ export default function App() {
       <WelcomeScreen active={activeScreen === "welcome"} onNext={() => navigate("glamIntro")} time={time} batteryLevel={batteryLevel} />
       <GlamIntroScreen active={activeScreen === "glamIntro"} onNext={() => navigate("lock")} onBack={() => navigate("welcome")} />
       <LockScreen active={activeScreen === "lock"} onNext={() => navigate("home")} onBack={() => navigate("glamIntro")} time={time} date={dateStr} batteryLevel={batteryLevel} />
-      <HomeScreen active={activeScreen === "home"} onOpenApp={(id) => navigate(id)} time={time} date={homeDateStr} />
+      <HomeScreen active={activeScreen === "home"} onOpenApp={handleOpenApp} time={time} date={homeDateStr} />
       <ApiProxyScreen active={activeScreen === "apiProxy"} onHome={() => navigate("home")} />
       <PromptMarkdownSmartContextScreen active={activeScreen === "promptMarkdown"} onHome={() => navigate("home")} />
       <LipstickAppScreen active={activeScreen === "lipstick"} onHome={() => navigate("home")} />
+      <AppUnlockScreen 
+        active={activeScreen === "appUnlock"} 
+        appId={pendingAppId} 
+        onUnlock={() => navigate(pendingAppId)} 
+        onBack={() => navigate("home")} 
+        time={time} 
+        date={dateStr} 
+      />
     </main>
   );
 }

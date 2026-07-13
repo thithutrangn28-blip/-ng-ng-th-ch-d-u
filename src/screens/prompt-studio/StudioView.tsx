@@ -324,7 +324,7 @@ export default function StudioView({
                   2. Chọn nhiều file
                 </label>
                 <label className="btn soft" style={{ background: '#F8EDED', border: '1px solid #F2B8CC', color: '#333', cursor: 'pointer' }}>
-                  <input type="file" webkitdirectory="" directory="" multiple onChange={e => onFiles(e.target.files)} style={{ display: 'none' }} />
+                  <input type="file" {...({ webkitdirectory: "", directory: "" } as any)} multiple onChange={e => onFiles(e.target.files)} style={{ display: 'none' }} />
                   3. Chọn thư mục trong máy
                 </label>
                 <button className="btn ghost" onClick={handleShowDirectoryPicker} style={{ fontSize: '13px' }} title="Dùng Directory Picker của trình duyệt (nếu hỗ trợ)">

@@ -1,5 +1,5 @@
 import { ApiProfile, getPrimaryApiProfile } from "./api-db";
-import { executeApiProxyText, executeApiProxyStream, resolveEndpointUrl, getApiProxySettings } from "../utils/apiProxy";
+import { executeApiProxyText, executeApiProxyStream } from "../utils/apiProxy";
 
 export type { ApiProfile };
 
@@ -13,7 +13,7 @@ export class ApiError extends Error {
 export async function getActiveApiProfile(): Promise<ApiProfile> {
   const profile = await getPrimaryApiProfile();
   if (!profile) {
-    throw new ApiError("Chưa có API chính. Vui lòng vào Cài Đặt API Proxy để thiết lập API trước.");
+    throw new ApiError("Vợ yêu ơi, vợ chưa thiết lập API Proxy trong phần Cài đặt kìa. Chồng không thể gọi AI nếu không có Proxy đâu!");
   }
   return profile;
 }
@@ -27,19 +27,21 @@ export type AiTextOptions = {
   messages: Message[];
   systemPrompt?: string;
   maxTokensOverride?: number;
-  profileOverride?: ApiProfile; // Only used by ApiProxyScreen for testing
+  profileOverride?: ApiProfile; 
 };
 
+/**
+ * Giai đoạn gọi API Text: Bắt buộc qua Proxy
+ */
 export async function callAIText(options: AiTextOptions): Promise<string> {
   const profile = options.profileOverride || await getActiveApiProfile();
   try {
-    const res = await executeApiProxyText(profile, options.messages, {
+    return await executeApiProxyText(profile, options.messages, {
       systemPrompt: options.systemPrompt,
       maxTokensOverride: options.maxTokensOverride,
     });
-    return res;
   } catch (err: any) {
-    throw new ApiError(err.message || "Lỗi khi gọi API text");
+    throw new ApiError(err.message || "Lỗi khi gọi API qua Proxy");
   }
 }
 
@@ -49,11 +51,14 @@ export type AiStreamOptions = {
   onToken: (chunk: string) => void;
   onDone: (fullContent: string) => void;
   onError: (error: string) => void;
-  profileOverride?: ApiProfile; // Only used by ApiProxyScreen for testing
+  profileOverride?: ApiProfile;
   maxTokensOverride?: number;
   signal?: AbortSignal;
 };
 
+/**
+ * Giai đoạn gọi API Stream: Bắt buộc qua Proxy
+ */
 export async function callAIStream(options: AiStreamOptions): Promise<void> {
   let profile: ApiProfile;
   try {
@@ -75,61 +80,28 @@ export async function callAIStream(options: AiStreamOptions): Promise<void> {
   });
 }
 
+/**
+ * Kéo danh sách Model: Bắt buộc qua Proxy
+ */
 export async function pullModels(profile: ApiProfile): Promise<string[]> {
-  const settings = getApiProxySettings();
-  if (settings.useLocalProxy === true) {
-    const res = await fetch("/api/models", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profile }),
-    });
+  const res = await fetch("/api/models", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ profile }),
+  });
 
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      throw new ApiError(
-        "API service route did not return JSON. Please check backend/server/API service configuration.\nNội dung trả về:\n" +
-        text.slice(0, 120)
-      );
-    }
-
-    if (!res.ok || data.ok === false) {
-      throw new ApiError(data.error || "Lỗi không xác định");
-    }
-
-    return data.models || [];
-  } else {
-    // Gọi trực tiếp đến /models từ frontend
-    const url = resolveEndpointUrl(profile, "models");
-    const headers: Record<string, string> = {
-      "Authorization": `Bearer ${profile.key}`,
-      "Content-Type": "application/json",
-      ...profile.extraHeaders,
-    };
-
-    const res = await fetch(url, {
-      method: "GET",
-      headers,
-      signal: AbortSignal.timeout(180000),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      throw new ApiError(`Upstream error: ${res.status} ${res.statusText}\n${errText}`);
-    }
-
-    const data = await res.json();
-    let models: string[] = [];
-    if (data && Array.isArray(data.data)) {
-      models = data.data.map((m: any) => m.id);
-    } else if (data && Array.isArray(data.models)) {
-      models = data.models.map((m: any) => m.id || m.name || m);
-    } else if (Array.isArray(data)) {
-      models = data.map((m: any) => m.id || m);
-    }
-    return models;
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    throw new ApiError("Proxy không trả về JSON hợp lệ. Vợ kiểm tra lại server hoặc cấu hình proxy nhé!");
   }
+
+  if (!res.ok || data.ok === false) {
+    throw new ApiError(data.error || "Lỗi khi lấy danh sách model qua Proxy");
+  }
+
+  return data.models || [];
 }
 
