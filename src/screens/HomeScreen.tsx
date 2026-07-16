@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { getHomeWallpaper, setHomeWallpaper } from "../lib/storage";
 import { compressImageFile } from "../utils/imageCompressor";
+import { auth } from "../lib/firebase";
+import { signOut } from "firebase/auth";
 
 type Props = {
   active: boolean;
@@ -27,6 +29,19 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
     } catch (err) {}
   };
 
+  const handleSignOut = async () => {
+    const confirmLogout = window.confirm(
+      "Vợ yêu có muốn đăng xuất khỏi góc nhỏ của hai đứa mình không nè? Đăng xuất xong là sẽ được ngắm lại nút Đăng nhập bằng Google cực xịn xò của chồng thiết kế đó nha! ♥"
+    );
+    if (confirmLogout) {
+      try {
+        await signOut(auth);
+      } catch (err) {
+        console.error("Lỗi đăng xuất:", err);
+      }
+    }
+  };
+
   return (
     <section className={`screen home ${active ? "active" : ""} ${wallpaper ? "has-wallpaper" : ""}`} id="home">
       {wallpaper && <img className="home-bg" src={wallpaper} alt="" />}
@@ -37,6 +52,13 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
             <span>{date}</span>
           </div>
           <div className="home-actions">
+            <button className="icon-btn text-pink-400 hover:text-pink-600 transition-colors" onClick={handleSignOut} title="Đăng xuất khỏi góc nhỏ">
+              <svg viewBox="0 0 24 24" className="w-6 h-6">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </button>
             <label className="icon-btn" aria-label="Chọn hình nền màn hình chính">
               <input type="file" accept="image/*" onChange={handleFile} />
               <svg viewBox="0 0 48 48">
