@@ -1,4 +1,5 @@
 import { ApiProfile } from "../lib/api-db";
+import { auth } from "../lib/firebase";
 
 /**
  * Helper để loại bỏ dữ liệu Base64 cồng kềnh khỏi các object khi stringify vào văn bản (prompt, log, hiển thị UI),
@@ -248,13 +249,19 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
       payload.maxTokensOverride = maxTokens;
     }
 
+    const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : "";
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Accept": "text/event-stream"
+    };
+    if (idToken) {
+      headers["Authorization"] = `Bearer ${idToken}`;
+    }
+
     console.log(`[API Proxy Lifecycle] Giai đoạn 3: Gửi request đến Local Proxy -> Upstream.`);
     res = await fetch(targetUrl, {
       method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Accept": "text/event-stream"
-      },
+      headers,
       body: JSON.stringify(payload),
       signal: signal, // Dùng signal từ UI để vợ có thể chủ động hủy nếu muốn nhen
     });
@@ -429,9 +436,15 @@ export async function executeApiProxyText(
     maxTokensOverride: maxTokens,
   };
 
+  const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : "";
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (idToken) {
+    headers["Authorization"] = `Bearer ${idToken}`;
+  }
+
   const res = await fetch(targetUrl, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(timeoutMs),
   });

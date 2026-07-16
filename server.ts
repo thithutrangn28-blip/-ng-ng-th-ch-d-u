@@ -2,6 +2,48 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { setGlobalDispatcher, Agent } from "undici";
+import admin from "firebase-admin";
+import { getAuth } from "firebase-admin/auth";
+
+// Initialize Firebase Admin SDK
+try {
+  admin.initializeApp({
+    projectId: "gen-lang-client-0923926530",
+  });
+  console.log("[Firebase Admin] Initialized successfully with projectId: gen-lang-client-0923926530");
+} catch (error: any) {
+  console.error("[Firebase Admin] Initialization error:", error);
+}
+
+// Middleware xác thực Firebase ID Token cho các endpoint nhạy cảm
+async function authenticateUser(req: any, res: any, next: any) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ ok: false, error: "Đăng nhập bất hợp pháp: Thiếu Authorization header Bearer token" });
+  }
+
+  const idToken = authHeader.split("Bearer ")[1];
+  try {
+    const decodedToken = await getAuth().verifyIdToken(idToken);
+    
+    // Yêu cầu quan trọng: email phải là thithutrangn28@gmail.com và email phải được verified
+    if (decodedToken.email !== "thithutrangn28@gmail.com") {
+      console.warn(`[Auth Warning] Từ chối truy cập từ email khác: ${decodedToken.email}`);
+      return res.status(403).json({ ok: false, error: "Quyền truy cập bị từ chối: Chỉ có tài khoản thithutrangn28@gmail.com mới được sử dụng ứng dụng." });
+    }
+
+    if (decodedToken.email_verified !== true) {
+      console.warn(`[Auth Warning] Email chưa được xác thực: ${decodedToken.email}`);
+      return res.status(403).json({ ok: false, error: "Quyền truy cập bị từ chối: Email chưa được xác thực." });
+    }
+
+    req.user = decodedToken;
+    next();
+  } catch (error: any) {
+    console.error("[Auth Error] Xác thực ID token thất bại:", error);
+    return res.status(401).json({ ok: false, error: "Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại nhen vợ yêu!" });
+  }
+}
 
 // Disable any internal timeouts in Node's native fetch (undici) for massive streaming requests
 try {
@@ -35,7 +77,7 @@ async function startServer() {
   });
 
   // /api/test-proxy
-  app.post("/api/test-proxy", async (req, res) => {
+  app.post("/api/test-proxy", authenticateUser, async (req, res) => {
     try {
       const { profile, action } = req.body;
       if (!profile || !profile.endpoint || !profile.key) {
@@ -122,7 +164,7 @@ async function startServer() {
   });
 
   // /api/ai-text
-  app.post("/api/ai-text", async (req, res) => {
+  app.post("/api/ai-text", authenticateUser, async (req, res) => {
     try {
       const { profile, messages, systemPrompt, maxTokensOverride } = req.body;
       if (!profile || !profile.endpoint || !profile.key) {
@@ -181,7 +223,7 @@ async function startServer() {
   });
 
   // /api/models
-  app.post("/api/models", async (req, res) => {
+  app.post("/api/models", authenticateUser, async (req, res) => {
     try {
       const { profile } = req.body;
       if (!profile || !profile.endpoint || !profile.key) {
@@ -246,7 +288,7 @@ async function startServer() {
   });
 
   // /api/ai-stream
-  app.post("/api/ai-stream", async (req, res) => {
+  app.post("/api/ai-stream", authenticateUser, async (req, res) => {
     req.socket.setTimeout(0); // Disable socket timeout for long-running streaming
     res.setTimeout(0); // Disable response timeout
     req.setTimeout(0); // Disable request timeout

@@ -7,6 +7,7 @@ import ApiProxyScreen from "./screens/ApiProxyScreen";
 import PromptMarkdownSmartContextScreen from "./screens/prompt-studio/PromptMarkdownSmartContextScreen";
 import LipstickAppScreen from "./screens/lipstick-prompt/LipstickAppScreen";
 import SplashScreen from "./components/SplashScreen";
+import AuthGate from "./components/AuthGate";
 
 export default function App() {
   const [activeScreen, setActiveScreen] = useState("splash");
@@ -70,14 +71,16 @@ export default function App() {
         </div>
       </div>
 
-      {activeScreen === "splash" && <SplashScreen onEnter={() => navigate("welcome")} />}
-      {activeScreen === "welcome" && <WelcomeScreen active={true} onNext={() => navigate("glamIntro")} time={time} batteryLevel={batteryLevel} />}
-      {activeScreen === "glamIntro" && <GlamIntroScreen active={true} onNext={() => navigate("lock")} onBack={() => navigate("welcome")} />}
-      {activeScreen === "lock" && <LockScreen active={true} onNext={() => navigate("home")} onBack={() => navigate("glamIntro")} time={time} date={dateStr} batteryLevel={batteryLevel} />}
-      {activeScreen === "home" && <HomeScreen active={true} onOpenApp={(id) => navigate(id)} time={time} date={homeDateStr} />}
-      {activeScreen === "apiProxy" && <ApiProxyScreen active={true} onHome={() => navigate("home")} />}
-      {activeScreen === "promptMarkdown" && <PromptMarkdownSmartContextScreen active={true} onHome={() => navigate("home")} />}
-      {activeScreen === "lipstick" && <LipstickAppScreen active={true} onHome={() => navigate("home")} />}
+      <AuthGate>
+        {activeScreen === "splash" && <SplashScreen onEnter={() => navigate("welcome")} />}
+        {activeScreen === "welcome" && <WelcomeScreen active={true} onNext={() => navigate("glamIntro")} time={time} batteryLevel={batteryLevel} />}
+        {activeScreen === "glamIntro" && <GlamIntroScreen active={true} onNext={() => navigate("lock")} onBack={() => navigate("welcome")} />}
+        {activeScreen === "lock" && <LockScreen active={true} onNext={() => navigate("home")} onBack={() => navigate("glamIntro")} time={time} date={dateStr} batteryLevel={batteryLevel} />}
+        {activeScreen === "home" && <HomeScreen active={true} onOpenApp={(id) => navigate(id)} time={time} date={homeDateStr} />}
+        {activeScreen === "apiProxy" && <ApiProxyScreen active={true} onHome={() => navigate("home")} />}
+        {activeScreen === "promptMarkdown" && <PromptMarkdownSmartContextScreen active={true} onHome={() => navigate("home")} />}
+        {activeScreen === "lipstick" && <LipstickAppScreen active={true} onHome={() => navigate("home")} />}
+      </AuthGate>
     </main>
   );
 }

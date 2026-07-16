@@ -1,5 +1,6 @@
 import { ApiProfile, getPrimaryApiProfile } from "./api-db";
 import { executeApiProxyText, executeApiProxyStream } from "../utils/apiProxy";
+import { auth } from "./firebase";
 
 export type { ApiProfile };
 
@@ -84,9 +85,15 @@ export async function callAIStream(options: AiStreamOptions): Promise<void> {
  * Kéo danh sách Model: Bắt buộc qua Proxy
  */
 export async function pullModels(profile: ApiProfile): Promise<string[]> {
+  const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : "";
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (idToken) {
+    headers["Authorization"] = `Bearer ${idToken}`;
+  }
+
   const res = await fetch("/api/models", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ profile }),
   });
 
