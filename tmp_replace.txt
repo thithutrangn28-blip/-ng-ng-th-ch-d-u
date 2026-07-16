@@ -1,0 +1,56 @@
+      if (!r) return;
+      const url = r.data || r.previewUrl || r.storageUrl;
+      if (!url) return;
+      if (!seenUrls.has(url)) {
+        seenUrls.add(url);
+        uniqueRefsWithUrls.push(r);
+      }
+    };
+
+    // 1. Bot character reference images
+    const botCharRefsList = (refreshedPayload.currentStory?.manualInput?.botCharacters || currentStory.botCharacters || []).flatMap((c: any) => c.referenceImages || []);
+    for (const r of botCharRefsList) {
+      tryAddRef(r);
+    }
+
+    // 2. Style analyzer reference images
+    const saRefs = refreshedPayload.styleAnalyzer?.referenceImages || [];
+    for (const r of saRefs) {
+      tryAddRef(r);
+    }
+
+    // 3. Work cards reference images (ALL cards, ALL images per card)
+    for (const c of cards) {
+      const cardRefs = refreshedPayload.workCards?.find((wc: any) => wc.cardId === c.id)?.referenceImages || (rs.cards[c.id]?.refs || []);
+      for (const r of cardRefs) {
+        tryAddRef(r);
+      }
+    }
+
+    // Tạo bộ ánh xạ chỉ số toàn cục (Global Image Index Mapping #1, #2, #3...) theo đúng thứ tự duy nhất gửi đi
+    const refToGlobalIndexMap = new Map<any, number>();
+    const idToGlobalIndexMap = new Map<string, number>();
+    const urlToGlobalIndexMap = new Map<string, number>();
+    const orderedVisionRefs: any[] = [];
+    let imgCounter = 1;
+
+    for (const r of uniqueRefsWithUrls) {
+      const idx = imgCounter++;
+      const url = r.data || r.previewUrl || r.storageUrl;
+      refToGlobalIndexMap.set(r, idx);
+      if (r.imageId) idToGlobalIndexMap.set(r.imageId, idx);
+      if (r.id) idToGlobalIndexMap.set(r.id, idx);
+      if (url) urlToGlobalIndexMap.set(url, idx);
+      orderedVisionRefs.push(r);
+    }
+
+    const getGIdx = (r: any, fallbackIdx: number) => {
+      if (!r) return fallbackIdx;
+      const url = r.data || r.previewUrl || r.storageUrl;
+      if (url && urlToGlobalIndexMap.has(url)) {
+        return urlToGlobalIndexMap.get(url)!;
+      }
+      return refToGlobalIndexMap.get(r) || (r.imageId && idToGlobalIndexMap.get(r.imageId)) || (r.id && idToGlobalIndexMap.get(r.id)) || fallbackIdx;
+    };
+
+    if (orderedVisionRefs.length > 0) {

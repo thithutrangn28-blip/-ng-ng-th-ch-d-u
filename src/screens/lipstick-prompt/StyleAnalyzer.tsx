@@ -1,13 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { STYLE_GROUPS } from "../../lib/lipstick-rooms-data";
 import { callAIText } from "../../lib/api-client";
+import { pruneBase64 } from "../../utils/apiProxy";
 import { SafeImg } from "../../components/SafeImg";
 import { compressImageFile } from "../../utils/imageCompressor";
 
 export default function StyleAnalyzer({ roomState, currentStory, roomDef, state, save, toast }: any) {
   const [search, setSearch] = useState("");
   const sa = roomState.styleAnalyzer;
+  const latestRoomStateRef = useRef<any>(roomState);
+
+  useEffect(() => {
+    latestRoomStateRef.current = roomState;
+  }, [roomState]);
 
   const toBase64 = async (file: File): Promise<string> => {
     try {
@@ -25,12 +31,20 @@ export default function StyleAnalyzer({ roomState, currentStory, roomDef, state,
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
+    
+    // Create new refs array to trigger UI updates
+    let newRefs = [...(sa.refs || [])];
+    
+    // Add placeholders for optimistic update
+    const pendingFiles: any[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const data = await toBase64(file);
       const imgId = uuidv4();
       const now = new Date().toISOString();
-      sa.refs.push({
+      // create a temporary object URL for immediate display
+      const tempUrl = URL.createObjectURL(file);
+      
+      const placeholder = {
         imageId: imgId,
         storyId: currentStory.id,
         roomId: roomDef.id,
@@ -40,19 +54,91 @@ export default function StyleAnalyzer({ roomState, currentStory, roomDef, state,
         mimeType: file.type,
         size: file.size,
         createdAt: now,
-        previewUrl: data,
-        storageUrl: data,
-        analysisStatus: 'in_context',
+        previewUrl: tempUrl,
+        storageUrl: tempUrl,
+        analysisStatus: 'pending',
         // legacy fields
         id: imgId,
         name: file.name,
         type: file.type,
-        data: data,
-        time: now
-      });
+        data: tempUrl,
+        time: now,
+        _file: file // keep the file object to process it
+      };
+      newRefs.push(placeholder);
+      pendingFiles.push(placeholder);
     }
-    save(state);
-    toast("✅ Đã tải ảnh vào Style Analyzer! Ảnh đã sẵn sàng trong Context Windows.");
+    
+    // Optimistic update
+    const newRoomState = {
+      ...roomState,
+      styleAnalyzer: {
+        ...sa,
+        refs: newRefs
+      }
+    };
+    const newStory = {
+      ...currentStory,
+      rooms: {
+        ...(currentStory.rooms || {}),
+        [roomDef.id]: newRoomState
+      }
+    };
+    const newState = {
+      ...state,
+      stories: state.stories.map((s: any) => s.id === newStory.id ? newStory : s)
+    };
+    save(newState, true);
+    toast("✅ Đã tải ảnh vào Style Analyzer! Đang nén ảnh...");
+
+    // Process base64 asynchronously
+    setTimeout(async () => {
+      let updatedRefs = [...newRefs];
+      for (const pending of pendingFiles) {
+        try {
+          const data = await toBase64(pending._file);
+          updatedRefs = updatedRefs.map(r => 
+            r.imageId === pending.imageId 
+              ? { ...r, data, previewUrl: data, storageUrl: data, analysisStatus: 'in_context', _file: undefined }
+              : r
+          );
+        } catch (e) {
+          console.error("Compression error", e);
+        }
+      }
+      
+      const latestRoom = latestRoomStateRef.current;
+      const latestSA = latestRoom.styleAnalyzer || { refs: [] };
+      
+      const finalRoomState = {
+        ...latestRoom,
+        styleAnalyzer: {
+          ...latestSA,
+          refs: latestSA.refs ? latestSA.refs.map((r: any) => {
+            const isPending = pendingFiles.some(p => p.imageId === r.imageId);
+            if (isPending) {
+              const updated = updatedRefs.find(ur => ur.imageId === r.imageId);
+              if (updated) {
+                return { ...r, data: updated.data, previewUrl: updated.previewUrl, storageUrl: updated.storageUrl, analysisStatus: updated.analysisStatus, _file: undefined };
+              }
+            }
+            return r;
+          }) : newRefs
+        }
+      };
+      const finalStory = {
+        ...currentStory,
+        rooms: {
+          ...(currentStory.rooms || {}),
+          [roomDef.id]: finalRoomState
+        }
+      };
+      save({
+        ...state,
+        stories: state.stories.map((s: any) => s.id === finalStory.id ? finalStory : s)
+      }, true);
+      toast("✅ Đã hoàn tất nén ảnh! Sẵn sàng trong Context Windows.");
+    }, 100);
   };
 
   const runAnalysis = async () => {
@@ -61,10 +147,33 @@ export default function StyleAnalyzer({ roomState, currentStory, roomDef, state,
     let addedStyles: string[] = [];
     let modified = false;
 
-    for (let i = 0; i < sa.refs.length; i++) {
-      if (sa.refs[i].analysisStatus !== 'analyzed') {
-        sa.refs[i].analysisStatus = 'analyzing';
-        // Removed save(state) from loop to avoid multiple expensive re-renders
+    // Create a copy of refs array to work on immutably
+    const updatedRefs = sa.refs ? sa.refs.map((r: any) => ({ ...r })) : [];
+
+    for (let i = 0; i < updatedRefs.length; i++) {
+      if (updatedRefs[i].analysisStatus !== 'analyzed') {
+        updatedRefs[i].analysisStatus = 'analyzing';
+        
+        // Optimistic save of "analyzing" status
+        const interimRoomState = {
+          ...roomState,
+          styleAnalyzer: {
+            ...sa,
+            refs: updatedRefs
+          }
+        };
+        const interimStory = {
+          ...currentStory,
+          rooms: {
+            ...(currentStory.rooms || {}),
+            [roomDef.id]: interimRoomState
+          }
+        };
+        save({
+          ...state,
+          stories: state.stories.map((s: any) => s.id === interimStory.id ? interimStory : s)
+        }, true);
+
         try {
           const sysPrompt = `You are the professional vision analysis module inside Lipstick Prompt Rooms.
 You MUST analyze and extract the visual traits from this reference image to support downstream AI image generation under the core rule: "SUPREME MANDATE: Story Fidelity & Character Soul (Cốt truyện và Nhân vật là linh hồn - Ảnh tham chiếu là tư liệu)":
@@ -86,7 +195,7 @@ You MUST analyze and extract these mandatory layers:
 
 Return ONLY valid JSON with this exact schema:
 {
-  "imageId": "${sa.refs[i].imageId || sa.refs[i].id}",
+  "imageId": "${updatedRefs[i].imageId || updatedRefs[i].id}",
   "storyId": "${currentStory.id}",
   "roomId": "${roomDef.id}",
   "cardId": "style_analyzer",
@@ -126,13 +235,13 @@ Return ONLY valid JSON with this exact schema:
               role: "user",
               content: [
                 { type: "text", text: "Analyze this image and return structured JSON only." },
-                { type: "image_url", image_url: { url: sa.refs[i].data || sa.refs[i].previewUrl || sa.refs[i].storageUrl } }
+                { type: "image_url", image_url: { url: updatedRefs[i].data || updatedRefs[i].previewUrl || updatedRefs[i].storageUrl } }
               ]
             }
           ];
           const resultText = await callAIText({ messages, systemPrompt: sysPrompt, maxTokensOverride: 2000 });
-          sa.refs[i].imageAnalysisText = resultText;
-          sa.refs[i].analysisResult = resultText;
+          updatedRefs[i].imageAnalysisText = resultText;
+          updatedRefs[i].analysisResult = resultText;
           
           let jsonObj = null;
           try {
@@ -140,12 +249,12 @@ Return ONLY valid JSON with this exact schema:
             if (jsonMatch) jsonObj = JSON.parse(jsonMatch[0]);
           } catch (err) {}
           
-          sa.refs[i].imageAnalysisJson = jsonObj;
-          sa.refs[i].analysisStatus = 'analyzed';
-          newAnalysis += `\n--- Phân tích ảnh ${i + 1}: ${sa.refs[i].name} ---\n${jsonObj ? (jsonObj.summary + " | Visual Style: " + JSON.stringify(jsonObj.visualStyleExtracted || jsonObj.style) + " | Color Palette: " + JSON.stringify(jsonObj.colorPaletteExtracted || jsonObj.color) + " | Outfit: " + JSON.stringify(jsonObj.outfitExtracted || jsonObj.layer4_outfit) + " | Composition: " + JSON.stringify(jsonObj.compositionExtracted || jsonObj.composition) + " | Keywords: " + (jsonObj.promptKeywords||[]).join(", ")) : resultText}`;
+          updatedRefs[i].imageAnalysisJson = jsonObj;
+          updatedRefs[i].analysisStatus = 'analyzed';
+          newAnalysis += `\n--- Phân tích ảnh ${i + 1}: ${updatedRefs[i].name} ---\n${jsonObj ? (jsonObj.summary + " | Visual Style: " + JSON.stringify(pruneBase64(jsonObj.visualStyleExtracted || jsonObj.style)) + " | Color Palette: " + JSON.stringify(pruneBase64(jsonObj.colorPaletteExtracted || jsonObj.color)) + " | Outfit: " + JSON.stringify(pruneBase64(jsonObj.outfitExtracted || jsonObj.layer4_outfit)) + " | Composition: " + JSON.stringify(pruneBase64(jsonObj.compositionExtracted || jsonObj.composition)) + " | Keywords: " + (jsonObj.promptKeywords||[]).join(", ")) : resultText}`;
           
           // Match style candidates with dictionary
-          const keywordsToMatch = jsonObj ? [...(jsonObj.promptKeywords||[]), ...(jsonObj.selectedStyleCandidates||[]), JSON.stringify(jsonObj.style)].join(" ").toLowerCase() : resultText.toLowerCase();
+          const keywordsToMatch = jsonObj ? [...(jsonObj.promptKeywords||[]), ...(jsonObj.selectedStyleCandidates||[]), JSON.stringify(pruneBase64(jsonObj.style))].join(" ").toLowerCase() : resultText.toLowerCase();
           for (const g of STYLE_GROUPS) {
             for (const item of g.items) {
               const itemWords = (item.name + " " + item.keywords).toLowerCase().split(/[\s,—,•,+,&]+/);
@@ -156,26 +265,46 @@ Return ONLY valid JSON with this exact schema:
             }
           }
         } catch (e: any) {
-          sa.refs[i].analysisStatus = 'failed';
-          sa.refs[i].analysisResult = e.message;
-          sa.refs[i].imageAnalysisText = "Error: " + e.message;
+          updatedRefs[i].analysisStatus = 'failed';
+          updatedRefs[i].analysisResult = e.message;
+          updatedRefs[i].imageAnalysisText = "Error: " + e.message;
         }
         modified = true;
       }
     }
     
     if (modified) {
-      if (addedStyles.length > 0) {
-        sa.selected = [...new Set([...sa.selected, ...addedStyles])];
-      }
-      sa.analysis = sa.analysis ? (sa.analysis + "\n" + newAnalysis) : newAnalysis;
-      sa.history.push({
+      const finalSelected = [...new Set([...(sa.selected || []), ...addedStyles])];
+      const finalAnalysis = sa.analysis ? (sa.analysis + "\n" + newAnalysis) : newAnalysis;
+      const finalHistory = [...(sa.history || []), {
         id: uuidv4(),
         time: new Date().toISOString(),
-        selected: [...sa.selected],
-        analysis: sa.analysis
-      });
-      save(state);
+        selected: finalSelected,
+        analysis: finalAnalysis
+      }];
+
+      const finalRoomState = {
+        ...roomState,
+        styleAnalyzer: {
+          ...sa,
+          refs: updatedRefs,
+          selected: finalSelected,
+          analysis: finalAnalysis,
+          history: finalHistory
+        }
+      };
+      const finalStory = {
+        ...currentStory,
+        rooms: {
+          ...(currentStory.rooms || {}),
+          [roomDef.id]: finalRoomState
+        }
+      };
+      const finalState = {
+        ...state,
+        stories: state.stories.map((s: any) => s.id === finalStory.id ? finalStory : s)
+      };
+      save(finalState, true);
       toast("Đã phân tích xong nét vẽ và tô hồng phấn các nét phù hợp.");
     } else {
       toast("Không có ảnh mới để phân tích.");
@@ -183,12 +312,30 @@ Return ONLY valid JSON with this exact schema:
   };
 
   const toggleStyle = (k: string) => {
-    if (sa.selected.includes(k)) {
-      sa.selected = sa.selected.filter((x: string) => x !== k);
-    } else {
-      sa.selected.push(k);
-    }
-    save(state);
+    const isSelected = (sa.selected || []).includes(k);
+    const newSelected = isSelected
+      ? (sa.selected || []).filter((x: string) => x !== k)
+      : [...(sa.selected || []), k];
+      
+    const newRoomState = {
+      ...roomState,
+      styleAnalyzer: {
+        ...sa,
+        selected: newSelected
+      }
+    };
+    const newStory = {
+      ...currentStory,
+      rooms: {
+        ...(currentStory.rooms || {}),
+        [roomDef.id]: newRoomState
+      }
+    };
+    const newState = {
+      ...state,
+      stories: state.stories.map((s: any) => s.id === newStory.id ? newStory : s)
+    };
+    save(newState, true);
   };
 
   return (
@@ -200,7 +347,27 @@ Return ONLY valid JSON with this exact schema:
           <p className="muted">Ảnh tham chiếu hiển thị ngang. Nét được chọn sẽ chuyển hồng phấn.</p>
         </div>
         <div className="actions">
-          <button className="btn ghost small" onClick={() => { sa.selected = []; save(state); }}>Bỏ chọn</button>
+          <button className="btn ghost small" onClick={() => {
+            const newRoomState = {
+              ...roomState,
+              styleAnalyzer: {
+                ...sa,
+                selected: []
+              }
+            };
+            const newStory = {
+              ...currentStory,
+              rooms: {
+                ...(currentStory.rooms || {}),
+                [roomDef.id]: newRoomState
+              }
+            };
+            const newState = {
+              ...state,
+              stories: state.stories.map((s: any) => s.id === newStory.id ? newStory : s)
+            };
+            save(newState, true);
+          }}>Bỏ chọn</button>
           <button className="btn primary small" onClick={runAnalysis}>Gọi API phân tích nét</button>
         </div>
       </div>
@@ -221,8 +388,28 @@ Return ONLY valid JSON with this exact schema:
                     <span>{r.name}</span>
                     <div className="analysis-status" title={r.analysisStatus === 'failed' ? '❌ Lỗi đọc ảnh' : '✅ Đã trong Context Windows (Sẵn sàng AI đọc)'}>{r.analysisStatus === 'failed' ? '❌' : '✅'}</div>
                     <button className="delete-btn" onClick={() => {
-                      sa.refs = sa.refs.filter((x: any) => x.id !== r.id);
-                      save(state);
+                      const imgId = r.id || r.imageId;
+                      const updatedRefs = (sa.refs || []).filter((x: any) => (x.id || x.imageId) !== imgId);
+                      
+                      const newRoomState = {
+                        ...roomState,
+                        styleAnalyzer: {
+                          ...sa,
+                          refs: updatedRefs
+                        }
+                      };
+                      const newStory = {
+                        ...currentStory,
+                        rooms: {
+                          ...(currentStory.rooms || {}),
+                          [roomDef.id]: newRoomState
+                        }
+                      };
+                      const newState = {
+                        ...state,
+                        stories: state.stories.map((s: any) => s.id === newStory.id ? newStory : s)
+                      };
+                      save(newState, true);
                     }}>×</button>
                   </div>
                 ))

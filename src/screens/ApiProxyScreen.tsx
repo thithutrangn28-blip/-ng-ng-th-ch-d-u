@@ -21,7 +21,7 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
   const [format, setFormat] = useState<"openai" | "responses" | "custom">("openai");
   const [model, setModel] = useState("");
   const [maxTokens, setMaxTokens] = useState(4096);
-  const [timeoutSeconds, setTimeoutSeconds] = useState(900);
+  const [timeoutSeconds, setTimeoutSeconds] = useState(1500);
   const [headersStr, setHeadersStr] = useState("");
   
   const [testOutput, setTestOutput] = useState("");
@@ -76,7 +76,7 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
       setFormat("openai");
       setModel("");
       setMaxTokens(4096);
-      setTimeoutSeconds(900);
+      setTimeoutSeconds(1500);
       setHeadersStr("");
     }
   };
@@ -196,9 +196,16 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
       setTestOutput(`Kết nối tạo nội dung (No Stream) thành công.\nEndpoint: ${profile.endpoint}\nModel: ${profile.model}\nThời gian phản hồi: ${elapsedMs}ms${refImage ? "\n[Đã gửi kèm Ảnh tham chiếu vào Context Window]" : ""}\n\nNội dung AI phản hồi:\n${sampleText || "OK"}`);
       setIsError(false);
     } catch (err: any) {
-      showMsg(`Chưa test được tạo nội dung.\nLý do: ${err.message}\n\nVui lòng kiểm tra lại endpoint hoặc API key.`, true);
-      setWorkNotification({ msg: `❌ Lỗi kết nối: ${err.message}`, type: 'error' });
-      setTestOutput(`❌ Lỗi kết nối:\n${err.message}`);
+      let friendlyMessage = `Lỗi kết nối: ${err.message}`;
+      if (err.message.includes("429")) {
+        friendlyMessage = "Vợ ơi, nhà cung cấp API báo 'Quá nhiều yêu cầu' (429). Vợ chờ khoảng 1 phút rồi thử lại nhé, vì họ giới hạn số lần gọi mỗi phút đó ạ! ❤️";
+      } else if (err.message.includes("404")) {
+        friendlyMessage = "Chồng thấy lỗi 404 - Có thể đường dẫn API Proxy hoặc Endpoint bị sai rồi vợ ạ. Vợ kiểm tra lại cài đặt nhé!";
+      }
+
+      showMsg(`Chưa test được tạo nội dung.\nLý do: ${friendlyMessage}\n\nVui lòng kiểm tra lại endpoint hoặc API key.`, true);
+      setWorkNotification({ msg: friendlyMessage, type: 'error' });
+      setTestOutput(`❌ ${friendlyMessage}`);
       setIsError(true);
     } finally {
       setIsWorking(false);
@@ -251,9 +258,17 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
       onError: (err) => {
         setIsWorking(false);
         setWorkStage("");
-        setWorkNotification({ msg: `❌ Lỗi Stream: ${err}`, type: 'error' });
-        showMsg(`Chưa test được stream.\nLý do: ${err}`, true);
-        setTestOutput(`❌ Lỗi Stream:\n${err}`);
+        
+        let friendlyMessage = `Lỗi Stream: ${err}`;
+        if (String(err).includes("429")) {
+          friendlyMessage = "Vợ ơi, nhà cung cấp API báo 'Quá nhiều yêu cầu' (429). Vợ chờ khoảng 1 phút rồi thử lại nhé, vì họ giới hạn số lần gọi mỗi phút đó ạ! ❤️";
+        } else if (String(err).includes("404")) {
+          friendlyMessage = "Chồng thấy lỗi 404 - Có thể đường dẫn API Proxy hoặc Endpoint bị sai rồi vợ ạ. Vợ kiểm tra lại cài đặt nhé!";
+        }
+
+        setWorkNotification({ msg: friendlyMessage, type: 'error' });
+        showMsg(`Chưa test được stream.\nLý do: ${friendlyMessage}`, true);
+        setTestOutput(`❌ ${friendlyMessage}`);
         setIsError(true);
       }
     });

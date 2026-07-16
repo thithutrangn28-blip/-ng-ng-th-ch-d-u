@@ -9,6 +9,8 @@ export type LipstickAnnotation = {
 
 export type LipstickImageRef = {
   imageId: string;
+  isActive?: boolean;
+  purpose?: string;
   storyId: string;
   roomId: string;
   cardId: string;

@@ -8,7 +8,7 @@ try {
   const dispatcher = new Agent({
     bodyTimeout: 0,
     headersTimeout: 0,
-    keepAliveTimeout: 30 * 60 * 1000, // 30 minutes
+    keepAliveTimeout: 120 * 60 * 1000, // 120 minutes (2 hours)
   });
   setGlobalDispatcher(dispatcher);
   console.log("[undici] Successfully configured global dispatcher with unlimited body and headers timeout.");
@@ -303,7 +303,7 @@ async function startServer() {
       req.socket.setKeepAlive(true, 5000);
       req.socket.setTimeout(0);
 
-      // PHẦN 1: KẾT NỐI & STREAMING - Gửi ngay headers SSE và nhịp tim keep-alive mỗi 1s suốt toàn bộ chu kỳ!
+      // PHẦN 1: KẾT NỐI & STREAMING - Gửi ngay headers SSE và nhịp tim keep-alive mỗi 2s suốt toàn bộ chu kỳ!
       // Ngăn chặn tuyệt đối Nginx/Cloud Run/trình duyệt ngắt kết nối sau 17s/30s/39s/60s khi AI model đang suy nghĩ context dài!
       res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-transform, no-store, must-revalidate");
@@ -314,25 +314,24 @@ async function startServer() {
       res.flushHeaders();
       
       // Gửi ngay lập tức một chunk khởi đầu để báo cho hạ tầng (Cloud Run/Proxy) là kết nối đã sống
-      res.write(": connection established - preparing stream lifecycle...\n\n");
+      res.write(": connection established - starting lifecycle (timeout >= 7200s)...\n\n");
       let lastWriteTime = Date.now();
       console.log(`[STREAM-START] Request started for model: ${profile.model || 'unknown'} at ${new Date().toISOString()}`);
 
+      // Nhịp tim cực kỳ bền bỉ (Heartbeat) gửi mỗi 2 giây để giữ lửa kết nối
       keepAliveInterval = setInterval(() => {
         try {
-          if (!res.writableEnded && Date.now() - lastWriteTime >= 5000) {
-            // Chỉ gửi heartbeat khi đã im lặng hơn 5 giây để tránh tranh chấp/làm rách dòng dữ liệu stream dở dang
-            res.write(": keep-alive heartbeat ping\n\n");
-            if (typeof (res as any).flush === 'function') {
-              (res as any).flush();
+          if (!res.writableEnded) {
+            // Luôn gửi heartbeat mỗi 2 giây nếu không có dữ liệu thực sự đang truyền
+            if (Date.now() - lastWriteTime >= 2000) {
+               res.write(": keep-alive heartbeat\n\n");
+               if (typeof (res as any).flush === 'function') {
+                 (res as any).flush();
+               }
             }
           }
         } catch (intervalErr) {
           console.error("[keep-alive] Error writing heartbeat:", intervalErr);
-          if (keepAliveInterval) {
-            clearInterval(keepAliveInterval);
-            keepAliveInterval = null;
-          }
         }
       }, 2000);
 
@@ -350,82 +349,57 @@ async function startServer() {
       });
 
       let firstDataChunk = true;
-      let attempt = 1;
-      const maxAttempts = 3;
-      let success = false;
+      
+      // TUYỆT ĐỐI KHÔNG RETRY - Một vòng đời duy nhất, bám trụ tới cùng như vợ yêu cầu nhen!
+      try {
+        console.log(`[STREAM-FETCH] Fetching upstream for model: ${profile.model || "unknown"}`);
+        const response = await fetch(testUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload),
+          // Timeout cực lớn (7200s = 2 tiếng) để AI tha hồ suy nghĩ
+          signal: AbortSignal.timeout(Math.max((profile.timeoutSeconds || 7200) * 1000, 7200000)), 
+        });
 
-      while (attempt <= maxAttempts && !success) {
-        try {
-          console.log(`[STREAM-ATTEMPT] Upstream fetch attempt ${attempt}/${maxAttempts} for model: ${profile.model || "unknown"}`);
-          const response = await fetch(testUrl, {
-            method: "POST",
-            headers,
-            body: JSON.stringify(payload),
-            signal: AbortSignal.timeout(Math.max((profile.timeoutSeconds || 3600) * 1000, 3600000)), // Minimum 3600s (60m) timeout for massive streaming jobs
-          });
+        console.log(`[STREAM-RESPONSE] Upstream response status: ${response.status} ${response.statusText}`);
 
-          console.log(`[STREAM-RESPONSE] Upstream response status (attempt ${attempt}): ${response.status} ${response.statusText}`);
+        if (!response.ok) {
+          const errText = await response.text();
+          console.error(`[/api/ai-stream Upstream Error] ❌ HTTP ${response.status}\nBody: ${errText}`);
+          throw new Error(`Upstream error ${response.status}: ${errText}`);
+        }
 
-          if (!response.ok) {
-            const errText = await response.text();
-            console.error(`[/api/ai-stream Upstream Error] ❌ HTTP ${response.status} (attempt ${attempt})\nFull Untruncated Response Body:\n${errText}`);
-            throw new Error(`Upstream error ${response.status}: ${errText}`);
-          }
-
-          if (response.body) {
-            const reader = response.body.getReader();
-            try {
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) {
-                  console.log(`[STREAM-DONE] Upstream finished naturally at ${new Date().toISOString()}`);
-                  success = true;
-                  break;
-                }
-                if (firstDataChunk) {
-                  console.log(`[STREAM-FIRST-DATA] Received first actual data chunk from model at ${new Date().toISOString()}`);
-                  firstDataChunk = false;
-                  success = true; // Mark as success to prevent any further attempts if a subsequent chunk fails
-                }
-                if (!res.writableEnded) {
-                  lastWriteTime = Date.now();
-                  res.write(value);
-                  if (typeof (res as any).flush === "function") {
-                    (res as any).flush();
-                  }
-                }
+        if (response.body) {
+          const reader = response.body.getReader();
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) {
+                console.log(`[STREAM-DONE] Upstream finished naturally at ${new Date().toISOString()}`);
+                break;
               }
-            } catch (streamReadErr: any) {
-              console.error(`[STREAM-READ-ERROR] Error reading upstream stream (attempt ${attempt}):`, streamReadErr);
-              // If we already received some data, we must not retry to avoid duplicating content or corrupting the stream
-              if (!firstDataChunk) {
-                throw streamReadErr;
-              } else {
-                // Otherwise we throw it so we can catch and retry the whole request
-                throw streamReadErr;
+              if (firstDataChunk) {
+                console.log(`[STREAM-FIRST-DATA] Received first actual data chunk at ${new Date().toISOString()}`);
+                firstDataChunk = false;
+              }
+              if (!res.writableEnded) {
+                lastWriteTime = Date.now();
+                res.write(value);
+                if (typeof (res as any).flush === "function") {
+                  (res as any).flush();
+                }
               }
             }
-          } else {
-            throw new Error("Response body is empty or null");
+          } catch (streamReadErr: any) {
+            console.error(`[STREAM-READ-ERROR] Error reading upstream stream:`, streamReadErr);
+            throw streamReadErr;
           }
-        } catch (attemptErr: any) {
-          console.error(`[STREAM-ATTEMPT-FAILED] Attempt ${attempt}/${maxAttempts} failed:`, attemptErr.message);
-          
-          // If we have already successfully received some data, we must not retry under any circumstances!
-          if (!firstDataChunk) {
-            console.error("[STREAM-ABORT] Data was already partially streamed. Aborting retry mechanism to protect stream integrity.");
-            throw attemptErr;
-          }
-
-          if (attempt < maxAttempts) {
-            attempt++;
-            const delay = 1500;
-            console.log(`[STREAM-RETRY-DELAY] Waiting ${delay}ms before retrying attempt ${attempt}...`);
-            await new Promise(r => setTimeout(r, delay));
-          } else {
-            throw attemptErr;
-          }
+        } else {
+          throw new Error("Response body is empty or null from upstream");
         }
+      } catch (err: any) {
+        console.error(`[STREAM-FATAL-ERROR] API Proxy stream failed:`, err.message);
+        throw err;
       }
 
       if (keepAliveInterval) {

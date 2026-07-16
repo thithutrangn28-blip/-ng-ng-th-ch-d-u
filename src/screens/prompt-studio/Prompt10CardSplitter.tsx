@@ -5,27 +5,39 @@ type Props = {
   text: string;
   title?: string;
   onToast?: (msg: string) => void;
-  metadata?: {
-    time?: string;
-    tokenCount?: number;
-    totalToken?: number;
-    elapsed?: string;
-  };
 };
 
-export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast, metadata }: Props) {
+export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast }: Props) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [globalCopyCycle, setGlobalCopyCycle] = useState<number>(0);
+  const [copiedAll, setCopiedAll] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
 
-  // Chia nội dung thành 4 phần (mỗi phần ~25%)
+  // Thuật toán chia văn bản lớn thành đúng 10 đoạn khoa học
   const chunks = useMemo(() => {
     if (!text || !text.trim()) {
-      return Array(4).fill("(Chưa có nội dung prompt để tách)");
+      return Array(10).fill("(Chưa có nội dung prompt để tách)");
     }
+
     const cleanText = text.trim();
-    
-    // Tách theo độ dài văn bản thành 4 đoạn
+
+    // 1. Nếu văn bản có các khối ---TASK--- (Ví dụ tạo 10 task ở phòng)
+    const taskMatches = cleanText.split(/---TASK---/).map(s => s.trim()).filter(Boolean);
+    if (taskMatches.length >= 10) {
+      // Nếu có từ 10 task trở lên, ta gộp hoặc chia thành 10 thẻ
+      const result: string[] = [];
+      const perCard = Math.ceil(taskMatches.length / 10);
+      for (let i = 0; i < 10; i++) {
+        const slice = taskMatches.slice(i * perCard, (i + 1) * perCard);
+        if (slice.length > 0) {
+          result.push(slice.map(s => `---TASK---\n${s}\n---TASK---`).join("\n\n"));
+        } else {
+          result.push("(Đoạn trống)");
+        }
+      }
+      return result;
+    }
+
+    // 2. Tách theo độ dài văn bản thành 10 đoạn đều nhau có tính toán ngữ pháp/cú pháp
     const totalLen = cleanText.length;
     const targetLen = Math.ceil(totalLen / 10);
     const result: string[] = [];
@@ -36,36 +48,54 @@ export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast, me
         result.push("(Đoạn kết thúc - Không còn nội dung)");
         continue;
       }
+
+      if (i === 9) {
+        // Đoạn cuối cùng lấy toàn bộ phần còn lại
+        result.push(cleanText.slice(currentIdx).trim());
+        break;
+      }
+
       let endIdx = currentIdx + targetLen;
-      if (i === 3) {
-        endIdx = totalLen; // Đoạn cuối lấy hết phần còn lại
+      if (endIdx >= totalLen) {
+        result.push(cleanText.slice(currentIdx).trim());
+        currentIdx = totalLen;
+        continue;
+      }
+
+      // Tìm điểm cắt đẹp xung quanh endIdx (xuống dòng kép -> xuống dòng đơn -> dấu câu -> khoảng trắng)
+      const searchWindow = Math.min(300, Math.floor(targetLen * 0.3));
+      const sub = cleanText.slice(Math.max(currentIdx, endIdx - searchWindow), Math.min(totalLen, endIdx + searchWindow));
+      
+      let bestBreak = -1;
+      const doubleNewline = sub.lastIndexOf("\n\n");
+      if (doubleNewline !== -1) {
+        bestBreak = Math.max(currentIdx, endIdx - searchWindow) + doubleNewline + 2;
       } else {
-        // Cố gắng tìm điểm ngắt câu hợp lý quanh vị trí 25%
-        let bestBreak = -1;
-        const searchWindow = Math.min(300, totalLen - currentIdx);
-        // Tìm dấu chấm, chấm hỏi, chấm than, hoặc xuống dòng
-        for (let j = endIdx; j > Math.max(currentIdx, endIdx - searchWindow); j--) {
-          if (["\n", ".", "?", "!"].includes(cleanText[j])) {
-            bestBreak = j + 1;
-            break;
+        const singleNewline = sub.lastIndexOf("\n");
+        if (singleNewline !== -1) {
+          bestBreak = Math.max(currentIdx, endIdx - searchWindow) + singleNewline + 1;
+        } else {
+          const dotBreak = sub.lastIndexOf(". ");
+          if (dotBreak !== -1) {
+            bestBreak = Math.max(currentIdx, endIdx - searchWindow) + dotBreak + 2;
+          } else {
+            const spaceBreak = sub.lastIndexOf(" ");
+            if (spaceBreak !== -1) {
+              bestBreak = Math.max(currentIdx, endIdx - searchWindow) + spaceBreak + 1;
+            }
           }
-        }
-        if (bestBreak === -1) {
-          // Nếu không tìm thấy dấu câu, tìm dấu cách
-          for (let j = endIdx; j > Math.max(currentIdx, endIdx - searchWindow); j--) {
-             if (cleanText[j] === " ") {
-               bestBreak = j + 1;
-               break;             }
-          }
-        }
-        if (bestBreak !== -1 && bestBreak > currentIdx && bestBreak < totalLen) {
-          endIdx = bestBreak;
         }
       }
+
+      if (bestBreak !== -1 && bestBreak > currentIdx && bestBreak < totalLen) {
+        endIdx = bestBreak;
+      }
+
       const chunkStr = cleanText.slice(currentIdx, endIdx).trim();
       result.push(chunkStr || "(Đoạn trống)");
       currentIdx = endIdx;
     }
+
     return result;
   }, [text]);
 
@@ -73,26 +103,23 @@ export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast, me
     copyToClipboardSafe(content);
     setCopiedIndex(idx);
     if (onToast) {
-      onToast(`💖 Đã sao chép Thẻ ${idx + 1} / 10 cho Vợ yêu!`);
+      onToast(`💖 Đã sao chép Đoạn ${idx + 1} / 10 cho Vợ yêu!`);
     }
     setTimeout(() => {
       setCopiedIndex(prev => (prev === idx ? null : prev));
     }, 2500);
   };
 
-  const handleSmartGlobalCopy = () => {
-    const cycleIndex = globalCopyCycle % 10;
-    const contentToCopy = chunks[cycleIndex];
-    copyToClipboardSafe(contentToCopy);
-    
-    setGlobalCopyCycle(prev => prev + 1);
-    
+  const handleCopyAll = () => {
+    copyToClipboardSafe(text);
+    setCopiedAll(true);
     if (onToast) {
-      onToast(`✅ Đã sao chép tổng thể: Phần ${cycleIndex + 1}/10 (10% nội dung) cho Vợ yêu!`);
+      onToast("💖 Đã sao chép toàn bộ Prompt cho Vợ yêu!");
     }
+    setTimeout(() => setCopiedAll(false), 2500);
   };
 
-  if (!text || !text.trim() || text.includes("Kết quả phòng hiện tại sẽ nằm trong kho") || text.includes("Kết quả API Proxy của truyện đang chọn sẽ stream về đây")) {
+  if (!text || !text.trim() || text === "Kết quả phòng hiện tại sẽ nằm trong kho của truyện đang chọn." || text === "Kết quả API Proxy của truyện đang chọn sẽ stream về đây.") {
     return null;
   }
 
@@ -102,142 +129,171 @@ export function Prompt10CardSplitter({ text, title = "Prompt lớn", onToast, me
       marginBottom: '20px',
       borderRadius: '16px',
       overflow: 'hidden',
-      border: '1px solid #F5C6D6',
+      border: '2px solid #F5C6D6',
       boxShadow: '0 8px 25px rgba(245, 198, 214, 0.35)',
-      // LỚP 1: HÌNH NỀN GỐC DƯỚI CÙNG
       background: `url('https://i.postimg.cc/6qxGPmRJ/ba890d7840a661df758dc65d909719cc-(1).jpg') center/cover no-repeat`,
-      position: 'relative',
-      padding: '24px'
+      position: 'relative'
     }}>
-      
-      {/* Header Bảng Tổng Hợp */}
+      {/* Lớp overlay màu trắng hồng mờ ấm áp để dễ đọc chữ trên hình nền */}
       <div style={{
-        // LỚP 2 CỦA HEADER: THẺ NGĂN MÀU HỒNG NHẠT TRONG SUỐT (NHÌN THẤY NỀN, KHÔNG BỊ TRẮNG ĐỤC, KHÔNG BLUR)
-        background: 'rgba(255, 182, 193, 0.55)', // Màu hồng phấn nhạt trong suốt
-        borderRadius: '12px',
-        padding: '16px',
-        marginBottom: '20px',
-        border: '1px solid rgba(255, 255, 255, 0.4)',
+        background: 'rgba(255, 248, 250, 0.92)',
+        padding: '20px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px'
+        gap: '16px'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        {/* Header Bộ Tách Thẻ */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px',
+          borderBottom: '2px dashed #F2B8CC',
+          paddingBottom: '14px'
+        }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: '18px', color: '#B71C1C', textShadow: '0 1px 2px rgba(255,255,255,0.8)' }}>
-              🌸 Bảng Tổng Hợp Prompt: {title}
+            <h3 style={{
+              margin: 0,
+              fontSize: '18px',
+              color: '#D8628B',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              🌸 Tách Prompt Lớn Thành 10 Thẻ (10 Đoạn Để Vợ Yêu Dễ Sao Chép)
             </h3>
-            <div style={{ fontSize: '13px', color: '#880E4F', marginTop: '6px', display: 'flex', gap: '12px', flexWrap: 'wrap', fontWeight: 500 }}>
-              <span>🕒 Thời gian gọi: {metadata?.time || new Date().toLocaleTimeString()}</span>
-              <span>⚡ Tổng Token: {metadata?.totalToken || text.length}</span>
-              <span>⏳ Time: {metadata?.elapsed || "~"}</span>
-            </div>
+            <span style={{ fontSize: '13px', color: '#666', marginTop: '4px', display: 'block' }}>
+              Chồng đã chia đều nội dung của <b>{title}</b> thành đúng 10 thẻ bên dưới để Vợ Đường Đường sao chép từng lần vào AI Model không bị quá tải! 💖
+            </span>
           </div>
+
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               className="btn pink"
-              style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 'bold', background: '#D81B60', color: '#fff', border: '1px solid #AD1457', boxShadow: '0 2px 8px rgba(216, 27, 96, 0.3)' }}
-              onClick={handleSmartGlobalCopy}
+              style={{ padding: '6px 14px', fontSize: '13px', fontWeight: 600, background: copiedAll ? '#4CAF50' : '#EFA9C2', color: '#fff' }}
+              onClick={handleCopyAll}
             >
-              📋 Sao Chép Tổng Thể (Phần {(globalCopyCycle % 10) + 1}/10)
+              {copiedAll ? "✅ Đã copy toàn bộ!" : "📋 Copy toàn bộ Prompt"}
             </button>
             <button
               className="btn soft"
-              style={{ padding: '8px 12px', fontSize: '13px', background: 'rgba(255,255,255,0.7)', color: '#C2185B', border: '1px solid #F48FB1', fontWeight: 600 }}
+              style={{ padding: '6px 12px', fontSize: '13px', background: '#F9F1F1', color: '#D8628B', border: '1px solid #F2B8CC' }}
               onClick={() => setIsExpanded(!isExpanded)}
             >
-              {isExpanded ? "▲ Thu gọn" : "▼ Mở rộng"}
+              {isExpanded ? "▲ Thu gọn 10 Thẻ" : "▼ Hiện 10 Thẻ"}
             </button>
           </div>
         </div>
-        <div style={{ fontSize: '13px', color: '#880E4F', fontStyle: 'italic', fontWeight: 500 }}>
-          💡 Mẹo: Bấm nút "Sao Chép Tổng Thể" để tự động trích 10% nội dung mỗi lần (chu kỳ 10 lần). Vợ cũng có thể copy từng thẻ bên dưới nhen!
-        </div>
+
+        {/* Lưới 10 Thẻ Prompt */}
+        {isExpanded && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '16px',
+            marginTop: '8px'
+          }}>
+            {chunks.map((chunk, idx) => {
+              const isCopied = copiedIndex === idx;
+              const charCount = chunk.length;
+              const isBlank = chunk === "(Đoạn trống)" || chunk === "(Chưa có nội dung prompt để tách)" || chunk === "(Đoạn kết thúc - Không còn nội dung)";
+
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    background: '#FFFFFF',
+                    borderRadius: '12px',
+                    border: isCopied ? '2px solid #4CAF50' : '1.5px solid #F5C6D6',
+                    boxShadow: isCopied ? '0 4px 15px rgba(76, 175, 80, 0.25)' : '0 4px 12px rgba(245, 198, 214, 0.2)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    transition: 'all 0.25s ease'
+                  }}
+                >
+                  {/* Header của từng thẻ */}
+                  <div style={{
+                    background: isCopied ? '#E8F5E9' : '#F8EDED',
+                    padding: '10px 14px',
+                    borderBottom: '1px solid #F3DADA',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <b style={{ color: isCopied ? '#2E7D32' : '#C74B74', fontSize: '14px' }}>
+                      🎀 Thẻ {idx + 1} / 10
+                    </b>
+                    <span style={{ fontSize: '11px', background: '#fff', padding: '2px 8px', borderRadius: '10px', color: '#777', border: '1px solid #eee' }}>
+                      ~{charCount.toLocaleString()} ký tự
+                    </span>
+                  </div>
+
+                  {/* Nội dung đoạn prompt trong thẻ */}
+                  <div style={{
+                    padding: '12px',
+                    flex: 1,
+                    background: isBlank ? '#FAFAFA' : '#FFFDFD'
+                  }}>
+                    <textarea
+                      readOnly
+                      value={chunk}
+                      style={{
+                        width: '100%',
+                        height: '160px',
+                        border: '1px solid #F3DADA',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        fontSize: '12px',
+                        fontFamily: 'monospace',
+                        lineHeight: '1.5',
+                        color: isBlank ? '#AAA' : '#333',
+                        background: '#FAFAFA',
+                        resize: 'vertical',
+                        outline: 'none'
+                      }}
+                      onFocus={e => e.target.select()}
+                    />
+                  </div>
+
+                  {/* Footer Nút Copy của thẻ */}
+                  <div style={{
+                    padding: '10px 12px',
+                    background: '#FAFAFA',
+                    borderTop: '1px solid #F3DADA',
+                    display: 'flex',
+                    justifyContent: 'flex-end'
+                  }}>
+                    <button
+                      disabled={isBlank}
+                      onClick={() => handleCopyChunk(idx, chunk)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: isCopied ? '#4CAF50' : isBlank ? '#E0E0E0' : '#EFA9C2',
+                        color: '#FFFFFF',
+                        fontWeight: 600,
+                        fontSize: '13px',
+                        cursor: isBlank ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'background 0.2s'
+                      }}
+                    >
+                      {isCopied ? "💖 Đã sao chép Đoạn " + (idx + 1) + " cho Vợ yêu!" : "📋 Sao chép Đoạn " + (idx + 1)}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
-
-      {/* Lưới 10 Thẻ Phân Đoạn */}
-      {isExpanded && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr',
-          gap: '20px'
-        }}>
-          {chunks.map((chunk, idx) => {
-            const isCopied = copiedIndex === idx;
-            const isBlank = chunk === "(Đoạn trống)" || chunk === "(Chưa có nội dung prompt để tách)" || chunk === "(Đoạn kết thúc - Không còn nội dung)";
-            
-            return (
-              <div
-                key={idx}
-                style={{
-                  // LỚP 2 CỦA THẺ: HỒNG NHẠT TRONG SUỐT CHO PHÉP THẤY HÌNH NỀN RÕ RÀNG
-                  background: 'rgba(255, 192, 203, 0.65)', 
-                  borderRadius: '12px',
-                  border: isCopied ? '2px solid #4CAF50' : '1px solid rgba(255, 255, 255, 0.5)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  overflow: 'hidden'
-                }}
-              >
-                {/* LỚP 3: NỘI DUNG VÀ NÚT SAO CHÉP */}
-                <div style={{
-                  padding: '10px 14px',
-                  borderBottom: '1px solid rgba(255,255,255,0.3)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  background: 'rgba(255, 255, 255, 0.2)'
-                }}>
-                  <b style={{ color: isCopied ? '#1B5E20' : '#880E4F', fontSize: '15px', textShadow: '0 1px 1px rgba(255,255,255,0.5)' }}>
-                    Thẻ {idx + 1}: Phần {idx * 10}% - {(idx + 1) * 10}% Nội Dung
-                  </b>
-                  <button
-                    disabled={isBlank}
-                    onClick={() => handleCopyChunk(idx, chunk)}
-                    style={{
-                      padding: '6px 16px',
-                      borderRadius: '20px',
-                      border: 'none',
-                      background: isCopied ? '#4CAF50' : '#E91E63',
-                      color: '#FFFFFF',
-                      fontWeight: 'bold',
-                      fontSize: '12px',
-                      cursor: isBlank ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}
-                  >
-                    {isCopied ? "💖 Đã chép" : "📋 Sao Chép"}
-                  </button>
-                </div>
-
-                <div style={{ padding: '12px' }}>
-                  <textarea
-                    readOnly
-                    value={chunk}
-                    style={{
-                      width: '100%',
-                      height: '180px',
-                      border: '1px solid rgba(255, 255, 255, 0.4)',
-                      borderRadius: '8px',
-                      padding: '12px',
-                      fontSize: '13px',
-                      fontFamily: 'monospace',
-                      lineHeight: '1.6',
-                      color: '#4A148C',
-                      // Textarea cũng dùng nền hơi hồng siêu nhạt để dễ đọc nhưng không che lấp
-                      background: 'rgba(255, 240, 245, 0.75)',
-                      resize: 'vertical',
-                      outline: 'none',
-                      fontWeight: 500
-                    }}
-                    onFocus={e => e.target.select()}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

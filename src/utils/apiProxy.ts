@@ -1,6 +1,36 @@
 import { ApiProfile } from "../lib/api-db";
 
 /**
+ * Helper để loại bỏ dữ liệu Base64 cồng kềnh khỏi các object khi stringify vào văn bản (prompt, log, hiển thị UI),
+ * giúp tránh lỗi "Base64 in text" và giữ cho prompt gọn gàng.
+ * Dữ liệu Base64 thực sự dùng cho Vision sẽ được bảo toàn thông qua normalizeVisionMessages.
+ */
+export function pruneBase64(obj: any): any {
+  if (typeof obj === 'string') {
+    // Quét kỹ hơn: hễ thấy data:image hoặc base64 trong chuỗi dài là triệt tiêu
+    const isBase64 = obj.includes('data:image') || 
+                     (obj.includes('base64,') && obj.length > 100) ||
+                     (/^data:.*;base64,/.test(obj) && obj.length > 100);
+    
+    if (isBase64) {
+      return "[IMAGE_DATA_REDACTED_FOR_TEXT_PROMPT]";
+    }
+    return obj;
+  }
+  if (typeof obj !== 'object' || obj === null) return obj;
+  if (Array.isArray(obj)) return obj.map(pruneBase64);
+  
+  // Tránh đệ quy vào các object quá sâu hoặc không cần thiết nếu có
+  const newObj: any = {};
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      newObj[key] = pruneBase64(obj[key]);
+    }
+  }
+  return newObj;
+}
+
+/**
  * Chuẩn hóa cấu trúc Payload ảnh tham chiếu theo đúng tài liệu API (OpenAI / OpenRouter Vision),
  * tự động khôi phục Data URI scheme nếu gửi thiếu, chỉnh sửa MIME type chuẩn, và báo động nếu ảnh bị cắt xén.
  */
@@ -117,7 +147,7 @@ function checkContentFinished(content: string, messages: any[]): boolean {
 
   // 2. Kiểm tra xem có yêu cầu số lượng (ví dụ "100") trong tin nhắn của người dùng không
   let targetCount = 0;
-  const promptText = messages.map(m => typeof m.content === 'string' ? m.content : JSON.stringify(m.content)).join(" ");
+  const promptText = messages.map(m => typeof m.content === 'string' ? m.content : JSON.stringify(pruneBase64(m.content))).join(" ");
   
   const targetMatch = promptText.match(/(\d{2,3})\s*(?:ý|việc|điều|mục|gợi ý|task|câu|chương|điểm|idea|point|bước|phần|bài|quy tắc)/i);
   if (targetMatch) {
@@ -161,7 +191,7 @@ function extractTextFromChunk(data: any): string {
     } else if (Array.isArray(rawContent)) {
       chunk = rawContent.map((p: any) => typeof p === "string" ? p : (p?.text || p?.content || "")).join("");
     } else if (typeof rawContent === "object") {
-      chunk = rawContent.text || rawContent.content || "";
+      chunk = rawContent.text || rawContent.content || JSON.stringify(pruneBase64(rawContent));
     }
   } else if (data.candidates && data.candidates.length > 0) {
     const cand = data.candidates[0];
@@ -201,6 +231,7 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
   const maxTokens = Math.max(profile.maxTokens || 0, maxTokensOverride || 0, 16384);
   const startTime = Date.now();
   let fullContent = "";
+  let isDone = false;
 
   const targetUrl = resolveEndpointUrl(profile, "chat");
   console.log(`[API Proxy Lifecycle] Giai đoạn 1 & 2: Bắt đầu request qua Proxy bắt buộc. Endpoint=${targetUrl}, Model=${profile.model}`);
@@ -237,7 +268,7 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
       try {
         const parsed = JSON.parse(errText);
         if (parsed.error) {
-          exactServerErr = typeof parsed.error === "string" ? parsed.error : (parsed.error.message || JSON.stringify(parsed.error, null, 2));
+          exactServerErr = typeof parsed.error === "string" ? parsed.error : (parsed.error.message || JSON.stringify(pruneBase64(parsed.error), null, 2));
         }
       } catch (e) {}
 
@@ -282,6 +313,7 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
             isSse = true;
             dataStr = trimmed.substring(5).trim();
             if (dataStr === "[DONE]") {
+              // Upstream model báo đã xong, ta ghi nhận nhưng vẫn tiếp tục đọc nốt buffer nhen vợ yêu!
               continue;
             }
           }
@@ -302,9 +334,8 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
           }
         }
       }
-    } catch (readErr: any) {
-      console.error("[API Proxy Lifecycle] Lỗi khi đang đọc stream:", readErr);
-      throw readErr;
+    } finally {
+      reader.releaseLock();
     }
 
     // Xử lý nốt phần buffer thừa còn lại nếu có
@@ -343,15 +374,19 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
       console.warn(`[API Proxy Lifecycle] Cảnh báo: Stream hoàn tất nhưng không có nội dung nào được tạo ra!`);
     }
 
-    onDone(fullContent);
+    if (!isDone) {
+      isDone = true;
+      onDone(fullContent);
+    }
 
   } catch (err: any) {
     const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     console.error(`[API Proxy Lifecycle Error] Lỗi nghiêm trọng xảy ra tại giây thứ ${totalElapsed}s:`, err);
 
     // Kế hoạch cứu vãn cuối cùng: nếu đã có lượng dữ liệu kha khá (> 120 ký tự), vẫn trả về đầy đủ để vợ yêu không bị mất bài!
-    if (fullContent.trim().length > 120) {
+    if (fullContent.trim().length > 120 && !isDone) {
       console.warn(`[API Proxy Lifecycle] Tiến hành cứu vãn nốt dữ liệu đã sinh (${fullContent.length} ký tự) gửi về UI cho Vợ yêu nhen!`);
+      isDone = true;
       onDone(fullContent);
       return;
     }
@@ -385,7 +420,7 @@ export async function executeApiProxyText(
 
   const maxTokens = options?.maxTokensOverride || profile.maxTokens || 4096;
   const targetUrl = resolveEndpointUrl(profile, "text");
-  const timeoutMs = Math.max((profile.timeoutSeconds || 900) * 1000, 900000);
+  const timeoutMs = Math.max((profile.timeoutSeconds || 1500) * 1000, 1500000);
   await new Promise(resolve => setTimeout(resolve, 15));
 
   const payload = {
@@ -424,7 +459,7 @@ export async function executeApiProxyText(
       else if (c?.text) sampleText = c.text;
       else if (cand?.content?.parts?.[0]?.text) sampleText = cand.content.parts[0].text;
       else if (data.data.response) sampleText = data.data.response;
-      else if (data.data.content) sampleText = typeof data.data.content === 'string' ? data.data.content : JSON.stringify(data.data.content);
+      else if (data.data.content) sampleText = typeof data.data.content === 'string' ? data.data.content : JSON.stringify(pruneBase64(data.data.content));
     }
   }
   if (!sampleText) sampleText = data.rawText || "";

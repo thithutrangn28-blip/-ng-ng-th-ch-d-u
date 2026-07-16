@@ -1,0 +1,246 @@
+  };
+
+  if (!active) return null;
+
+  return (
+    <div className={`lipstick-root ${active ? 'active' : ''}`} ref={rootRef}>
+      {state.ui.globalBg && (
+        <div 
+          className="gpu-fixed-background"
+          style={{
+            backgroundImage: `linear-gradient(180deg,rgba(255,248,251,.12),rgba(255,255,255,.15)), url('${state.ui.globalBg}')`
+          }}
+        />
+      )}
+      {(!isCompactHeader || currentView !== "room") && (
+        <div className="topbar">
+          <div className="brand">
+            <div className="lip"></div>
+            <div><b>Lipstick Prompt Rooms</b><small>Tích hợp vào hệ sinh thái AI Studio</small></div>
+          </div>
+          <div className="actions">
+            {currentView !== "gallery" && (
+              <button 
+                className="btn primary small" 
+                style={{background: 'linear-gradient(135deg, #8c526b, #5a3d4a)', color: '#fff', boxShadow: '0 4px 12px rgba(140,82,107,0.3)', fontWeight: 800}}
+                onClick={() => {
+                  if (currentView === "room") {
+                    setCurrentView("drawer");
+                    setCurrentRoomId(null);
+                  } else {
+                    renderHome();
+                  }
+                  scrollToTop();
+                }}
+                title="Trở lại màn hình trước"
+              >
+                ← Trở ra
+              </button>
+            )}
+            <button className="icon" onClick={() => setShowDrawer(true)} title="Ngăn kéo hạng mục">🐈</button>
+            <button 
+              className="btn ghost" 
+              onClick={onHome} 
+              style={{fontWeight: 900, borderColor: '#e96b9b', color: '#c62828', background: '#ffebee'}}
+              title="Thoát ra màn hình chính App"
+            >
+              🏠 Thoát App
+            </button>
+            <button className="btn ghost" onClick={() => setShowSetup(true)}>Setup</button>
+            <button className="btn primary" onClick={() => setShowPromptGuide(true)} style={{ background: 'linear-gradient(135deg, #d23a73, #e96b9b)', border: 'none', fontWeight: 800 }}>📚 Tài Liệu Prompt 💖</button>
+            <button className="btn primary" onClick={() => setShowStoryForm("new")}>+ Story</button>
+          </div>
+        </div>
+      )}
+
+      <main className="app-container">
+        <ErrorBoundary>
+          {currentView === "gallery" && (
+          <>
+            <section className="hero">
+              <div className="glass-panel">
+                <p className="eyebrow">Story Gallery</p>
+                <h1>Chọn câu chuyện trước</h1>
+                <p className="muted">Hỗ trợ đọc hiểu ảnh (Vision AI), tạo Prompt chuẩn xác cho Midjourney/Niji.</p>
+                <div className="actions" style={{marginTop: 12}}>
+                  <button className="btn ghost" onClick={onHome} style={{fontWeight: 800, borderColor: '#e96b9b', color: '#c62828', background: '#ffebee'}}>← Thoát ra màn hình chính App</button>
+                </div>
+                <div className="badges">
+                  <span className="badge">nền tổng</span>
+                  <span className="badge">avatar riêng</span>
+                </div>
+              </div>
+            </section>
+            <section className="glass-panel">
+              <div className="section-head">
+                <div>
+                  <p className="eyebrow">Profile cards</p>
+                  <h2>Thẻ câu chuyện</h2>
+                </div>
+              </div>
+              <div className="story-grid">
+                {state.stories.map((s, idx) => {
+                  const hist = Object.values(s.rooms || {}).reduce((n, r: any) => n + (r.history?.length || 0) + (r.styleAnalyzer?.history?.length || 0), 0);
+                  return (
+                    <article className="profile-card" key={`story_${s.id}_${idx}`} style={{ cursor: 'pointer' }} onClick={() => enterStory(s.id)}>
+                      <div className="profile-cover">
+                        {s.cover ? <SafeImg src={s.cover} alt="" /> : <div style={{width:'100%',height:'100%',background:'linear-gradient(135deg, #ffddea, #eef8ff 55%, #ffe9f1)'}}></div>}
+                        <div className="avatar">{s.avatar ? <SafeImg src={s.avatar} alt=""/> : (state.ui.globalAvatar ? <SafeImg src={state.ui.globalAvatar} alt=""/> : '')}</div>
+                      </div>
+                      <div className="profile-body">
+                        <h3>{s.title}</h3>
+                        <span className="muted">{s.subtitle || "story workspace"}</span>
+                        {s.botCharacters && s.botCharacters.length > 0 && (
+                          <div style={{ margin: '8px 0', fontSize: '0.75rem', color: '#555', background: '#fff0f5', padding: '4px', borderRadius: '4px' }}>
+                             <strong>Chars:</strong> {s.botCharacters.map(c => c.displayName).join(', ')}
+                          </div>
+                        )}
+                        <div className="badges">
+                          <span className="badge">♥ {hist} đợt</span>
+                          <span className="badge">✦ {Object.keys(s.rooms || {}).length} phòng</span>
+                        </div>
+                        <p>{s.story || "Chưa có cốt truyện."}</p>
+                        <div className="actions">
+                          <button className="btn primary small" onClick={(e) => { e.stopPropagation(); enterStory(s.id); }}>♥ vào story</button>
+                          <button className="btn ghost small" onClick={(e) => { e.stopPropagation(); setShowStoryForm(s.id); }}>sửa</button>
+                          <button className="btn danger small" onClick={(e) => {
+                            e.stopPropagation();
+                            if(state.stories.length<=1) { toast("Cần giữ ít nhất 1 story"); return; }
+                            state.stories = state.stories.filter(x => x.id !== s.id);
+                            if(s.active) state.stories[0].active = true;
+                            save(state);
+                          }}>xóa</button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          </>
+        )}
+
+        {currentView === "drawer" && currentStory && (
+          <>
+            <section className="hero">
+              <div className="glass-panel">
+                <p className="eyebrow">Ngăn kéo hạng mục</p>
+                <h1>{currentStory.title}</h1>
+                <p className="muted">Mỗi hạng mục là một hồ sơ riêng. Có thể dùng preset nền hoặc tự upload.</p>
+                <div className="actions">
+                  <button className="btn ghost" onClick={renderHome} style={{fontWeight: 800}}>← Trở lại Story Gallery</button>
+                  <button className="btn ghost" onClick={onHome} style={{fontWeight: 800, borderColor: '#e96b9b', color: '#c62828', background: '#ffebee'}}>🏠 Thoát ra màn hình chính App</button>
+                  <button className="btn ghost" onClick={() => setShowStoryForm(currentStory.id)}>Sửa story</button>
+                </div>
+              </div>
+            </section>
+            <section className="glass-panel">
+              <div className="section-head">
+                <div>
+                  <p className="eyebrow">Room Profiles</p>
+                  <h2>Các phòng / hạng mục</h2>
+                </div>
+              </div>
+              <div className="room-grid">
+                {allRooms.map((r, idx) => {
+                  const rs = getRoomState(r.id);
+                  const cover = rs.cover || rs.background || PRESET_BACKGROUNDS[idx % PRESET_BACKGROUNDS.length];
+                  const avatar = rs.avatar || currentStory.avatar || state.ui.globalAvatar;
+                  const isCustom = !ROOMS_DATA.some(staticRoom => staticRoom.id === r.id);
+                  return (
+                    <article className="profile-card" key={`main_room_${r.id}_${idx}`} style={{ cursor: 'pointer' }} onClick={() => handleEnterRoom(r.id)}>
+                      <div className="profile-cover">
+                        {cover ? <SafeImg src={cover} alt="" style={{opacity: 1}}/> : <div style={{width:'100%',height:'100%',background:'#ffddea'}}></div>}
+                        <div className="avatar">{avatar ? <SafeImg src={avatar} alt=""/> : ''}</div>
+                      </div>
+                      <div className="profile-body">
+                        <h3>{r.icon} {r.title}</h3>
+                        <span className="muted">{r.subtitle}</span>
+                        <div style={{ margin: '8px 0', fontSize: '0.75rem', color: '#880e4f', background: '#fff0f5', padding: '6px 10px', borderRadius: '6px', borderLeft: '3px solid #d23a73' }}>
+                          <strong>𝜗𝜚 ── ⊹ ‧₊˚</strong><br/>
+                          <b>Story:</b> {currentStory.title || "Chưa đặt tên"}<br/>
+                          {currentStory.botCharacters && currentStory.botCharacters.length > 0 && (
+                            <span><b>Char:</b> {currentStory.botCharacters.map((c: any) => c.displayName).join(', ')}</span>
+                          )}
+                        </div>
+                        <div className="badges">
+                          <span className="badge">{r.cards.length} thẻ</span>
+                          <span className="badge">{isCustom ? "Custom Room 💖" : "Mặc định ✨"}</span>
+                        </div>
+                        <p>Bấm trái tim để vào phòng làm việc.</p>
+                        <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                          <button className="btn primary small" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); handleEnterRoom(r.id); }}>♥ vào phòng</button>
+                          {isCustom && (
+                            <>
+                              <button className="btn ghost small" style={{ padding: '6px 12px', borderColor: '#d23a73', color: '#d23a73', background: '#fdf2f8', borderRadius: 8, fontWeight: 700 }} title="Sửa bối cảnh phòng" onClick={(e) => { e.stopPropagation(); setShowRoomForm(r.id); }}>✏️ Sửa</button>
+                              <button className="btn ghost small" style={{ padding: '6px 12px', borderColor: '#e53935', color: '#e53935', background: '#ffebee', borderRadius: 8, fontWeight: 700 }} title="Xóa phòng này" onClick={(e) => { e.stopPropagation(); handleDeleteRoom(r.id); }}>🗑️ Xóa</button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+                
+                {/* Nút thêm phòng làm việc mới cho vợ */}
+                <article 
+                  className="profile-card" 
+                  style={{ 
+                    cursor: 'pointer', 
+                    border: '2.5px dashed #e96b9b', 
+                    background: '#fff9fb', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    minHeight: 280, 
+                    padding: 24, 
+                    textAlign: 'center',
+                    borderRadius: 18,
+                    boxShadow: 'none',
+                    transition: 'transform 0.2s, box-shadow 0.2s'
+                  }} 
+                  onClick={() => setShowRoomForm("new")}
+                >
+                  <div style={{ fontSize: 48, marginBottom: 14 }}>➕</div>
+                  <h3 style={{ color: '#d23a73', margin: '4px 0 8px', fontSize: 18, fontWeight: 800 }}>Thêm Hạng Mục / Phòng mới</h3>
+                  <span className="muted" style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 18, maxWidth: 220 }}>Tự thiết kế thêm phòng hoặc hạng mục mới cho câu chuyện của vợ yêu! 💖</span>
+                  <button className="btn primary small" style={{ background: '#d23a73', border: 'none', padding: '10px 20px', borderRadius: 12, fontWeight: 800 }}>Thêm phòng mới 🌸</button>
+                </article>
+              </div>
+            </section>
+          </>
+        )}
+
+        {currentView === "room" && currentRoomId && roomDef && currentRoomState && (
+          <RoomView 
+            key={`${currentStory.id}_${roomDef.id}`}
+            roomDef={roomDef} 
+            roomState={currentRoomState} 
+            currentStory={currentStory} 
+            state={state}
+            save={save}
+            toast={toast}
+            onBack={() => { setRoomProgress(0); setCurrentView("drawer"); setCurrentRoomId(null); }}
+            onHome={() => { setRoomProgress(0); onHome(); }}
+            onOpenDrawer={() => setShowDrawer(true)}
+            progress={roomProgress}
+            setProgress={setRoomProgress}
+            isCompactHeader={isCompactHeader}
+            onToggleCompact={() => setIsCompactHeader(!isCompactHeader)}
+            onOpenStoryForm={() => setShowStoryForm(currentStory?.id || state.stories.find(s => s.active)?.id)}
+          />
+        )}
+        </ErrorBoundary>
+      </main>
+
+      {/* Rooms Drawer */}
+      <div className={`drawer-mask ${showDrawer ? 'show' : ''}`} onClick={() => setShowDrawer(false)}></div>
+      <aside className={`drawer ${showDrawer ? 'show' : ''}`}>
+        <div className="section-head" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16}}>
+          <div>
+            <p className="eyebrow" style={{margin: 0}}>Ngăn kéo</p>
+            <h2 style={{margin: '4px 0'}}>Hạng mục</h2>
+            <p className="muted" style={{fontSize: 12, margin: 0}}>Mỗi mục là một hồ sơ. Bấm trái tim để vào phòng.</p>
+          </div>
+          <button className="btn ghost small" onClick={() => setShowDrawer(false)}>Đóng</button>

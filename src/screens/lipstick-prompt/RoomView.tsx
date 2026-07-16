@@ -8,23 +8,19 @@ import StyleAnalyzer from "./StyleAnalyzer";
 import { SafeImg } from "../../components/SafeImg";
 import { compressImageFile } from "../../utils/imageCompressor";
 import { getPrimaryApiProfile } from "../../lib/api-db";
-import { getApiProxySettings } from "../../utils/apiProxy";
+import { buildContextWindow } from "../../utils/contextBuilder";
+import { PromptSummaryPanel } from "../../components/PromptSummaryPanel";
+import { getApiProxySettings, pruneBase64 } from "../../utils/apiProxy";
 
 // Regex helper to strip out list numbers/ordinals cleanly while keeping tags like "1girl" or "20 years old" intact
 const cleanPromptText = (text: string) => {
   if (!text) return "";
   let val = text;
-  // 1. Remove numbering patterns at start of string or after newline (e.g. "1. ", "Part 1:", "Phần 1:")
-  val = val.replace(/(?:^|\n)\s*[-*•(]?\s*(?:(?:Phần|Phân đoạn|Khung|Khung ảnh|Panel|Part|Section|Mẫu|Mẫu ảnh|Mẫu thiết kế|Mẫu trang phục|Mẫu số|Mẫu trang phục số)\s*\d+[\s\-\:\.\/\)]*|\d+[\.\:\/\-\)]+)\s*/gi, (match) => match.startsWith('\n') ? '\n' : '');
-  
-  // 2. Remove numbering patterns mixed inside lines (e.g. after commas: ", 1. ", ", 2. ")
-  // This avoids stripping "1girl" or "4k" by requiring a space AFTER the number+separator
-  val = val.replace(/(?:^|[\,\;\.\n\s])\s*(?:\d+[\.\:\)\/]\s+)/g, (match) => {
-      const firstChar = match[0];
-      if (/[\,\;\.\n\s]/.test(firstChar)) return firstChar;
-      return '';
-  });
-  
+  // Replace leading ordinal/number list indicators at the beginning of the text or after newlines
+  // This matches structures like: "1. ", "1/ ", "- 1. ", "Part 1:", "Phần 1:", "Panel 1 -", etc.
+  // We make sure it doesn't match "1girl" or "20 years old" by requiring a separator like . : / - or ) after list digits.
+  val = val.replace(/^\s*[-*•(]?\s*(?:(?:Phần|Phân đoạn|Khung|Khung ảnh|Panel|Part|Section|Mẫu|Mẫu ảnh|Mẫu thiết kế|Mẫu trang phục|Mẫu số|Mẫu trang phục số)\s*\d+[\s\-\:\.\/\)]*|\d+[\.\:\/\-\)]+)\s*/i, "");
+  val = val.replace(/\n\s*[-*•(]?\s*(?:(?:Phần|Phân đoạn|Khung|Khung ảnh|Panel|Part|Section|Mẫu|Mẫu ảnh|Mẫu thiết kế|Mẫu trang phục|Mẫu số|Mẫu trang phục số)\s*\d+[\s\-\:\.\/\)]*|\d+[\.\:\/\-\)]+)\s*/gi, "\n");
   return val.trim();
 };
 
@@ -44,8 +40,6 @@ function PromptFivePartsViewer({
   const [showRaw, setShowRaw] = useState(false);
   const [activeProfile, setActiveProfile] = useState<any>(null);
   const [copiedParts, setCopiedParts] = useState<Record<string, boolean>>({});
-  const [copyClicks, setCopyClicks] = useState<Record<string, number>>({});
-  const [rabbitIndex, setRabbitIndex] = useState<number>(0);
   const rawText = (output || "").trim();
 
   // Load API Profile & settings
@@ -248,24 +242,9 @@ function PromptFivePartsViewer({
       toast?.("Phần này chưa có nội dung!", "error");
       return;
     }
-    const currentCount = copyClicks[id] || 0;
-    const nextCount = (currentCount >= 4) ? 1 : currentCount + 1;
-    const fraction = 0.25 * nextCount;
-    const targetLength = Math.max(1, Math.floor(text.length * fraction));
-    const partialText = text.substring(0, targetLength);
-
-    copyToClipboardSafe(partialText);
-    setCopyClicks(prev => ({ ...prev, [id]: nextCount }));
+    copyToClipboardSafe(text);
     setCopiedParts(prev => ({ ...prev, [id]: true }));
-
-    const percent = nextCount * 25;
-    if (nextCount === 4) {
-      toast?.(`🎁 Chồng yêu đã copy trọn vẹn 100% ${label} cho vợ yêu rồi nha! (Lần click 4/4 - Hoàn tất) 💖`, "success");
-    } else if (nextCount === 1 && currentCount === 4) {
-      toast?.(`🌸 Chồng yêu đã reset vòng lặp và copy lại 25% phần đầu của ${label} cho vợ nha! (Lần click 1/4 - Reset) 🎀`, "success");
-    } else {
-      toast?.(`🌸 Chồng yêu đã copy ${percent}% nội dung của ${label} cho vợ yêu rồi nhé! (Lần click ${nextCount}/4) 💕`, "success");
-    }
+    toast?.(`💖 Vợ ơi, chồng đã copy xong ${label}!`, "success");
   };
 
   const handleCopyOneLine = () => {
@@ -273,25 +252,10 @@ function PromptFivePartsViewer({
       toast?.("Chưa có nội dung Prompt để copy vợ ơi!", "error");
       return;
     }
-    const id = "one_line";
-    const currentCount = copyClicks[id] || 0;
-    const nextCount = (currentCount >= 4) ? 1 : currentCount + 1;
-    const fraction = 0.25 * nextCount;
-    const targetLength = Math.max(1, Math.floor(cleanOneLinePrompt.length * fraction));
-    const partialText = cleanOneLinePrompt.substring(0, targetLength);
-
-    copyToClipboardSafe(partialText);
-    setCopyClicks(prev => ({ ...prev, [id]: nextCount }));
-    setCopiedParts(prev => ({ ...prev, "master_prompt": true, [id]: true }));
-
-    const percent = nextCount * 25;
-    if (nextCount === 4) {
-      toast?.(`⚡ Chồng yêu đã copy trọn vẹn 100% Prompt gộp liền mạch cho vợ yêu dán vào AI nhé! (Lần click 4/4 - Hoàn tất) 💖`, "success");
-    } else if (nextCount === 1 && currentCount === 4) {
-      toast?.(`🌸 Chồng yêu đã reset vòng lặp và copy lại 25% Prompt gộp liền mạch cho vợ nha! (Lần click 1/4 - Reset) 🎀`, "success");
-    } else {
-      toast?.(`🌸 Chồng yêu đã copy ${percent}% Prompt gộp liền mạch cho vợ yêu rồi nhé! (Lần click ${nextCount}/4) 💕`, "success");
-    }
+    copyToClipboardSafe(cleanOneLinePrompt);
+    // Mark master_prompt and general as copied
+    setCopiedParts(prev => ({ ...prev, "master_prompt": true, "one_line": true }));
+    toast?.("⚡ Chồng đã copy trọn bộ Prompt gộp liền mạch cho vợ dán thẳng vào Midjourney/SD/Flux nhé!", "success");
   };
 
   const handleCopyFullText = () => {
@@ -299,101 +263,14 @@ function PromptFivePartsViewer({
       toast?.("Chưa có văn bản để copy vợ ơi!", "error");
       return;
     }
-    const id = "all_everything";
-    const currentCount = copyClicks[id] || 0;
-    const nextCount = (currentCount >= 4) ? 1 : currentCount + 1;
-    const fraction = 0.25 * nextCount;
-    const targetLength = Math.max(1, Math.floor(rawText.length * fraction));
-    const partialText = rawText.substring(0, targetLength);
-
-    copyToClipboardSafe(partialText);
-    setCopyClicks(prev => ({ ...prev, [id]: nextCount }));
-
+    copyToClipboardSafe(rawText);
     const allCopied: Record<string, boolean> = { ...copiedParts };
     parts.forEach(p => {
       allCopied[p.id] = true;
     });
-    allCopied[id] = true;
+    allCopied["all_everything"] = true;
     setCopiedParts(allCopied);
-
-    const percent = nextCount * 25;
-    if (nextCount === 4) {
-      toast?.(`🎁 Chồng yêu đã copy trọn vẹn 100% toàn văn bản kết quả cho vợ yêu rồi nha! (Lần click 4/4 - Hoàn tất) 💖`, "success");
-    } else if (nextCount === 1 && currentCount === 4) {
-      toast?.(`🌸 Chồng yêu đã reset vòng lặp và copy lại 25% toàn văn bản kết quả cho vợ nha! (Lần click 1/4 - Reset) 🎀`, "success");
-    } else {
-      toast?.(`🌸 Chồng yêu đã copy ${percent}% toàn văn bản kết quả cho vợ yêu rồi nhé! (Lần click ${nextCount}/4) 💕`, "success");
-    }
-  };
-
-  const handleRabbitCopy = () => {
-    if (!rawText) {
-      toast?.("Chưa có nội dung Prompt để con thỏ copy vợ ơi! Vợ đợi AI sinh xong một lát nha 🐰💖", "error");
-      return;
-    }
-
-    if (rabbitIndex >= 4) {
-      const confirmReset = window.confirm("🐰 Chồng yêu báo nè: Đã sao chép trọn vẹn 100% nội dung (4 phần) rồi vợ nha! Vợ có muốn bắt đầu sao chép lại từ Phần 1 không?");
-      if (confirmReset) {
-        setRabbitIndex(0);
-        toast?.("Đã reset lại vòng lặp sao chép từ đầu cho vợ yêu rồi nha! 💖", "success");
-      }
-      return;
-    }
-
-    const textToProcess = rawText.trim();
-    // Split into 4 chunks by character length (roughly) but respecting word boundaries
-    const totalLen = textToProcess.length;
-    const chunkSize = Math.ceil(totalLen / 4);
-    
-    let chunks = [];
-    let start = 0;
-    for (let i = 0; i < 4; i++) {
-      if (i === 3) {
-        chunks.push(textToProcess.substring(start));
-      } else {
-        let end = start + chunkSize;
-        // find nearest space or newline
-        while (end < totalLen && !/[ \n\r\t]/.test(textToProcess[end])) {
-          end++;
-        }
-        chunks.push(textToProcess.substring(start, end));
-        start = end + 1;
-      }
-    }
-
-    const targetText = chunks[rabbitIndex] || "";
-    const cleanText = cleanPromptText(targetText);
-
-    if (!cleanText) {
-      toast?.(`Phần ${rabbitIndex + 1} trống, chồng tự động chuyển phần tiếp cho vợ nha! 🐰`, "warning");
-      setRabbitIndex(prev => prev + 1);
-      return;
-    }
-
-    copyToClipboardSafe(cleanText);
-
-    const msgs = [
-      `🐰 Chồng đã copy Phần 1 (25%) cho vợ yêu rồi! Dán xong quay lại đây bấm phần 2 nha 💖`,
-      `🐰 Phần 2 (50%) đã nằm trong khay nhớ tạm rồi nè! Vợ yêu dán tiếp đi nha 💕`,
-      `🐰 Đã xong Phần 3 (75%) cho bà xã rồi ạ! Chỉ còn một chút xíu nữa là xong hết luôn 🌸`,
-      `🐰 Chúc mừng vợ! Đã copy xong Phần 4 (100%) trọn vẹn rồi nhé! Vợ kiểm tra ảnh xinh nha 🎀`
-    ];
-    
-    toast?.(msgs[rabbitIndex] || `🐰 Đã copy xong Phần ${rabbitIndex + 1} cho vợ yêu!`, "success");
-
-    const nextIdx = rabbitIndex + 1;
-    setRabbitIndex(nextIdx);
-
-    if (nextIdx >= 4) {
-      setTimeout(() => {
-        const restart = window.confirm("✨ THÔNG BÁO HOÀN THÀNH: Vợ đã sao chép xong toàn bộ nội dung (4/4 phần) rồi đó! Vợ có muốn bắt đầu sao chép lại từ đầu không?");
-        if (restart) {
-          setRabbitIndex(0);
-          toast?.("Chồng đã reset lại để vợ yêu sao chép từ đầu nhé! 🐰💖", "success");
-        }
-      }, 500);
-    }
+    toast?.("🎁 Chồng đã copy trọn gói 100% toàn bộ văn bản kết quả trả về của tất cả các phần cho vợ yêu rồi nha! 💖", "success");
   };
 
   // Tính toán thời gian làm việc và thông tin chi tiết
@@ -406,12 +283,12 @@ function PromptFivePartsViewer({
   return (
     <div className="flex flex-col gap-3 w-full mt-2">
       {/* KHU VỰC THÔNG TIN CHI TIẾT & HIỆU SUẤT LÀM VIỆC */}
-      <div className="flex flex-col gap-2 p-3.5 rounded-xl border border-[#f48fb1]/40 bg-gradient-to-r from-[#fff5f8] to-[#fff0f5] shadow-xs w-full max-w-full box-border">
+      <div className="flex flex-col gap-2 p-3.5 rounded-xl border border-[#f48fb1]/40 bg-gradient-to-r from-[#fff5f8] to-[#fff0f5] shadow-xs">
         <div className="flex items-center gap-2 pb-2 border-b border-[#f48fb1]/20">
           <span className="text-sm">⏱️</span>
           <b className="text-xs text-[#b83260] uppercase tracking-wider">Thông Tin Hiệu Suất & Thời Gian Làm Việc:</b>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-[11px] text-gray-700 font-medium">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[11px] text-gray-700 font-medium">
           <div className="flex flex-col p-2 rounded-lg bg-white/60 border border-pink-100">
             <span className="text-gray-400">⏱️ Thời gian thực hiện:</span>
             <span className="text-xs font-bold text-[#b83260]">
@@ -439,83 +316,8 @@ function PromptFivePartsViewer({
         </div>
       </div>
 
-      {/* NÚT CON THỎ THẦN KỲ - SIÊU SAO CHÉP LIÊN HOÀN CHO VỢ YÊU 🐰 */}
-      <div className="w-full p-4 sm:p-6 rounded-[32px] border-2 border-white/50 bg-white/5 backdrop-blur-[1px] shadow-xl flex flex-col items-center gap-6 mb-6 box-border max-w-full overflow-x-auto">
-        <div className="w-full text-center flex flex-col items-center gap-4">
-          <div className="w-20 h-20 rounded-full bg-pink-100/30 flex items-center justify-center text-5xl animate-bounce shrink-0 shadow-sm border border-pink-200">
-            🐰
-          </div>
-          <div className="max-w-2xl">
-            <h3 className="text-2xl font-black text-[#880e4f] flex flex-wrap justify-center items-center gap-2">
-              THỎ CON SAO CHÉP THÔNG MINH
-              <span className="bg-gradient-to-r from-pink-500 to-purple-600 text-white text-[11px] px-3 py-1 rounded-full font-bold animate-pulse">SIÊU TIỆN</span>
-            </h3>
-            <p className="text-base font-semibold text-[#ad1457] mt-2 leading-relaxed">
-              Chồng đã chia Prompt làm 4 phần (mỗi phần 25%) để vợ yêu copy dán cho nhanh và đủ 100% nha! 💖
-            </p>
-          </div>
-        </div>
-
-        <div className="w-full max-w-lg flex flex-col gap-4">
-          <button
-            onClick={handleRabbitCopy}
-            disabled={!rawText}
-            className="w-full relative flex items-center justify-center gap-3 sm:gap-5 px-4 sm:px-8 py-4 sm:py-6 rounded-2xl bg-gradient-to-r from-[#ff4081] via-[#ec407a] to-[#ab47bc] text-white font-black text-lg sm:text-xl shadow-2xl hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 border-b-4 border-[#ad1457] box-border overflow-hidden"
-            title="Bấm vào chú thỏ này để tự động copy tuần tự từng phần một cho vợ yêu nhé!"
-          >
-            <div className="text-left flex flex-col min-w-0 flex-1">
-              <span className="text-[10px] sm:text-[12px] font-black uppercase tracking-widest text-pink-100 leading-none">
-                {rawText ? `Copy Phần ${Math.min(rabbitIndex + 1, 4)} / 4` : "Chờ AI tạo Prompt..."}
-              </span>
-              <span className="text-base sm:text-lg font-bold text-white leading-tight mt-1 truncate">
-                {rawText 
-                  ? (rabbitIndex >= 4 ? "Hoàn thành! Bấm làm lại 💖" : `👉 Sao Chép 25% (P${rabbitIndex + 1})`)
-                  : "Đang chuẩn bị..."}
-              </span>
-            </div>
-            <span className="shrink-0 text-base sm:text-xl bg-white/20 px-3 sm:px-5 py-2 sm:py-3 rounded-xl text-white font-black">
-              {Math.min(rabbitIndex + 1, 4)}/4
-            </span>
-          </button>
-          
-          <div className="flex gap-3 w-full">
-            {[0, 1, 2, 3].map(i => (
-              <button
-                key={i}
-                disabled={!rawText}
-                onClick={() => {
-                  if (!rawText) return;
-                  const textToProcess = rawText.trim();
-                  const totalLen = textToProcess.length;
-                  const chunkSize = Math.ceil(totalLen / 4);
-                  let chunks = [];
-                  let start = 0;
-                  for (let j = 0; j < 4; j++) {
-                    if (j === 3) {
-                      chunks.push(textToProcess.substring(start));
-                    } else {
-                      let end = start + chunkSize;
-                      while (end < totalLen && !/[ \n\r\t]/.test(textToProcess[end])) end++;
-                      chunks.push(textToProcess.substring(start, end));
-                      start = end + 1;
-                    }
-                  }
-                  copyToClipboardSafe(cleanPromptText(chunks[i] || ""));
-                  toast?.(`🐰 Đã copy Phần ${i + 1} (25%) cho vợ yêu rồi nha! 💖`, "success");
-                  setRabbitIndex(i + 1);
-                }}
-                className={`flex-1 py-4 rounded-xl text-[16px] font-black transition-all shadow-md active:scale-95 border-2 ${rabbitIndex > i ? 'bg-gradient-to-r from-[#d23a73] to-[#ab47bc] text-white border-transparent' : 'bg-white/90 text-[#d23a73] border-[#f48fb1] hover:bg-white'}`}
-                title={`Sao chép riêng Phần ${i + 1} (25% tổng nội dung)`}
-              >
-                P{i + 1}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* THANH CÔNG CỤ COPY ANH TÀI - SIÊU TIỆN LỢI CHO VỢ */}
-      <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl border border-[#f48fb1]/30 bg-gradient-to-r from-[#fff0f6] to-[#fce4ec] shadow-sm w-full box-border max-w-full">
+      <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl border border-[#f48fb1]/30 bg-gradient-to-r from-[#fff0f6] to-[#fce4ec] shadow-sm">
         <div className="flex items-center gap-2">
           <span className="text-lg animate-bounce">💖</span>
           <div>
@@ -555,38 +357,34 @@ function PromptFivePartsViewer({
         <div className="grid grid-cols-1 gap-3">
           {parts.map((part, index) => {
             const isCopied = !!copiedParts[part.id];
-            const clickCount = copyClicks[part.id] || 0;
             return (
               <div
                 key={`part_${part.id}_${index}`}
-                className="relative flex flex-col rounded-xl border transition-all duration-300 overflow-x-auto shadow-xs hover:shadow-md"
+                className="relative flex flex-col rounded-xl border transition-all duration-300 overflow-hidden shadow-xs hover:shadow-md"
                 style={{
-                  borderColor: isCopied ? '#f48fb1' : 'rgba(244, 143, 177, 0.4)',
-                  backgroundColor: isCopied ? 'rgba(255, 230, 238, 0.65)' : 'rgba(255, 240, 245, 0.45)',
+                  borderColor: isCopied ? '#f06292' : `${part.color}40`,
+                  backgroundColor: isCopied ? '#ffe4ec' : part.bg,
                   borderWidth: isCopied ? '2px' : '1px',
                   boxShadow: isCopied ? '0 4px 14px rgba(244, 143, 177, 0.35)' : 'none',
-                  transform: isCopied ? 'scale(1.005)' : 'none',
-                  width: '100%',
-                  maxWidth: '100%',
-                  boxSizing: 'border-box'
+                  transform: isCopied ? 'scale(1.005)' : 'none'
                 }}
               >
                 {/* Header của từng thẻ khối */}
                 <div
                   className="flex items-center justify-between px-3.5 py-2.5 border-b transition-colors duration-300"
                   style={{
-                    borderColor: isCopied ? '#f48fb1' : 'rgba(244, 143, 177, 0.2)',
-                    backgroundColor: isCopied ? 'rgba(255, 205, 220, 0.55)' : 'rgba(255, 225, 235, 0.35)'
+                    borderColor: isCopied ? '#f06292' : `${part.color}25`,
+                    backgroundColor: isCopied ? 'rgba(255, 209, 220, 0.6)' : `${part.color}10`
                   }}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="text-lg select-none shrink-0">{isCopied ? "💖" : part.icon}</span>
                     <div className="min-w-0">
-                      <div className="text-xs font-bold truncate flex items-center gap-1.5" style={{ color: '#b83260' }}>
+                      <div className="text-xs font-bold truncate flex items-center gap-1.5" style={{ color: isCopied ? '#ad1457' : part.color }}>
                         <span>{part.title}</span>
-                        {clickCount > 0 && (
-                          <span className="bg-[#b83260]/10 text-[#b83260] text-[9px] px-1.5 py-0.5 rounded-full font-extrabold animate-pulse">
-                            {clickCount === 4 ? "ĐÃ COPY 100% 💖" : `ĐÃ COPY ${clickCount * 25}% 💕`}
+                        {isCopied && (
+                          <span className="bg-[#ad1457]/10 text-[#ad1457] text-[9px] px-1.5 py-0.5 rounded-full font-extrabold animate-pulse">
+                            ĐÃ SAO CHÉP 💖
                           </span>
                         )}
                       </div>
@@ -601,19 +399,19 @@ function PromptFivePartsViewer({
                     onClick={() => handleCopyPart(part.id, part.content, `[Phần ${index + 1}: ${part.title.replace(/###|\*|PART \d+:/gi, "").trim()}]`)}
                     className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-xs transition-all active:scale-95 hover:brightness-110 ml-2"
                     style={{ 
-                      backgroundColor: isCopied ? '#d23a73' : '#b83260',
+                      backgroundColor: isCopied ? '#ad1457' : part.color,
                       color: '#ffffff'
                     }}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
-                    <span>{clickCount > 0 ? `Copy ${clickCount * 25}%` : `Copy Phần ${index + 1}`}</span>
+                    <span>{isCopied ? "Copy Lại Phần Này" : `Copy Phần ${index + 1}`}</span>
                   </button>
                 </div>
 
                 {/* Nội dung của phần đó */}
-                <div className="p-3.5 font-mono text-xs text-pink-950 font-medium leading-relaxed whitespace-pre-wrap bg-[rgba(255,248,250,0.5)]">
+                <div className="p-3.5 font-mono text-xs text-gray-800 leading-relaxed whitespace-pre-wrap bg-white/70">
                   {part.content ? (
                     cleanPromptText(part.content)
                   ) : (
@@ -626,7 +424,7 @@ function PromptFivePartsViewer({
         </div>
       ) : (
         /* FALLBACK: Khi AI trả về văn bản thường chưa có thẻ ### (đang stream những chữ đầu tiên hoặc format khác) */
-        <div className="relative flex flex-col rounded-xl border border-[#f48fb1]/40 bg-white p-3.5 shadow-xs overflow-x-auto" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+        <div className="relative flex flex-col rounded-xl border border-[#f48fb1]/40 bg-white p-3.5 shadow-xs">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
             <span className="text-xs font-bold text-[#b83260] flex items-center gap-1.5">
               <span>✨ Nội dung Prompt đang hiển thị nguyên văn:</span>
@@ -809,13 +607,24 @@ const WorkCardItem = React.memo(function WorkCardItem({
   analyzeCardAestheticAndOutfits,
   setSelectedImgDetail,
   renderTargetSelector,
-  updateGlobalState
+  updateGlobalState,
+  viewHistoryIndex
 }: any) {
-  const cs = roomState.cards?.[c.id] || { note: "", refs: [], output: "" };
+  let cs = roomState.cards?.[c.id] || { note: "", refs: [], output: "", report: "" };
+  if (viewHistoryIndex !== null && roomState.history && roomState.history[viewHistoryIndex]) {
+    const histItem = roomState.history[viewHistoryIndex];
+    if (histItem.cards?.[c.id]) {
+      cs = {
+        ...cs,
+        output: histItem.cards[c.id].output || "",
+        report: histItem.cards[c.id].report || ""
+      };
+    }
+  }
   const cardRefs = cs.refs || [];
 
   return (
-    <article className="work-card" key={`card_${roomDef.id}_${c.id}_${i}`} style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'auto', margin: '0 auto' }}>
+    <article className="work-card" key={`card_${roomDef.id}_${c.id}_${i}`}>
       <div className="work-head">
         <div className="work-title">
           <div className="num">{i + 1}</div>
@@ -825,14 +634,14 @@ const WorkCardItem = React.memo(function WorkCardItem({
           </div>
         </div>
       </div>
-      <div className="work-body" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'auto' }}>
+      <div className="work-body">
         <div className="guide"><b>Nhiệm vụ / từ khóa nhanh của thẻ</b><br/>{c.quick}</div>
         {c.id === "target" && (
           <div className="target-selector">
             {renderTargetSelector(false)}
           </div>
         )}
-        <div className="upload-hero" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'auto' }}>
+        <div className="upload-hero">
           <label className="file-label">
             Thêm ảnh tham chiếu
             <input type="file" multiple accept="image/*" className="file-native" onChange={(e) => handleRefUpload(e, c.id)} />
@@ -876,11 +685,7 @@ const WorkCardItem = React.memo(function WorkCardItem({
           background: 'linear-gradient(135deg, #fff5f8 0%, #fff0f5 100%)',
           borderRadius: '16px',
           border: '1.5px dashed #ffa6c9',
-          boxShadow: '0 4px 15px rgba(255, 182, 193, 0.15)',
-          width: '100%',
-          maxWidth: '100%',
-          boxSizing: 'border-box',
-          overflowX: 'auto'
+          boxShadow: '0 4px 15px rgba(255, 182, 193, 0.15)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -949,7 +754,7 @@ const WorkCardItem = React.memo(function WorkCardItem({
                   <div className="photo-card" key={`outfit_photo_${r.id || r.imageId || 'img'}_${idx}`} style={{ border: '2.5px solid #ffd1e3' }} onClick={() => setSelectedImgDetail({ ...r, cardId: c.id, cardTitle: c.title })}>
                     <SafeImg src={r.data || r.previewUrl || r.storageUrl} alt="" />
                     <span>{r.name || r.fileName}</span>
-                    <div className="analysis-status" style={{ background: 'rgba(255, 240, 243, 0.25)', color: '#ff4d8d', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', border: '1px solid rgba(255, 77, 141, 0.2)' }}>🍬 Trang phục</div>
+                    <div className="analysis-status" style={{ background: '#fff0f3', color: '#ff4d8d' }}>🍬 Trang phục</div>
                     <button className="delete-btn" type="button" onClick={(e) => {
                       e.stopPropagation();
                       const newOutfitRefs = (cs.outfitRefs || []).filter((x: any) => (x.id || x.imageId) !== (r.id || r.imageId));
@@ -979,10 +784,7 @@ const WorkCardItem = React.memo(function WorkCardItem({
               background: '#ffffff',
               borderRadius: '12px',
               border: '1px solid #ffd1e3',
-              padding: '10px 14px',
-              width: '100%',
-              maxWidth: '100%',
-              boxSizing: 'border-box'
+              padding: '10px 14px'
             }}>
               <summary style={{
                 cursor: 'pointer',
@@ -1047,10 +849,7 @@ const WorkCardItem = React.memo(function WorkCardItem({
               background: '#ffffff',
               borderRadius: '12px',
               border: '1px solid #ffd1e3',
-              padding: '10px 14px',
-              width: '100%',
-              maxWidth: '100%',
-              boxSizing: 'border-box'
+              padding: '10px 14px'
             }}>
               <summary style={{
                 cursor: 'pointer',
@@ -1120,7 +919,7 @@ const WorkCardItem = React.memo(function WorkCardItem({
           </label>
         </div>
         {(cs.report || (cs.refs && cs.refs.length > 0)) && (
-          <details open style={{marginTop: '18px', background: 'linear-gradient(135deg, #fdf8fb 0%, #f7f1f5 100%)', borderRadius: '16px', border: '2px solid #e5ccd8', padding: '14px 18px', fontSize: '0.88rem', boxShadow: '0 6px 18px rgba(114,83,101,0.06)', width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'auto'}}>
+          <details open style={{marginTop: '18px', background: 'linear-gradient(135deg, #fdf8fb 0%, #f7f1f5 100%)', borderRadius: '16px', border: '2px solid #e5ccd8', padding: '14px 18px', fontSize: '0.88rem', boxShadow: '0 6px 18px rgba(114,83,101,0.06)'}}>
             <summary style={{cursor: 'pointer', fontWeight: 800, color: '#4a2f41', display: 'flex', alignItems: 'center', justifyContent: 'space-between', listStyle: 'none', userSelect: 'none'}}>
               <div style={{display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'}}>
                 <span style={{fontSize: '1.05rem'}}>🔮 BẢN THẨM ĐỊNH NGHỆ THUẬT & TRÍCH XUẤT DNA THỊ GIÁC SIÊU CHI TIẾT</span>
@@ -1141,7 +940,7 @@ const WorkCardItem = React.memo(function WorkCardItem({
                 <div style={{marginBottom: '12px', padding: '10px 14px', background: '#ffffff', borderRadius: '10px', border: '1px solid #ebd3e0', boxShadow: '0 2px 6px rgba(0,0,0,0.01)'}}>
                   <b>📎 Danh sách file ảnh đã đính kèm để trích xuất DNA:</b>
                   <ul style={{margin: '6px 0 0 16px', padding: 0, fontSize: '0.8rem', color: '#5c4353'}}>
-                    {cs.refs.filter((r: any) => r.storyId === currentStory.id).map((r: any, idx: number) => (
+                    {cs.refs.map((r: any, idx: number) => (
                       <li key={`ref_${r.id || r.imageId || 'img'}_${idx}`} style={{marginBottom: '3px'}}>
                         <code style={{background: '#fcf3f7', padding: '2px 4px', borderRadius: '4px', color: '#d23a73'}}>{r.name || r.fileName || `Image_${idx+1}`}</code> (ID: <code>{(r.id || r.imageId || '').slice(0, 12)}...</code>) — Trạng thái AI: <span style={{color: '#16a34a', fontWeight: 700}}>✅ Đã nạp thành công (Vùng nhớ In-Context đầy đủ)</span>
                       </li>
@@ -1160,7 +959,7 @@ const WorkCardItem = React.memo(function WorkCardItem({
                       toast("📋 Đã copy báo cáo thẩm định nghệ thuật");
                     }} style={{fontSize: '0.75rem', padding: '4px 10px', background: '#ffffff', border: '1px solid #ebd3e0', borderRadius: '8px', fontWeight: 700, color: '#8a2451'}}>📋 Copy Báo Cáo Học Thuật</button>
                   </div>
-                  <pre style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', padding: '16px', borderRadius: '12px', border: '1.5px solid rgba(235, 211, 224, 0.4)', maxHeight: '400px', overflowY: 'auto', fontSize: '0.85rem', fontFamily: '"JetBrains Mono", monospace', color: '#2d1e29', lineHeight: 1.6, boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.01)'}}>
+                  <pre style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#ffffff', padding: '16px', borderRadius: '12px', border: '1.5px solid #ebd3e0', maxHeight: '400px', overflowY: 'auto', fontSize: '0.85rem', fontFamily: '"JetBrains Mono", monospace', color: '#2d1e29', lineHeight: 1.6, boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.02)'}}>
                     {cs.report}
                   </pre>
                 </div>
@@ -1177,7 +976,7 @@ const WorkCardItem = React.memo(function WorkCardItem({
         )}
 
         {cs.output ? (
-          <div style={{marginTop: '16px', padding: '16px', background: 'rgba(255, 240, 246, 0.2)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderRadius: '12px', border: isApiRunning ? '2px solid #d23a73' : '1px solid rgba(240, 213, 226, 0.4)', transition: 'all 0.3s ease', boxShadow: '0 4px 12px rgba(210,58,115,0.05)', width: '100%', maxWidth: '100%', boxSizing: 'border-box'}}>
+          <div style={{marginTop: '16px', padding: '16px', background: '#fff0f6', borderRadius: '12px', border: isApiRunning ? '2px solid #d23a73' : '1px solid #f0d5e2', transition: 'all 0.3s ease', boxShadow: '0 4px 12px rgba(210,58,115,0.08)'}}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', flexWrap: 'wrap', gap: '8px'}}>
               <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                 <b style={{color: '#d23a73', fontSize: '0.95rem'}}>✨ FINAL PRODUCTION-READY PROMPT (Chia 5 Phần Thẩm Mỹ & Có Copy Liền Mạch):</b>
@@ -1210,7 +1009,7 @@ const WorkCardItem = React.memo(function WorkCardItem({
   );
 }, areEqual);
 
-const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, onBack, onHome, onOpenDrawer, progress, setProgress, isCompactHeader, onToggleCompact, onOpenStoryForm }: any) => {
+export default function RoomView({ roomDef, roomState, currentStory, state, save, toast, onBack, onHome, onOpenDrawer, progress, setProgress, isCompactHeader, onToggleCompact, onOpenStoryForm }: any) {
 
   const [, setTick] = useState(0);
   const forceUpdate = () => setTick(t => t + 1);
@@ -1219,6 +1018,11 @@ const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, on
   const [apiError, setApiError] = useState<string | null>(null);
   const [catAnalyzingCardId, setCatAnalyzingCardId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const latestRoomStateRef = useRef<LipstickRoomState>(roomState);
+
+  useEffect(() => {
+    latestRoomStateRef.current = roomState;
+  }, [roomState]);
   const [visualTarget, setVisualTarget] = useState<"cover" | "avatar" | "background" | null>(null);
   const [selectedHistoryPayload, setSelectedHistoryPayload] = useState<any>(null);
   const [showContextPreview, setShowContextPreview] = useState(false);
@@ -1303,95 +1107,107 @@ const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, on
     completed: false,
     error: null,
     stage: 'idle',
-    stageLabel: '',
-    stageDetail: ''
+    stageLabel: 'Chờ lệnh...',
+    stageDetail: 'Hệ thống đã sẵn sàng'
   });
 
-  // Non-blocking streaming buffer refs and UI state
-  const streamBufferRef = useRef<string>("");
-  const lastFlushTimeRef = useRef<number>(0);
-  const flushTimerRef = useRef<any>(null);
-  const chunksCountRef = useRef<number>(0);
-  const startTimeRef = useRef<number>(0);
-  const firstChunkReportedRef = useRef<boolean>(false);
-  const apiAbortControllerRef = useRef<AbortController | null>(null);
-  const [livePreviewText, setLivePreviewText] = useState<string>("");
-  const [autoScrollPreview, setAutoScrollPreview] = useState<boolean>(true);
-  const previewScrollRef = useRef<HTMLDivElement>(null);
-  const [isApiRunning, setIsApiRunning] = useState<boolean>(false);
-  const [isWidgetCollapsed, setIsWidgetCollapsed] = useState<boolean>(false);
-  const [isWorkListCollapsed, setIsWorkListCollapsed] = useState(!!roomState.result);
+  const [isApiRunning, setIsApiRunning] = useState(false);
+  const [livePreviewText, setLivePreviewText] = useState("");
+  const [isWidgetCollapsed, setIsWidgetCollapsed] = useState(false);
+  const [isWorkListCollapsed, setIsWorkListCollapsed] = useState(true);
+  const [autoScrollPreview, setAutoScrollPreview] = useState(true);
   const [viewHistoryIndex, setViewHistoryIndex] = useState<number | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (apiAbortControllerRef.current) {
-        apiAbortControllerRef.current.abort();
-        apiAbortControllerRef.current = null;
-      }
-      if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
-      setProgress(0);
-      setIsApiRunning(false);
-    };
-  }, [roomDef?.id]);
-
+  const apiAbortControllerRef = useRef<AbortController | null>(null);
+  const streamBufferRef = useRef("");
+  const lastFlushTimeRef = useRef(0);
+  const chunksCountRef = useRef(0);
+  const firstChunkReportedRef = useRef(false);
+  const startTimeRef = useRef(0);
+  const flushTimerRef = useRef<any>(null);
+  const previewScrollRef = useRef<HTMLDivElement | null>(null);
+  const forceUpdateTimerRef = useRef<any>(null);
   const streamSaveTimeoutRef = useRef<any>(null);
 
-  const distributeStreamToCardsLive = (text: string) => {
+  const distributeStreamToCardsLive = async (text: string) => {
     if (!text) return;
-    const rs = { ...roomState };
-    if (!rs.cards) rs.cards = {};
+    
+    try {
+      // Sử dụng bộ đệm tạm thời thay vì clone toàn bộ object lớn
+      const updatedCards: any = {};
+      const parts = text.split(/\[CARD_ID:\s*([a-zA-Z0-9_\-]+)\]/);
+      
+      let hasChanged = false;
 
-    const parts = text.split(/\[CARD_ID:\s*([a-zA-Z0-9_\-]+)\]/);
-    for (let i = 1; i < parts.length; i += 2) {
-      const cardId = parts[i]?.trim();
-      const cardContent = parts[i + 1] || "";
-      if (!cardId) continue;
+      for (let i = 1; i < parts.length; i += 2) {
+        // Cứ mỗi 3 thẻ, ta yield một chút (khoảng 1 frame) để trình duyệt rảnh tay xử lý UI/Touch
+        if (i > 1 && (i - 1) / 2 % 3 === 0) {
+          await new Promise(r => setTimeout(r, 16));
+        }
 
-      if (!rs.cards[cardId]) {
-        rs.cards[cardId] = { note: "", refs: [], output: "", report: "" };
-      }
+        const cardId = parts[i]?.trim();
+        const cardContent = parts[i + 1] || "";
+        if (!cardId) continue;
 
-      const finalPromptMarker = "[FINAL PROMPT]";
-      const markerIndex = cardContent.indexOf(finalPromptMarker);
+        const finalPromptMarker = "[FINAL PROMPT]";
+        const markerIndex = cardContent.indexOf(finalPromptMarker);
 
-      let report = "";
-      let output = "";
+        let report = "";
+        let output = "";
 
-      if (markerIndex !== -1) {
-        report = cardContent.slice(0, markerIndex);
-        output = cardContent.slice(markerIndex + finalPromptMarker.length);
-      } else {
-        const firstHashIndex = cardContent.indexOf("###");
-        if (firstHashIndex !== -1) {
-          report = cardContent.slice(0, firstHashIndex);
-          output = cardContent.slice(firstHashIndex);
+        if (markerIndex !== -1) {
+          report = cardContent.slice(0, markerIndex);
+          output = cardContent.slice(markerIndex + finalPromptMarker.length);
         } else {
-          report = cardContent;
-          output = "";
+          const firstHashIndex = cardContent.indexOf("###");
+          if (firstHashIndex !== -1) {
+            report = cardContent.slice(0, firstHashIndex);
+            output = cardContent.slice(firstHashIndex);
+          } else {
+            report = cardContent;
+            output = "";
+          }
+        }
+
+        report = report.replace("[REFERENCE FIDELITY REPORT]", "").trim();
+        report = report.replace(/---+$/, "").trim();
+        output = output.trim();
+
+        const oldCard = roomState.cards?.[cardId] || {};
+        if (oldCard.report !== report || oldCard.output !== output) {
+          updatedCards[cardId] = {
+            ...oldCard,
+            report: report || oldCard.report || "",
+            output: output || oldCard.output || ""
+          };
+          hasChanged = true;
         }
       }
 
-      report = report.replace("[REFERENCE FIDELITY REPORT]", "").trim();
-      report = report.replace(/---+$/, "").trim();
-      output = output.trim();
+      if (hasChanged) {
+        // Chỉ update roomState trong story một cách trực tiếp và forceUpdate UI
+        if (!currentStory.rooms[roomDef.id]) {
+           currentStory.rooms[roomDef.id] = { ...roomState };
+        }
+        
+        // Merge cards an toàn
+        currentStory.rooms[roomDef.id].cards = { 
+          ...currentStory.rooms[roomDef.id].cards, 
+          ...updatedCards 
+        };
 
-      rs.cards[cardId] = {
-        ...rs.cards[cardId],
-        report: report || rs.cards[cardId].report || "",
-        output: output || rs.cards[cardId].output || ""
-      };
+        if (forceUpdateTimerRef.current) cancelAnimationFrame(forceUpdateTimerRef.current);
+        forceUpdateTimerRef.current = requestAnimationFrame(() => {
+          forceUpdate();
+        });
+      }
+    } catch (err) {
+      console.error("Lỗi khi phân bổ thẻ (Raw text fallback):", err);
+      // Fallback: Nếu lỗi thì ít nhất vẫn giữ text thô trong kết quả phòng
+      if (roomState) roomState.result = text;
     }
-
-    currentStory.rooms[roomDef.id] = rs;
     
-    // Throttle save during streaming to prevent UI lag
     if (streamSaveTimeoutRef.current) clearTimeout(streamSaveTimeoutRef.current);
-    streamSaveTimeoutRef.current = setTimeout(() => {
-      save(state);
-    }, 1000); 
-    
-    forceUpdate(); // Still need this to update the local view immediately
   };
 
   useEffect(() => {
@@ -1605,13 +1421,13 @@ const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, on
     if (mode === 'cinema_poster' || mode === 'poster_all') {
       return `🎬 [DEDICATED CINEMA / ANIME / COMIC MOVIE POSTER & CAMPAIGN ENSEMBLE FOCUS - POSTER PHIM / QUẢNG CÁO TỔNG THỂ TOÀN BỘ NHÂN VẬT]:
 👉 THE MANDATORY GOAL: Generate a grand, highly cinematic, promotional movie poster or campaign artwork that includes ALL MAIN CHARACTERS (Both {{user}} and ALL Bot Characters: ${chars.map((c: any) => c.displayName || 'Unnamed').join(', ')}) together in one dynamic, epic composition!
-👉 REFERENCE IMAGE ADAPTATION RULE (CRITICAL FOR POSTER MODE): Even if the reference image provided by the user shows ONLY ONE person or a simple portrait, YOU MUST NOT limit the output to one character! Instead, EXTRACT the art style, aesthetic vibe, lighting, color, and composition from the reference image and apply it to ALL characters.
-👉 MANDATORY FIDELITY - FACE & HAIR ART STYLE: You must capture the EXACT drawing technique, line-art quality, and rendering style of the character's face and hair from the reference image. If the reference has sharp, thin ink lines for eyes, you must use sharp thin lines. If the hair has soft, painterly highlights, you must replicate that exact hair rendering technique. NEVER default to generic AI facial features or generic AI hair textures!`;
+👉 REFERENCE IMAGE ADAPTATION RULE (CRITICAL FOR POSTER MODE): Even if the reference image provided by the user shows ONLY ONE person or a simple portrait, YOU MUST NOT limit the output to one character!     Instead, EXTRACT the art style, aesthetic vibe, lighting, color, and composition from the reference image and apply it to ALL characters.
+    `;
     }
     return "";
   }, [getBotCharactersList]);
 
-  const updateGlobalState = useCallback((newRoomState: LipstickRoomState) => {
+  const updateGlobalState = useCallback((newRoomState: LipstickRoomState, immediate = false) => {
     const newStory = {
       ...currentStory,
       rooms: {
@@ -1623,7 +1439,7 @@ const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, on
       ...state,
       stories: state.stories.map((s: any) => s.id === newStory.id ? newStory : s)
     };
-    save(newState);
+    save(newState, immediate);
   }, [currentStory, roomDef.id, state, save]);
 
   const deleteHistoryItem = useCallback((index: number) => {
@@ -2063,8 +1879,8 @@ const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, on
     );
   }, [getBotCharactersList, roomDef, roomState.targetMode, updateTargetMode]);
 
-  const buildContextPayload = useCallback((customRoomState?: LipstickRoomState) => {
-    const rs = customRoomState || roomState;
+  const buildContextPayload = useCallback((rsToUse?: LipstickRoomState) => {
+    const rs = rsToUse || roomState;
     const sa = rs.styleAnalyzer || { refs: [], selected: [], analysis: "" };
     const target = rs.targetMode || 'bot';
     const cards = roomDef.cards || [];
@@ -2098,17 +1914,12 @@ const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, on
       summary: f.summary
     }));
 
-    const currentPayload = {
-      feature: "Lipstick Prompt Rooms",
-      // ... (reconstructing the structure)
-    }; // Wait, I should use the actual logic from before
-
     const manualChars = Object.values(manualInput).join(" ").length;
     const manualWords = Object.values(manualInput).join(" ").trim().split(/\s+/).length;
     const filesChars = importedFiles.reduce((acc: number, f: any) => acc + (f.characterCount || 0), 0);
     const filesWords = importedFiles.reduce((acc: number, f: any) => acc + (f.wordCount || 0), 0);
 
-    const saRefs = (sa.refs || []).filter((r: any) => r.storyId === currentStory.id).map((r: any) => ({
+    const saRefs = (sa.refs || []).map((r: any) => ({
       imageId: r.imageId || r.id || uuidv4(),
       storyId: currentStory.id,
       roomId: roomDef.id,
@@ -2130,8 +1941,9 @@ const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, on
     }));
 
     const workCards = cards.map((c: any) => {
-      const cs = rs.cards[c.id] || { note: "", refs: [], output: "" };
-      const cRefs = (cs.refs || []).filter((r: any) => r.storyId === currentStory.id).map((r: any) => {
+      const cs = rs.cards?.[c.id] || { note: "", refs: [], outfitRefs: [], output: "" };
+      const allCardRefs = [...(cs.refs || []), ...(cs.outfitRefs || [])];
+      const cRefs = allCardRefs.map((r: any) => {
         let purp = `${c.id}_reference (${c.desc || c.title})`;
         const idLower = (c.id || "").toLowerCase();
         const titleLower = (c.title || "").toLowerCase();
@@ -2182,9 +1994,29 @@ const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, on
       };
     });
 
-    const allImages = [...saRefs, ...workCards.flatMap(c => c.referenceImages)];
-    const analyzedImages = allImages.filter(img => img.analysisStatus === 'analyzed');
-    const totalTokensEst = Math.ceil((manualChars + filesChars) / 3.5) + (allImages.length * 1000);
+    const botCharRefs = botCharactersList.flatMap((c: any, idx: number) => (c.referenceImages || []).map((r: any) => ({
+      imageId: r.id || r.imageId || uuidv4(),
+      storyId: currentStory.id,
+      roomId: roomDef.id,
+      roomTitle: roomDef.title,
+      cardId: `bot_profile_${c.id || idx + 1}`,
+      cardTitle: `Hồ sơ Bot Char: ${c.displayName || 'Unnamed'}`,
+      imageType: "bot_character_reference",
+      fileName: r.name || r.fileName || "bot_ref.png",
+      purpose: "bot_character_reference (khí chất, tạo hình đặc trưng, độ tuổi thị giác)",
+      mimeType: r.mimeType || r.type || "image/png",
+      fileSizeBytes: r.fileSizeBytes || r.size || 0,
+      data: r.data || r.previewUrl || r.storageUrl,
+      previewUrl: r.previewUrl || r.data || r.storageUrl,
+      storageUrl: r.storageUrl || r.data || r.previewUrl,
+      analysisStatus: r.analysisStatus || 'analyzed',
+      imageAnalysisText: r.imageAnalysisText || r.analysisResult || `Ảnh tham chiếu riêng cho nhân vật ${c.displayName || 'Bot Char'}`,
+      imageAnalysisJson: r.imageAnalysisJson || null
+    })));
+
+    const allImages = [...saRefs, ...botCharRefs, ...workCards.flatMap((c: any) => c.referenceImages)];
+    const analyzedImages = allImages.filter((img: any) => img.analysisStatus === 'analyzed');
+    const totalTokensEst = Math.ceil((manualChars + filesChars) / 3.5) + (allImages.length * 250);
 
     const referenceImageManifest = allImages.map((img: any) => ({
       storyId: img.storyId,
@@ -2197,9 +2029,7 @@ const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, on
       purpose: img.purpose || "reference_image",
       analysisStatus: img.analysisStatus,
       imageAnalysisText: img.imageAnalysisText,
-      annotations: img.annotations || [],
-      previewUrl: img.previewUrl,
-      storageUrl: img.storageUrl
+      annotations: img.annotations || []
     }));
 
     return {
@@ -2269,15 +2099,7 @@ const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, on
       negativePromptGuard: "bad hands, mutated anatomy, extra limbs, blurry, watermark, text, low resolution, distorted faces, bad eyes",
       outputRequirement: "Return final production-ready image prompt only."
     };
-  }, [roomState, roomDef, currentStory, getBotCharactersList, getTargetLabel, getTargetInstructions]);
-
-  const currentPayload = React.useMemo(() => {
-    // Only compute if actually needed for display or during API run
-    if (!showContextPreview && !isApiRunning) return null;
-    return buildContextPayload();
-  }, [buildContextPayload, showContextPreview, isApiRunning]);
-
-  const stats = currentPayload?.contextStats;
+  }, [roomState, roomDef, currentStory, getBotCharactersList]);
 
   const handleVisualChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -2317,7 +2139,7 @@ const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, on
     const rs = roomState;
     const list: any[] = [];
     if (rs.styleAnalyzer?.refs) {
-      rs.styleAnalyzer.refs.filter((r: any) => r.storyId === currentStory.id).forEach((r: any) => {
+      rs.styleAnalyzer.refs.forEach((r: any) => {
         list.push({
           ...r,
           cardId: 'style_analyzer',
@@ -2330,7 +2152,7 @@ const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, on
     for (const c of roomDef.cards || []) {
       const cs = rs.cards[c.id];
       if (cs?.refs) {
-        cs.refs.filter((r: any) => r.storyId === currentStory.id).forEach((r: any) => {
+        cs.refs.forEach((r: any) => {
           list.push({
             ...r,
             cardId: c.id,
@@ -2358,9 +2180,9 @@ const RoomViewBase = ({ roomDef, roomState, currentStory, state, save, toast, on
     return list;
   };
 
-  const analyzeSingleImage = async (imgRef: any, cardId: string, cardTitle: string, customRoomState?: LipstickRoomState) => {
+  const analyzeSingleImage = async (imgRef: any, cardId: string, cardTitle: string) => {
     toast(`⏳ Đang phân tích AI Vision cho ảnh: ${imgRef.name || imgRef.fileName}...`);
-    const rs = customRoomState ? customRoomState : { ...roomState };
+    const rs = { ...roomState };
     
     let targetRef: any = null;
     if (cardId === 'style_analyzer' && rs.styleAnalyzer?.refs) {
@@ -2563,9 +2385,9 @@ Return ONLY valid JSON with this exact schema:
         }
       }
     };
-    updateGlobalState(newRoomState);
+    updateGlobalState(newRoomState, true);
     toast("🍬 Vợ yêu ơi, chồng đã nạp thành công ảnh tham chiếu Trang phục từ viên kẹo ngọt ngào rồi nhé! Sẵn sàng đưa vào thiết kế cho vợ rồi đó!");
-  }, [roomState, currentStory.id, roomDef.id, updateGlobalState, toast]);
+  }, [roomState, currentStory, roomDef.id, updateGlobalState, toast]);
 
   const toggleTraitSelection = useCallback((cardId: string, trait: string) => {
     const currentCard = roomState.cards[cardId];
@@ -2586,7 +2408,7 @@ Return ONLY valid JSON with this exact schema:
         }
       }
     };
-    updateGlobalState(newRoomState);
+    updateGlobalState(newRoomState, true);
   }, [roomState, updateGlobalState]);
 
   const selectOutfitOption = useCallback((cardId: string, outfit: string) => {
@@ -2603,7 +2425,7 @@ Return ONLY valid JSON with this exact schema:
         }
       }
     };
-    updateGlobalState(newRoomState);
+    updateGlobalState(newRoomState, true);
   }, [roomState, updateGlobalState]);
 
   const analyzeCardAestheticAndOutfits = useCallback(async (cardId: string, cardTitle: string) => {
@@ -2742,12 +2564,13 @@ Example return schema:
     if (!files) return;
     
     const newRefs: any[] = [];
+    const pendingFiles: any[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const data = await toBase64(file);
       const imgId = uuidv4();
       const now = new Date().toISOString();
-      newRefs.push({
+      const tempUrl = URL.createObjectURL(file);
+      const placeholder = {
         imageId: imgId,
         storyId: currentStory.id,
         roomId: roomDef.id,
@@ -2757,19 +2580,24 @@ Example return schema:
         mimeType: file.type,
         size: file.size,
         createdAt: now,
-        previewUrl: data,
-        storageUrl: data,
-        analysisStatus: 'in_context',
+        previewUrl: tempUrl,
+        storageUrl: tempUrl,
+        analysisStatus: 'pending',
         id: imgId,
         name: file.name,
         type: file.type,
-        data: data,
-        time: now
-      });
+        data: tempUrl,
+        time: now,
+        _file: file
+      };
+      newRefs.push(placeholder);
+      pendingFiles.push(placeholder);
     }
 
     const currentCard = roomState.cards[cardId] || { note: "", refs: [], output: "" };
-    const newRoomState: LipstickRoomState = {
+    
+    // 1. Cập nhật global state ngay lập tức với placeholder (blob urls) để người dùng thấy ảnh ngay
+    const tempRoomState = {
       ...roomState,
       cards: {
         ...roomState.cards,
@@ -2779,33 +2607,82 @@ Example return schema:
         }
       }
     };
-    updateGlobalState(newRoomState);
-    toast("✅ Đã đính kèm ảnh! Sẵn sàng trong Context Windows để AI đọc trực tiếp khi bấm Tạo Prompt.");
-  }, [roomState, currentStory.id, roomDef.id, updateGlobalState, toast]);
+    updateGlobalState(tempRoomState, false); // Lưu tạm vào memory/local first
+    toast("✅ Đã đính kèm ảnh! Đang nén dữ liệu bền vững...");
 
-  const replayHistory = useCallback((item: any) => {
-    if (!window.confirm("Bạn có chắc muốn xem lại kết quả cũ? Dữ liệu chữ (text/prompt) sẽ thay đổi nhưng ảnh tham chiếu sẽ được giữ nguyên!")) return;
-    
-    const newRoomState: LipstickRoomState = {
-      ...roomState,
-      result: item.result || "",
-      cards: { ...roomState.cards }
-    };
-
-    if (item.cards && typeof item.cards === 'object') {
-      Object.keys(item.cards).forEach(k => {
-        const currentCard = newRoomState.cards[k] || { note: "", refs: [], output: "", report: "" };
-        newRoomState.cards[k] = {
-          ...currentCard,
-          output: item.cards[k].output || ""
-        };
+    // 2. Chuyển đổi sang base64 ngay lập tức (không chờ setTimeout 100ms)
+    (async () => {
+      const processedRefs = [];
+      for (const pending of pendingFiles) {
+        try {
+          const data = await toBase64(pending._file);
+          processedRefs.push({ 
+            ...pending, 
+            data, 
+            previewUrl: data, 
+            storageUrl: data, 
+            analysisStatus: 'in_context', 
+            _file: undefined 
+          });
+        } catch (err) {
+          console.error("Lỗi nén ảnh:", err);
+          processedRefs.push(pending);
+        }
+      }
+      
+      // 3. Cập nhật vào global state và lưu NGAY LẬP TỨC vào IndexedDB
+      const latestRoom = latestRoomStateRef.current;
+      const latestCard = latestRoom.cards[cardId] || { note: "", refs: [], output: "" };
+      
+      const finalCardRefs = [...(latestCard.refs || [])].map((r: any) => {
+        const matching = processedRefs.find(p => p.imageId === r.imageId || p.id === r.id);
+        if (matching && matching.data) {
+          return { ...r, ...matching, _file: undefined };
+        }
+        return r;
       });
-    }
-    
-    updateGlobalState(newRoomState);
+
+      // Nếu ảnh mới chưa có trong mảng (do race condition), hãy thêm vào
+      processedRefs.forEach(p => {
+        if (!finalCardRefs.some(r => (r.imageId === p.imageId || r.id === p.id))) {
+          finalCardRefs.push(p);
+        }
+      });
+
+      const updatedRoom = {
+        ...latestRoom,
+        cards: {
+          ...latestRoom.cards,
+          [cardId]: {
+            ...latestCard,
+            refs: finalCardRefs
+          }
+        }
+      };
+
+      // Gọi save với immediate=true để ghi vào IndexedDB ngay
+      const newStory = {
+        ...currentStory,
+        rooms: {
+          ...(currentStory.rooms || {}),
+          [roomDef.id]: updatedRoom
+        }
+      };
+      const newState = {
+        ...state,
+        stories: state.stories.map((s: any) => s.id === newStory.id ? newStory : s)
+      };
+      
+      await save(newState, true); 
+      toast("✨ Đã lưu ảnh bền vững vào bộ nhớ!");
+    })();
+  }, [roomState, currentStory, roomDef.id, state, save, toast]);
+
+  const replayHistory = useCallback((item: any, index: number) => {
+    setViewHistoryIndex(index);
     setIsWorkListCollapsed(true);
-    toast("✨ Đã khôi phục hiển thị kết quả từ lịch sử (Không gọi lại API)!");
-  }, [roomState, updateGlobalState, toast]);
+    toast(`✨ Đang hiển thị kết quả từ lịch sử Đợt #${roomState.history.length - index} (Không thay đổi ảnh tham chiếu hay ghi đè dữ liệu mới nhất)!`);
+  }, [roomState.history, toast]);
 
   const runRoom = useCallback(async () => {
     if (progress > 0 && progress < 100) {
@@ -2814,6 +2691,7 @@ Example return schema:
     }
     
     setApiError(null);
+    setViewHistoryIndex(null);
 
     const cards = roomDef.cards;
     if (!cards || cards.length === 0) {
@@ -2858,76 +2736,20 @@ Example return schema:
     toast("⏳ Bắt đầu quy trình 8 bước xử lý API viết prompt...");
     await new Promise(resolve => setTimeout(resolve, 35));
 
-    const rs = { ...roomState };
-    
-    // RESET ALL REFERENCE IMAGES TO PENDING TO VẬN HÀNH CƠ CHẾ TỪ ĐẦU (FRESH START)
-    let hasUpdatedRefs = false;
-    if (rs.styleAnalyzer?.refs) {
-      rs.styleAnalyzer.refs = rs.styleAnalyzer.refs.map((r: any) => {
-        hasUpdatedRefs = true;
-        return {
-          ...r,
-          analysisStatus: 'pending',
-          imageAnalysisText: 'Chưa phân tích',
-          analysisResult: undefined,
-          imageAnalysisJson: null
-        };
-      });
-    }
-    if (rs.cards) {
-      rs.cards = { ...rs.cards };
-      for (const cardId of Object.keys(rs.cards)) {
-        const cs = rs.cards[cardId];
-        if (cs) {
-          const updatedCard = { ...cs };
-          let cardChanged = false;
-          if (updatedCard.refs) {
-            updatedCard.refs = updatedCard.refs.map((r: any) => {
-              hasUpdatedRefs = true;
-              cardChanged = true;
-              return {
-                ...r,
-                analysisStatus: 'pending',
-                imageAnalysisText: 'Chưa phân tích',
-                analysisResult: undefined,
-                imageAnalysisJson: null
-              };
-            });
-          }
-          if (updatedCard.outfitRefs) {
-            updatedCard.outfitRefs = updatedCard.outfitRefs.map((r: any) => {
-              hasUpdatedRefs = true;
-              cardChanged = true;
-              return {
-                ...r,
-                analysisStatus: 'pending',
-                imageAnalysisText: 'Chưa phân tích',
-                analysisResult: undefined,
-                imageAnalysisJson: null
-              };
-            });
-          }
-          if (cardChanged) {
-            rs.cards[cardId] = updatedCard;
-          }
-        }
-      }
-    }
-    if (hasUpdatedRefs) {
-      currentStory.rooms[roomDef.id] = rs;
-      updateGlobalState(rs);
-      save({ ...state });
-      console.log("[Auto-Reset] Resetted reference images analysisStatus to 'pending' for a completely fresh start.");
-    }
-
+    const latestRoomState = currentStory.rooms?.[roomDef.id] || roomState;
+    const normalizedRoomState = {
+      ...latestRoomState,
+      cards: latestRoomState.cards || {}
+    };
+    const rs = normalizedRoomState;
     const sa = rs.styleAnalyzer || { refs: [], selected: [], analysis: "" };
     const target = rs.targetMode || 'bot';
     const isComicMode = target === 'manga_webtoon_mode' || 
                         roomDef?.id === 'manga_webtoon' || 
                         (roomDef?.id !== 'marketing_pr_anime' && roomDef?.id !== 'bot_char_marketing_art' && roomDef?.id !== 'bot_char_hobbies_vibe' && roomDef?.id !== 'fandom_merch' && /webtoon|truyện tranh/i.test(roomDef?.title || ''));
 
-    const payloadObj = buildContextPayload(rs);
-    const allRefsList = [...payloadObj.styleAnalyzer.referenceImages, ...payloadObj.workCards.flatMap(c => c.referenceImages)];
+    let payloadObj = buildContextPayload(normalizedRoomState);
+    let allRefsList = [...payloadObj.styleAnalyzer.referenceImages, ...payloadObj.workCards.flatMap(c => c.referenceImages)];
 
     setApiSignals(prev => ({
       ...prev,
@@ -2939,20 +2761,19 @@ Example return schema:
 
     // Step 2: Gom tất cả ảnh từ Bot Characters, Style Analyzer, và toàn bộ Thẻ làm việc (Work Cards) vào Payload!
     // TUYỆT ĐỐI KHÔNG lọc trùng (deduplicate) vì mỗi thẻ có mục đích và ảnh riêng biệt!
-    const refreshedPayload = buildContextPayload(rs);
+    const refreshedPayload = buildContextPayload(normalizedRoomState);
     
-    // Thu thập tất cả ảnh thô có chứa URL hợp lệ để lọc trùng chính xác theo URL
-    const uniqueRefsWithUrls: any[] = [];
-    const seenUrls = new Set<string>();
+    // Thu thập tất cả ảnh thô có chứa URL hợp lệ
+    // CHỒNG YÊU: Xóa bỏ seenIds để gửi toàn bộ ảnh active như vợ dặn nhen!
+    const allActiveRefs: any[] = [];
     
     const tryAddRef = (r: any) => {
       if (!r) return;
       const url = r.data || r.previewUrl || r.storageUrl;
       if (!url) return;
-      if (!seenUrls.has(url)) {
-        seenUrls.add(url);
-        uniqueRefsWithUrls.push(r);
-      }
+      const id = r.imageId || r.id;
+      if (!id) return;
+      allActiveRefs.push(r);
     };
 
     // 1. Bot character reference images
@@ -2975,31 +2796,39 @@ Example return schema:
       }
     }
 
-    // Tạo bộ ánh xạ chỉ số toàn cục (Global Image Index Mapping #1, #2, #3...) theo đúng thứ tự duy nhất gửi đi
+    // Tạo bộ ánh xạ chỉ số toàn cục (Global Image Index Mapping #1, #2, #3...)
+    // Vì không lọc trùng, nên mỗi instance của ảnh sẽ có một index riêng nhen vợ yêu
     const refToGlobalIndexMap = new Map<any, number>();
-    const idToGlobalIndexMap = new Map<string, number>();
-    const urlToGlobalIndexMap = new Map<string, number>();
     const orderedVisionRefs: any[] = [];
     let imgCounter = 1;
 
-    for (const r of uniqueRefsWithUrls) {
+    for (const r of allActiveRefs) {
       const idx = imgCounter++;
-      const url = r.data || r.previewUrl || r.storageUrl;
       refToGlobalIndexMap.set(r, idx);
-      if (r.imageId) idToGlobalIndexMap.set(r.imageId, idx);
-      if (r.id) idToGlobalIndexMap.set(r.id, idx);
-      if (url) urlToGlobalIndexMap.set(url, idx);
       orderedVisionRefs.push(r);
     }
 
     const getGIdx = (r: any, fallbackIdx: number) => {
       if (!r) return fallbackIdx;
-      const url = r.data || r.previewUrl || r.storageUrl;
-      if (url && urlToGlobalIndexMap.has(url)) {
-        return urlToGlobalIndexMap.get(url)!;
-      }
-      return refToGlobalIndexMap.get(r) || (r.imageId && idToGlobalIndexMap.get(r.imageId)) || (r.id && idToGlobalIndexMap.get(r.id)) || fallbackIdx;
+      return refToGlobalIndexMap.get(r) || fallbackIdx;
     };
+
+    // Đảm bảo bộ kiểm tra Base64 chỉ quét các trường văn bản thuần túy, không chặn request nếu Base64 nằm đúng trong trường ảnh nhen vợ!
+    const textContextToCheck = {
+      story: currentStory.story,
+      userProfile: currentStory.userProfile,
+      botProfiles: currentStory.botProfiles,
+      sideCharacters: currentStory.sideCharacters,
+      requirements: currentStory.requirements,
+      cardNotes: cards.map((c: any) => rs.cards[c.id]?.note || ""),
+      fileTexts: (currentStory.files || []).map((f: any) => f.text || f.extractedText || "")
+    };
+
+    if (JSON.stringify(textContextToCheck).includes("data:image")) {
+      toast("⚠️ Lỗi Đồng Bộ: Phát hiện Base64 rò rỉ vào trường văn bản (Ghi chú hoặc Cốt truyện). Xin hãy kiểm tra lại nội dung văn bản nhen!");
+      setApiSignals(prev => ({ ...prev, stageDetail: 'Lỗi: Tìm thấy Base64 trong text fields.', error: 'Lỗi Base64 trong Text' }));
+      return;
+    }
 
     if (orderedVisionRefs.length > 0) {
       toast(`🌸 Đã đính kèm ${orderedVisionRefs.length} ảnh tham chiếu làm tư liệu hướng dẫn nghệ thuật cho AI!`);
@@ -3015,15 +2844,6 @@ Example return schema:
     const pendingRefs = orderedVisionRefs.filter(
       r => !r.imageAnalysisText || r.imageAnalysisText === 'Chưa phân tích' || r.analysisStatus !== 'analyzed'
     );
-    
-    if (orderedVisionRefs.length - pendingRefs.length > 0) {
-      setApiSignals(prev => ({
-        ...prev,
-        stageDetail: `✅ Đã khôi phục thành công Context Windows của ${orderedVisionRefs.length - pendingRefs.length} ảnh tham chiếu cũ từ bộ nhớ!`
-      }));
-      await new Promise(resolve => setTimeout(resolve, 600));
-    }
-
 
     if (pendingRefs.length > 0) {
       console.log(`[Auto-Analysis] Found ${pendingRefs.length} unanalyzed reference images. Initiating automated vision analysis...`);
@@ -3037,7 +2857,7 @@ Example return schema:
           stageDetail: `⏳ Đang đọc tỉ mỉ ảnh tham chiếu #${pIdx}/${pendingRefs.length}: "${r.name || r.fileName || 'Image'}"...`
         }));
         
-        await analyzeSingleImage(r, r.cardId || 'style_analyzer', r.cardTitle || 'Style Ref', rs);
+        await analyzeSingleImage(r, r.cardId || 'style_analyzer', r.cardTitle || 'Style Ref');
         pIdx++;
       }
       
@@ -3075,24 +2895,37 @@ ${finalPayload.currentStory.importedFiles.map((f: any) => `[File: ${f.fileName} 
 Below is the complete manifest of all attached reference images across this story, room, and individual work cards. You MUST strictly respect the location and purpose of EACH image. Do NOT mix up images from different cards (e.g. never use a hair reference image for pose or outfit).
 \`\`\`json
 ${JSON.stringify({
-  referenceImageManifest: finalPayload.referenceImageManifest
+  referenceImageManifest: pruneBase64(finalPayload.referenceImageManifest)
 }, null, 2)}
 \`\`\`
 
-### 👑 SUPREME MANDATE ON STORY FIDELITY & CHARACTER SOUL (MỆNH LỆNH THỐNG TRỊ: CỐT TRUYỆN & HỒ SƠ NHÂN VẬT LÀ LINH HỒN CỦA BỨC ẢNH)
-When generating the image prompt for each Work Card, you MUST strictly obey the following division of authority and priority hierarchy:
+### 👑 SUPREME MANDATE ON STORY FIDELITY & CHARACTER SOUL (MỆNH LỆNH THỐNG TRỊ: PHÂN ĐỊNH RÕ RÀNG VAI TRÒ CỦA CỐT TRUYỆN VÀ ẢNH THAM CHIẾU)
+When generating the image prompt for each Work Card, you MUST strictly obey the following division of authority and priority hierarchy to ensure character soul is preserved while studying the aesthetics of reference images:
 
-1. **👑 1st & Supreme Priority (#1 ABSOLUTE SUPREMACY OF STORY & CHARACTER PROFILE - CỐT TRUYỆN VÀ HỒ SƠ NHÂN VẬT LÀ LINH HỒN TỐI THƯỢNG)**:
-   - **Bám sát cao nhất là cốt truyện và hồ sơ nhân vật! Đây là mục đích cốt lõi: Vẽ nhân vật trong truyện của người dùng.** The user's Story Plot and Character Profiles hold **ABSOLUTE SUPREME AUTHORITY (#1)** over WHO IS IN THE SCENE! This includes character identity, facial features, gender, age, eye/hair color, personality, soul, and story aura.
-   - **SMART SELECTIVE ASSET ADOPTION (CHỌN LỌC VẬT DỤNG THÔNG MINH)**: You must intelligently judge the suitability of assets (outfits, props, decorations) from the reference image. If a prop or item from the reference is relevant and fits the story character's context, you MUST utilize and render it. If it is IRRELEVANT or contradicts the story, you MUST discard it and rely on the narrative while ensuring the NEW items are rendered in the EXACT same artistic style as the reference. (TỰ ĐỘNG SỬ DỤNG VẬT DỤNG PHÙ HỢP TỪ ẢNH THAM CHIẾU; NẾU KHÔNG PHÙ HỢP THÌ DỰA VÀO TRUYỆN NHƯNG PHẢI GIỮ ĐÚNG NÉT VẼ).
-   - **MANDATORY TRANSFORMATION RULE (NGUYÊN TẮC GIỮ NGUYÊN 100% KHUNG HÌNH & THAY ĐỔI DANH TÍNH)**: You are **STRICTLY COMMANDED TO ACHIEVE 100% VISUAL FIDELITY** to the reference image in terms of: **ART STYLE (NÉT VẼ), COLOR PALETTE (MÀU SẮC), COMPOSITION (BỐ CỤC), CHARACTER POSITIONING (VỊ TRÍ NHÂN VẬT), AND CAMERA ANGLE (GÓC ĐỘ/MÁY ẢNH).** Every artistic stroke and spatial arrangement MUST be an exact 100% replica of the reference. ONLY the character's identity (face, gender, specific traits) and narrative-specific elements should change to match the story. (PHẢI GIỮ GIỐNG 100% NÉT VẼ, MÀU SẮC, BỐ CỤC, VỊ TRÍ NHÂN VẬT VÀ GÓC MÁY; CHỈ THAY ĐỔI DANH TÍNH THEO TRUYỆN). 
-   - **MANDATORY PRINCIPLE**: It MUST ALWAYS BE THE STORY'S SOUL painted with the REFERENCE'S EXACT BRUSH, COLORS, AND LAYOUT! Every detail must serve the narrative context while maintaining the exact technical and spatial DNA of the reference.
-2. **2nd Priority (CARD-SPECIFIC REFERENCE IMAGES AS VISUAL STUDY MATERIALS - ẢNH TƯ LIỆU LÀM VIỆC ĐỂ LẤY Ý TƯỞNG THỊ GIÁC)**:
-   - Reference images serve as **the primary visual study materials** for specific domains (Hair, Pose, Outfit, Environment).
-   - You MUST extract the core visual ideas (art style, vibe, camera angle, lighting) from the reference image, and **seamlessly transform and adapt them onto the user's story character**. Do NOT copy the exact items, weapons, tools, or situational context of the reference image! (KHÔNG COPY CÔNG CỤ, ĐỒ VẬT TỪ ẢNH THAM CHIẾU!)
-3. **3rd Priority (User Note inside Work Card)**:
+1. **👑 THE SUPREME AUTHORITY OF THE STORY & CHARACTER PROFILE (STORY VÀ HỒ SƠ NHÂN VẬT QUYẾT ĐỊNH TOÀN BỘ DANH TÍNH NHÂN VẬT - QUYẾT ĐỊNH "VẼ CÁI GÌ" - WHAT IS DRAWN)**:
+   - **Bám sát cao nhất là cốt truyện và hồ sơ nhân vật! Đây là mục đích cốt lõi: Vẽ nhân vật trong truyện của người dùng.** The user's Story Plot and Character Profiles hold **ABSOLUTE SUPREME AUTHORITY (#1)** over WHAT IS IN THE SCENE!
+   - **The Story and Character Profile EXCLUSIVELY DECIDES (QUYẾT ĐỊNH TOÀN BỘ)**:
+     + **Character Identity & Name (Danh tính nhân vật)**: Who they are, their role, their unique charisma, and lore.
+     + **Age and Gender (Tuổi và Giới tính)**: Must match the story profile exactly (e.g. if the story is a 17-year-old schoolgirl, you MUST NOT render a mature man or an older woman simply because the reference image has one).
+     + **Hairstyle & Hair Design (Kiểu tóc)**: The core hairstyle structure must match the character's story profile (e.g. short bob, ponytail, braids, bangs as described in the story).
+     + **Hair and Eye Colors (Màu tóc và Màu mắt)**: Must strictly follow the story specs (e.g., emerald green eyes, obsidian black hair).
+     + **Outfit & Attire (Trang phục)**: The clothing style, design, historical/modern era, and thematic context must be appropriate for the Story Plot and Character Profile (e.g. ancient hanfu, modern high school uniform, medieval combat armor as described in the story).
+     + **Body Physique & Proportions (Dáng vóc và Hình thể)**: Height, physique, stature, and overall body type must belong to the story character description.
+     + **Scene/Background (Bối cảnh/Không gian)**: The setting must strictly fit the story's narrative plot.
+   - **🚨 STRICT NEGATIVE CONSTRAINT (CẤM SAO CHÉP DANH TÍNH)**: You are **STRICTLY FORBIDDEN** from copying or replicating the literal character identity, face, different gender, hairstyle, outfit design, era, accessories, or background environment of the reference image if they do not match or are inappropriate/irrelevant for the Story! Doing so is a critical failure.
+
+2. **🎨 THE AESTHETIC AUTHORITY OF THE REFERENCE IMAGES (ẢNH THAM CHIẾU CHỈ CUNG CẤP HỌC HỎI THẨM MỸ NGHỆ THUẬT - QUYẾT ĐỊNH "VẼ NHƯ THẾ NÀO" - HOW IT IS DRAWN)**:
+   - **Reference Images are the "Brush" and "Paint techniques" and hold authority strictly over "HOW the image is painted" (HỌC HỎI KỸ THUẬT THỂ HIỆN THẨM MỸ)**.
+   - **The Reference Images EXCLUSIVELY PROVIDES (CHỈ HỌC HỎI CÁC YẾU TỐ THẨM MỸ)**:
+     + **Art Style & Lineart (Nét vẽ, phong cách đi line)**: The thickness of lines, stroke weight, clean or rough sketching style, and digital/traditional brushwork.
+     + **Coloring & Shading (Phối màu, bão hòa màu, độ đổ bóng)**: Color harmony, color palettes, saturation dynamics, shading techniques (cel shading, soft airbrush, watercolor blending, thick impasto oil), highlights, and depth.
+     + **Lighting & Atmosphere (Ánh sáng và Khí quyển)**: Key light direction, rim lights, volumetric glow, and general mood.
+     + **Visual Language (Ngôn ngữ thị giác)**: Camera angle, shot framing (cowboy, close-up, wide shot), composition flow, and visual depth.
+   - **💡 CORE PRINCIPLE (Mọi nét cọ vẽ nên linh hồn cốt truyện)**: It must always be the **Story's original character and outfits** painted in the **Reference's exact brushwork, lines, coloring, and lighting techniques**! Learn "how it is drawn", NEVER blindly copy "what is drawn".
+
+3. **3rd Priority (User Note inside Work Card - Ghi chú cụ thể trong thẻ)**:
    - User notes inside that specific Work Card define how to apply, adjust, or refine the visual ideas from the reference images onto the story character.
-4. **4th Priority (Style Analyzer - Art Style & Rendering Quality)**:
+4. **4th Priority (Style Analyzer - Art Style & Rendering Quality - Tổng phân tích phong cách)**:
    - Images and keywords from the Style Analyzer govern the overarching art style, rendering medium (manhua fantasy, oil painting, soft ink-wash, cinematic photo), brushwork, and color harmony across all cards. Never let Style Analyzer guide a card's specific reference for pose, hair, or outfit!
 
 ### SELECTED ART STYLES & VISION ANALYSIS
@@ -3104,22 +2937,21 @@ ${(sa.refs || []).map((r: any, idx: number) => {
   const analysisText = (r.imageAnalysisText && r.imageAnalysisText !== 'Chưa phân tích' && !r.imageAnalysisText.startsWith('⏳')) 
     ? r.imageAnalysisText 
     : `👉 [IN-CONTEXT VISION MANDATE]: Ảnh tham chiếu phong cách này được đính kèm tại vị trí [ATTACHED IMAGE #${gIdx}] trong request! AI HÃY TỰ NHÌN TRỰC TIẾP vào ảnh đính kèm #${gIdx} bên dưới để học hỏi bảng màu, nét vẽ và chất liệu!`;
-  return `  * [Style Ref #${idx+1} -> ATTACHED IMAGE #${gIdx} IN PAYLOAD (DO NOT OUTPUT FILENAME - TRANSLATE VISUAL TRAITS TO WORDS): "${r.name || r.fileName || 'Image'}" | Status: ${status} | Purpose: style_reference (3rd Priority: style/render/color only, do NOT guide card-specific refs)]:\n    - Vision Report: ${analysisText}${r.imageAnalysisJson ? `\n    - Style Keywords: ${(r.imageAnalysisJson.promptKeywords || []).join(", ")}\n    - Art Family/Rendering: ${JSON.stringify(r.imageAnalysisJson.style || {})}\n    - Visual Style: ${JSON.stringify(r.imageAnalysisJson.visualStyleExtracted || {})}\n    - Color Palette: ${JSON.stringify(r.imageAnalysisJson.colorPaletteExtracted || {})}` : ""}`;
+  return `  * [Style Ref #${idx+1} -> ATTACHED IMAGE #${gIdx} IN PAYLOAD (DO NOT OUTPUT FILENAME - TRANSLATE VISUAL TRAITS TO WORDS): "${r.name || r.fileName || 'Image'}" | Status: ${status} | Purpose: style_reference (3rd Priority: style/render/color only, do NOT guide card-specific refs)]:\n    - Vision Report: ${analysisText}${r.imageAnalysisJson ? `\n    - Style Keywords: ${(r.imageAnalysisJson.promptKeywords || []).join(", ")}\n    - Art Family/Rendering: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.style || {}))}\n    - Visual Style: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.visualStyleExtracted || {}))}\n    - Color Palette: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.colorPaletteExtracted || {}))}` : ""}`;
 }).join("\n\n") || "  * No style reference images attached."}
 
 ### WORKROOM CARDS & SPECIFIC NOTES (WITH ATTACHED REFERENCE IMAGES & VISION ANALYSIS)
 ${cards.map((c: any) => {
-  const cs = rs.cards[c.id] || { note: "", refs: [], output: "" };
-  const cardRefsList = refreshedPayload.workCards?.find((wc: any) => wc.cardId === c.id)?.referenceImages || (cs.refs || []);
+  const cs = finalRoomState.cards[c.id] || { note: "", refs: [], output: "" };
+  const cardRefsList = finalPayload.workCards?.find((wc: any) => wc.cardId === c.id)?.referenceImages || (cs.refs || []);
   const refsDesc = cardRefsList.map((r: any, idx: number) => {
     const gIdx = getGIdx(r, idx + 1);
     const status = r.analysisStatus || (r.imageAnalysisText && r.imageAnalysisText !== 'Chưa phân tích' ? 'analyzed' : 'pending');
-    const isPlaceholderCard = r.imageAnalysisText === 'Chưa phân tích' || r.imageAnalysisText?.startsWith('⏳');
-    const baseAnalysisText = (!isPlaceholderCard && r.imageAnalysisText)
+    const baseAnalysisText = (r.imageAnalysisText && r.imageAnalysisText !== 'Chưa phân tích' && !r.imageAnalysisText.startsWith('⏳'))
       ? r.imageAnalysisText
       : `AI có khả năng quan sát hình ảnh, hãy phân tích trực tiếp [ATTACHED IMAGE #${gIdx}] và trích xuất các yếu tố thuộc phạm vi chức năng của thẻ "${c.title}"!`;
     const analysisText = `🎨 [TƯ LIỆU THẨM MỸ CHO THẺ "${c.title}"]: Ảnh tham chiếu #${gIdx} là tư liệu hướng dẫn nghệ thuật cho phạm vi "${c.title}". AI hãy học hỏi phong cách, màu sắc và đường nét để tạo dựng nhân vật trong truyện! => Chi tiết Vision: ${baseAnalysisText}`;
-    const jsonStr = r.imageAnalysisJson ? `\n    - Subject Details: ${JSON.stringify(r.imageAnalysisJson.subject || {})}\n    - Style & Color: ${JSON.stringify(r.imageAnalysisJson.style || {})} | ${JSON.stringify(r.imageAnalysisJson.color || {})}\n    - Composition & Details: ${JSON.stringify(r.imageAnalysisJson.composition || {})} | ${JSON.stringify(r.imageAnalysisJson.characterDetails || {})}\n    - Prompt Keywords: ${(r.imageAnalysisJson.promptKeywords || []).join(", ")}\n    - Visual Style Extracted: ${JSON.stringify(r.imageAnalysisJson.visualStyleExtracted || {})}\n    - Color Palette Extracted: ${JSON.stringify(r.imageAnalysisJson.colorPaletteExtracted || {})}\n    - Outfit Fidelity Extracted: ${JSON.stringify(r.imageAnalysisJson.outfitExtracted || r.imageAnalysisJson.layer4_outfit || {})}\n    - Composition Rhythm Extracted: ${JSON.stringify(r.imageAnalysisJson.compositionExtracted || r.imageAnalysisJson.composition || {})}\n    - Details To Preserve (70%-85%): ${JSON.stringify(r.imageAnalysisJson.detailsToPreserve || "N/A")}\n    - Details To Adapt (15%-30%): ${JSON.stringify(r.imageAnalysisJson.detailsToAdapt || "N/A")}\n    - Originality Elements (0%): ${JSON.stringify(r.imageAnalysisJson.originalityElements  || "N/A")}` : "";
+    const jsonStr = r.imageAnalysisJson ? `\n    - Subject Details: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.subject || {}))}\n    - Style & Color: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.style || {}))} | ${JSON.stringify(pruneBase64(r.imageAnalysisJson.color || {}))}\n    - Composition & Details: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.composition || {}))} | ${JSON.stringify(pruneBase64(r.imageAnalysisJson.characterDetails || {}))}\n    - Prompt Keywords: ${(r.imageAnalysisJson.promptKeywords || []).join(", ")}\n    - Visual Style Extracted: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.visualStyleExtracted || {}))}\n    - Color Palette Extracted: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.colorPaletteExtracted || {}))}\n    - Outfit Fidelity Extracted: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.outfitExtracted || r.imageAnalysisJson.layer4_outfit || {}))}\n    - Composition Rhythm Extracted: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.compositionExtracted || r.imageAnalysisJson.composition || {}))}\n    - Details To Preserve (70%-85%): ${JSON.stringify(pruneBase64(r.imageAnalysisJson.detailsToPreserve || "N/A"))}\n    - Details To Adapt (15%-30%): ${JSON.stringify(pruneBase64(r.imageAnalysisJson.detailsToAdapt || "N/A"))}\n    - Originality Elements (0%): ${JSON.stringify(pruneBase64(r.imageAnalysisJson.originalityElements  || "N/A"))}` : "";
     return `  * [Card Ref #${idx+1} -> ATTACHED IMAGE #${gIdx} IN PAYLOAD (DO NOT OUTPUT FILENAME - TRANSLATE VISUAL TRAITS TO WORDS): "${r.name || r.fileName || 'Image'}" | ID: ${r.id || r.imageId} | Status: ${status} | Card Title Domain: "${c.title}" (EXACT FUNCTIONAL ISOLATION: This image ONLY governs attributes belonging to "${c.title}")]:\n    - Vision Analysis Text: ${analysisText}${jsonStr}`;
   }).join("\n\n");
 
@@ -3154,6 +2986,12 @@ Please follow these guidelines when generating prompts for Work Cards:
    - For each card, please observe its assigned Attached Reference Images (e.g. ATTACHED IMAGE #1, #2...), study how the subject is styled, posed, framed, and lit, and translate those visual elements into descriptive language in the generated prompt!
 3. **Transformative Character Creation**:
    - Synthesize the visual aesthetic inspiration from the reference images with the user's original story character profile. All visual elements should be transformatively adapted to craft an original character and unique artwork!
+
+### 🚨 QUY TẮC XỬ LÝ TRƯỜNG HỢP KHÔNG CÓ ẢNH THAM CHIẾU (NO REFERENCE IMAGE HANDLING RULES)
+Khi một Thẻ Công Việc (Work Card) KHÔNG có bất kỳ ảnh tham chiếu nào đi kèm (No reference images attached):
+1. **Tuyệt đối không từ chối, yêu cầu thêm ảnh hoặc đặt câu hỏi**: AI không được báo lỗi, không được hỏi xin thêm ảnh từ người dùng, không được phàn nàn hay bỏ trống kết quả. Hãy tiếp tục thực hiện công việc một cách mượt mà nhất.
+2. **Khai thác toàn diện ngữ cảnh dạng văn bản**: Tập trung toàn bộ nguồn lực thông tin vào Cốt truyện (Story Plot), Hồ sơ Nhân vật (Character Profile), Thể loại (Genre) và thiết lập Phòng (Room description) để xây dựng chi tiết bối cảnh, diện mạo nhân vật và bầu không khí nghệ thuật.
+3. **Giữ nguyên tiêu chuẩn hình ảnh Cinematic chất lượng cao**: Vẫn phải chủ động tự thiết lập các thông số mỹ thuật xuất sắc nhất về góc quay (Camera Angle), ánh sáng (Lighting), bố cục (Composition) và phong cách nghệ thuật (Artistic Style) phù hợp hoàn hảo với cốt truyện, đảm bảo prompt được sinh ra luôn phong phú, chi tiết và có chiều sâu điện ảnh vượt trội.
 
 ### VISUAL REFERENCE STUDY & ADAPTATION PRINCIPLES
 When attached reference images or Vision Analysis reports are present for any work card:
@@ -3281,6 +3119,27 @@ Structure exactly as follows:
 - **LỜI NHẮC NHỞ NGHIÊM NGẶT CHO HỌA SĨ AI (Strict Quality Assurance Mandate)**:
   [Viết một đoạn thông điệp cam kết chất lượng cực kỳ dài, chi tiết, nhắc nhở từng phân đoạn, nhắc nhở kĩ càng từng chi tiết nhỏ của tóc, mắt, trang phục, góc máy không được phép sai lệch so với nguồn cảm hứng nguyên bản].
 
+---
+### 🔒 [CHARACTER VISUAL DETAIL LOCK] (KHÓA CHI TIẾT THỊ GIÁC NHÂN VẬT)
+To preserve absolute character identity across all comic panels and strictly prevent generic/slanted AI bleeding, you MUST analyze and output detailed, highly explicit visual instructions for the character across these 17 specific chapters:
+1. **Total Character (Tổng thể nhân vật)**: [Define character soul, aura, genre, story-fidelity look, strictly enforcing story gender/age/vibe and banning copying of unrelated reference attributes]
+2. **Face Structure (Cấu trúc khuôn mặt)**: [Jawline, cheekbones, chin, face shape]
+3. **Eyes (Đặc tả đôi mắt)**: [Shape, size, pupil detail, iris pattern, reflection highlights, exact story eye color]
+4. **Eyebrows (Lông mày)**: [Arch shape, density, neatness, expression]
+5. **Nose (Dáng mũi)**: [Bridge height, tip shape, nasal angle]
+6. **Mouth/Lips (Khuôn miệng và Bờ môi)**: [Lip shape, thickness, parting, color, smile/expression]
+7. **Skin (Làn da)**: [Texture, pores, complexion tone, translucency, SSS details]
+8. **Hair (Kiến trúc tóc)**: [Flow, parting, strand clumps, bangs, volume, exact story hair color/length]
+9. **Ears/Accessories (Đôi tai và Phụ kiện gắn kèm)**: [Ear shape, piercings, hair accessories matching the story]
+10. **Neck/Shoulders (Cổ và Khớp vai)**: [Neck length, shoulder width, collarbone definition]
+11. **Arms/Hands (Cánh tay và Bàn tay)**: [Finger count (EXACTLY 5 fingers per hand), joint details, hand posture, nails]
+12. **Body Proportions (Tỉ lệ cơ thể)**: [Height, physique, stance, torso structure]
+13. **Outfit (Trang phục)**: [Drapery, fabric folds, material textures, story-fitting clothing design, completely override reference-copied outfits if inappropriate]
+14. **Expression (Biểu cảm cảm xúc)**: [Micro-expressions, narrative emotions matching the scene]
+15. **Linework (Đặc tả nét vẽ/Lineart)**: [Line thickness, brush style, cel-shading outlines strictly learned from reference images]
+16. **Coloring (Kỹ thuật phối màu & Bóng đổ)**: [Exact palette, saturation levels, shading/highlight styles strictly learned from reference images]
+17. **Consistency Check (Kiểm định sự nhất quán)**: [Exhaustive validation ensuring ZERO conflicts between Story details and the visual output. Ban direct copies of different character looks from reference images]
+
 Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference Images", "Room:", "Card:", or technical metadata inside this [FINAL PROMPT] section!)` : `[FINAL PROMPT]
 (Write the final production-ready standalone image prompt for "${c.title}" here. CRITICAL MANDATE: You MUST divide the prompt into an ULTIMATE "STUDIO AAA" PROMPT ENGINEERING FRAMEWORK containing roughly 80-120 micro-modules categorized into major chapters, AND end with a Master Production-Ready English Prompt block so the user can use each part or the whole prompt easily!
 
@@ -3337,26 +3196,257 @@ Structure exactly as follows:
 - **LỜI NHẮC NHỞ NGHIÊM NGẶT CHO HỌA SĨ AI (Strict Quality Assurance Mandate)**:
   [Viết một đoạn thông điệp cam kết chất lượng cực kỳ dài, chi tiết, nhắc nhở từng phân đoạn, nhắc nhở kĩ càng từng chi tiết nhỏ của tóc, mắt, trang phục, góc máy không được phép sai lệch so với nguồn cảm hứng nguyên bản].
 
+---
+### 🔒 [CHARACTER VISUAL DETAIL LOCK] (KHÓA CHI TIẾT TẠO HÌNH NHÂN VẬT CHÍNH TRONG CẢNH)
+Mục đích: Mô tả thật chi tiết toàn bộ phần tạo hình nhân vật để AI không tự rơi về kiểu nhân vật anime mặc định, không tự đổi nét, không tự đổi tóc, không tự đơn giản hóa mắt, mặt hoặc cơ thể. Nội dung nhân vật vẫn phải lấy từ cốt truyện, hồ sơ nhân vật, tuổi, giới tính, chiều cao, vóc dáng, kiểu tóc, màu tóc, màu mắt, trang phục, tính cách, cảm xúc, trạng thái hiện tại của cảnh. Ảnh tham chiếu chỉ được dùng để học hỏi kỹ thuật vẽ, ánh sáng và cách render đặc điểm đó.
+
+BẮT BUỘC MÔ TẢ ĐẦY ĐỦ CHO TỪNG NHÂN VẬT CHÍNH ĐANG XUẤT HIỆN TRONG CẢNH QUA 17 PHẦN CHI TIẾT SAU:
+
+1. **Tổng thể nhân vật (Total Character)**: 
+- Độ tuổi thể hiện rõ nét trên gương mặt và dáng vóc;
+- Giới tính sinh học và diện mạo tổng thể;
+- Chiều cao tương quan, vóc dáng (thanh mảnh, đầy đặn, săn chắc, mảnh mai, v.v.);
+- Khung xương, độ rộng vai và tỷ lệ đầu so với cơ thể;
+- Chiều dài tay chân;
+- Độ mềm, thanh, khỏe hoặc đầy đặn của hình thể;
+- Khí chất đặc trưng (quý phái, u sầu, tinh nghịch, lạnh lùng, hiền lành, v.v.);
+- Trạng thái trưởng thành;
+- Cảm giác thị giác tổng thể mà nhân vật tạo ra cho người xem;
+- Tuyệt đối không được sao chép nhân dạng của ảnh tham chiếu nếu không khớp với cốt truyện thiết lập.
+
+2. **Cấu trúc khuôn mặt (Face Structure)**:
+- Hình dáng khuôn mặt đặc trưng (V-line, trái xoan, bầu bĩnh, thon dài, v.v.);
+- Độ rộng và độ cao của vầng trán;
+- Đường gò má (nhô cao nhẹ, mềm mại, v.v.);
+- Độ đầy đặn của má (má bầu bĩnh đáng yêu hay má thon gọn thanh tú);
+- Đường xương hàm dưới và cấu trúc cằm (nhọn, tròn, vuông thanh lịch);
+- Tỷ lệ cân đối giữa phần trán, phần trung tâm và phần cằm;
+- Khoảng cách hài hòa giữa mắt, mũi và miệng;
+- Độ mềm mại hoặc sắc sảo của các đường nét xương mặt;
+- Độ cân đối tuyệt đối hai bên gương mặt;
+- Góc nghiêng khuôn mặt thể hiện độ sâu trường ảnh;
+- Giữ vững độ tuổi và cá tính nhân vật trên từng nét vẽ.
+
+3. **Đặc tả đôi mắt (Eyes)**:
+Mô tả cực kỳ chi tiết, sống động và giàu cảm xúc:
+- Hình dáng mắt (mắt phượng dài quyến rũ, mắt tròn ngây thơ, mắt một mí cá tính, mắt cụp u sầu, v.v.);
+- Tỷ lệ chiều ngang và chiều dọc của mắt;
+- Kích thước mắt so với tổng thể khuôn mặt;
+- Độ mở mắt (mở to tròn, híp nhẹ cười, lờ đờ uể oải);
+- Góc trong (khóe mắt) và góc ngoài của mắt;
+- Độ cong mí trên và độ cong mí dưới;
+- Mí mắt (mắt một mí, hai mí rõ nét, mí lót, hoặc nếp mí mềm mại);
+- Độ dày và sắc nét của đường viền mi mắt;
+- Số lượng, độ dài và độ cong vút tự nhiên của lông mi;
+- Hướng mọc của lông mi (hướng lên trên, hướng ra ngoài);
+- Cấu tạo đồng tử và kích thước mống mắt (iris);
+- Viền mống mắt sắc nét hoặc mờ ảo;
+- Chuyển sắc (gradient) mượt mà bên trong mống mắt;
+- Màu nền của mắt và lớp màu phụ hài hòa;
+- Vùng tối phía trên mống mắt (bóng đổ từ mi) và vùng sáng rực rỡ phía dưới;
+- Chấm sáng chính (catchlight lớn) và chấm sáng phụ (highlight nhỏ) phản chiếu ánh sáng nguồn sinh động;
+- Độ trong suốt, độ sâu, độ long lanh và độ ẩm ướt của đôi mắt;
+- Ánh nhìn định hướng rõ ràng và biểu cảm cảm xúc trọn vẹn;
+- Màu mắt và hình dáng mắt phải trung thành tuyệt đối với hồ sơ nhân vật;
+- Cách vẽ mắt, độ chi tiết, lớp màu và highlight phải học hỏi sâu sắc kỹ thuật vẽ từ ảnh tham chiếu, tránh tạo mắt generic tẻ nhạt.
+
+4. **Lông mày (Eyebrows)**:
+- Hình dáng chân mày (ngang thanh tú, lá liễu mềm mại, mày kiếm sắc sảo, v.v.);
+- Độ cong, độ dày và chiều dài chân mày;
+- Vị trí khoảng cách so với mắt (khoảng cách rộng tạo vẻ ngây thơ, hẹp tạo sự sắc sảo);
+- Hướng sợi lông mày tự nhiên;
+- Độ mềm mại hay độ sắc nét của chân mày;
+- Biểu cảm chân mày tạo ra (nhíu mày lo lắng, nhướng mày ngạc nhiên, thả lỏng dịu dàng);
+- Sự phối hợp nhịp nhàng giữa lông mày, mắt và cơ mặt biểu cảm.
+
+5. **Dáng mũi (Nose)**:
+- Độ cao và đường cong của sống mũi (mũi dọc dừa thẳng tắp, mũi cong nhẹ thanh thoát, v.v.);
+- Độ rộng của cánh mũi và dáng đầu mũi (nhỏ nhắn, tròn mềm);
+- Góc nghiêng của mũi so với môi;
+- Mức độ tối giản hoặc chi tiết của nét vẽ mũi;
+- Highlight sáng trên sống mũi và đầu mũi;
+- Bóng đổ nhỏ dưới chân mũi để tạo chiều sâu;
+- Cách mũi phù hợp hoàn toàn với phong cách vẽ học từ ảnh tham chiếu.
+
+6. **Khuôn miệng và Bờ môi (Mouth/Lips)**:
+- Hình dáng tổng thể của khuôn miệng;
+- Độ dày, độ căng mọng của môi trên và môi dưới;
+- Đường khóe miệng (khóe cười nhẹ duyên dáng, khóe trĩu u sầu);
+- Độ mở của miệng (mím chặt, hé mở nhẹ quyến rũ, mở to cười rạng rỡ);
+- Đường viền môi (mềm mại hay sắc nét rõ ràng);
+- Màu môi tự nhiên hay màu son thời trang;
+- Độ bóng bẩy, độ ẩm ướt và highlight phản sáng trên cánh môi;
+- Trông thấy răng hoặc đầu lưỡi hồng hào nếu miệng đang hé mở;
+- Cách miệng biểu cảm cảm xúc;
+- Sự phối hợp cơ học mượt màng giữa miệng, gò má và đôi mắt.
+
+7. **Làn da (Skin)**:
+- Tông màu da (da trắng sứ trong trẻo, da mật ong khỏe khoắn, da hồng hào tự nhiên, v.v.);
+- Sắc độ dưới da (undertone ấm, lạnh hay trung tính);
+- Độ sáng và độ trong suốt của làn da;
+- Độ mịn màng, texture da tự nhiên và bóng mịn;
+- Vùng da ửng hồng tự nhiên (blush) ở hai gò má, đầu mũi, thùy tai;
+- Highlight bắt sáng trên trán, sống mũi, đỉnh gò má và nhân trung;
+- Bóng tối mềm mại (ambient shadow) đổ dưới chân tóc, cằm và vùng cổ;
+- Sự chuyển sắc mượt mà giữa vùng sáng và vùng tối;
+- Cách kết cấu da và tô bóng bám sát kỹ thuật render từ ảnh tham chiếu, tuyệt đối không để da bị phẳng bẹt, bóng nhựa giả tạo hoặc generic.
+
+8. **Kiến trúc tóc (Hair)**:
+Kiểu tóc, độ dài và màu tóc phải trung thành tuyệt đối với hồ sơ nhân vật gốc. Cách vẽ tóc học sát ảnh tham chiếu qua:
+- Đường chân tóc và ngôi tóc tự nhiên;
+- Kiểu tóc mái (mái thưa, mái bằng, mái rẽ ngôi, v.v.);
+- Phần tóc mai, lọn tóc ôm sát mặt định hình khuôn mặt;
+- Phần tóc phía trên đỉnh đầu (volume, độ phồng);
+- Phần tóc phía sau đầu (buộc đuôi ngựa, xõa dài, bới cao, v.v.);
+- Cấu trúc khối tóc lớn và sự chia mảng cụ thể;
+- Cách phân chia các cụm tóc lớn thành các lọn tóc trung bình;
+- Sắp xếp và vẽ chi tiết từng sợi tóc tơ nhỏ bay bổng tự nhiên (flyaway hair);
+- Độ dày và độ bồng bềnh của từng lọn tóc;
+- Độ tách lớp (layering) rõ ràng giữa các tầng tóc;
+- Độ phồng và độ rơi tự nhiên của mái tóc theo trọng lực;
+- Trọng lượng cảm giác của tóc;
+- Hướng chuyển động, nhịp điệu bay bổng;
+- Độ cong, độ thẳng hoặc độ xoăn tự nhiên của lọn tóc;
+- Hình dạng phần ngọn tóc (nhọn thanh mảnh, cắt bằng, tỉa mỏng) và độ mềm/sắc của ngọn tóc;
+- Độ mượt mà của bề mặt tóc và độ rối nhẹ có kiểm soát nghệ thuật;
+- Độ bóng bẩy của sợi tóc dưới ánh sáng;
+- Highlight chính (angel ring chạy quanh đỉnh đầu) và highlight phụ;
+- Vùng tối sâu thẳm giữa các lớp tóc tạo độ sâu;
+- Ánh sáng viền (rim light) chạy dọc các lọn tóc ngoài cùng;
+- Tuyệt đối không tự ý đổi kiểu tóc nhân vật theo ảnh tham chiếu. Tránh vẽ tóc thành quá nhiều sợi nhỏ rời rạc gây rối mắt nếu ảnh tham chiếu sử dụng các mảng khối tóc sạch sẽ và thiết kế tinh tế.
+
+9. **Đôi tai và Phụ kiện gắn kèm (Ears/Accessories)**:
+- Hình dáng đôi tai nhỏ nhắn xinh xắn;
+- Vị trí tai hài hòa bên cạnh mặt;
+- Độ lộ ra của tai qua mái tóc;
+- Chi tiết cấu trúc vành tai mềm mại;
+- Sắc đỏ ửng hồng (blush) trên dái tai đáng yêu;
+- Khuyên tai, bông tai thời trang;
+- Phụ kiện trên đầu: kẹp tóc, nơ, băng đô, mũ, dây buộc tóc, v.v.;
+- Cách phụ kiện gắn tự nhiên và vững chắc vào tóc và đầu, không bị bay lơ lửng, xuyên thấu hay lệch cấu trúc vật lý.
+
+10. **Cổ, Vai và Thân trên (Neck/Shoulders)**:
+- Chiều dài cổ thon thả thanh tú;
+- Độ thon gọn và góc kết nối mượt mà của cổ;
+- Vị trí cổ trên khung vai;
+- Đường nét xương quai xanh (clavicle) nhô nhẹ quyến rũ;
+- Độ rộng vai và độ dốc vai mềm mại đối với nữ hoặc vững chãi đối với nam;
+- Hình dáng lồng ngực và tỷ lệ cân đối giữa vai, ngực và eo;
+- Giữ đúng giới tính sinh học, độ tuổi và vóc dáng nhân vật;
+- Cách nét vẽ đi tinh tế quanh vùng cổ, vai và xương quai xanh để tạo cảm giác sống động.
+
+11. **Cánh tay, Bàn tay và Ngón tay (Arms/Hands)**:
+- Chiều dài cánh tay tương quan với thân hình;
+- Độ dày và cơ bắp/mềm mại của bắp tay và cẳng tay;
+- Khớp khuỷu tay và khớp cổ tay;
+- Cấu trúc lòng bàn tay và mu bàn tay;
+- Tỷ lệ bàn tay cân đối so với mặt;
+- Độ dài và độ thon của từng ngón tay;
+- Các khớp ngón tay rõ ràng mềm mại;
+- Hướng cử động của ngón tay;
+- Gesture của tay tự nhiên (tay chống cằm, vuốt tóc, chạm nhẹ môi, cài khuy áo, v.v.);
+- ĐẢM BẢO CHÍNH XÁC SỐ LƯỢNG NGÓN TAY (Đúng 5 ngón tay trên mỗi bàn tay);
+- Tuyệt đối cấm lỗi giải phẫu như: thừa ngón, dính ngón, méo khớp, ngón tay uốn éo dị dạng, gãy cổ tay hay xuyên thấu vật lý.
+
+12. **Thân dưới và Tỷ lệ cơ thể (Body Proportions)**:
+- Vòng eo thon thả;
+- Độ nở của hông và mông;
+- Chiều dài đôi chân tương xứng với cơ thể;
+- Khớp đầu gối thanh mảnh;
+- Bắp chân và cổ chân thon thả;
+- Dáng bàn chân và các ngón chân;
+- Tỷ lệ cơ thể vàng (đầu-thân-chân) cân đối tuyệt mỹ;
+- Trọng tâm cơ thể vững vàng trong tư thế;
+- Tư thế đứng hoặc ngồi tự nhiên, duyên dáng và tràn đầy sức sống;
+- Phù hợp tuyệt đối với độ tuổi, chiều cao và vóc dáng nhân vật trong cốt truyện.
+
+13. **Trang phục trên nhân vật (Outfit)**:
+Trang phục phải trung thành tuyệt đối với cốt truyện và thiết lập nhân vật. Mô tả chi tiết:
+- Silhouette (hình bóng) tổng thể của trang phục;
+- Độ ôm sát quyến rũ hay độ rộng rãi thoải mái;
+- Cấu trúc các lớp áo (layering áo trong, áo ngoài, áo khoác, v.v.);
+- Kiểu cổ áo, tay áo (tay phồng, tay lỡ, v.v.);
+- Nếp gấp nếp rủ của vải tự nhiên tại các khớp cử động;
+- Các đường may, cúc áo, dây kéo, khóa cài, ren bèo, ruy băng;
+- Chất liệu vải cụ thể (vải voan mềm mại, lụa bóng bẩy, dạ dày dặn, da thuộc cá tính, v.v.);
+- Độ rủ, độ bóng và nếp nhăn vải sinh động;
+- Cách vải tương tác cơ học với tư thế pose và hình thể nhân vật;
+- Cách nét vẽ và tô màu trang phục mô phỏng trọn vẹn phong cách nghệ thuật từ ảnh tham chiếu.
+
+14. **Biểu cảm và Khí chất (Expression)**:
+- Cảm xúc chủ đạo (vui sướng, u buồn, trầm ngâm, lo lắng, giận dữ, v.v.);
+- Cảm xúc ẩn sau tinh tế (nụ cười thoáng qua u sầu, ánh mắt kiêu hãnh ẩn chứa chút nhút nhát, v.v.);
+- Mức độ biểu đạt (mạnh mẽ dữ dội hay nhẹ nhàng sâu lắng);
+- Biểu cảm của ánh mắt (mắt cười, mắt rớm lệ, ánh nhìn sắc lạnh);
+- Biểu cảm lông mày và khuôn miệng đồng điệu;
+- Hướng đầu và độ nghiêng đầu truyền tải thái độ;
+- Trạng thái căng hoặc thả lỏng của các cơ mặt;
+- Khí chất đặc trưng nổi bật của nhân vật (dịu dàng, kiêu kỳ, tinh quái, ngây thơ, trầm mặc, v.v.);
+- Tuyệt đối cấm biểu cảm generic đờ đẫn hoặc vô hồn.
+
+15. **Nét vẽ trên nhân vật (Linework)**:
+Mô tả cụ thể cách đi nét (lineart) trên từng bộ phận:
+- Viền khuôn mặt thanh tú;
+- Mí mắt và lông mi tinh xảo;
+- Các lọn tóc mềm mại bay bổng;
+- Đường nét cổ, vai, quai xanh quyến rũ;
+- Bàn tay và ngón tay thon thả;
+- Trang phục và phụ kiện tinh tế.
+Nêu rõ yêu cầu kỹ thuật:
+- Độ dày/mảnh biến thiên nghệ thuật của nét vẽ (stroke weight);
+- Độ sắc nét (crisp lines) hay độ mềm mượt (soft lines);
+- Điểm bắt đầu và kết thúc nét vẽ vuốt nhọn tự nhiên;
+- Nét vẽ sạch sẽ, tinh tươm;
+- Cảm giác nét vẽ bút chì thô mộc, mực tinh tế hay cọ vẽ thanh thoát;
+- Vùng nét vẽ đậm rõ tạo bóng, vùng nét vẽ mờ nhạt dần biến mất tạo chiều sâu;
+- Tuyệt đối không để lineart đồng đều bẹt phẳng thiếu nghệ thuật.
+
+16. **Cách lên màu trên nhân vật (Coloring)**:
+- Bảng màu áp dụng trên da, tóc, mắt, trang phục và phụ kiện;
+- Màu sắc vùng sáng (highlights) ấm áp hay mát dịu;
+- Màu sắc vùng tối (shadows) phong phú (đổ bóng màu tím nhạt, xanh lục bảo, v.v.);
+- Độ bão hòa màu sắc (color saturation) rực rỡ bùng nổ hay trầm ấm hoài cổ;
+- Tương phản màu sắc và tương phản sáng tối mạnh mẽ;
+- Sự chuyển sắc (gradient blending) mượt mà không tì vết;
+- Kỹ thuật tô màu đặc trưng (cel shading phân mảng rõ ràng, soft shading mịn màng, watercolor loang màu nước nghệ thuật, hay impasto sơn dầu dày dặn);
+- Texture bề mặt màu sắc sống động;
+- Độ sạch sẽ, độ trong trẻo và chiều sâu hoàn thiện của tác phẩm;
+- Cách phối màu và đánh bóng phải bám sát nghiêm ngặt kỹ thuật vẽ từ ảnh tham chiếu.
+
+17. **Kiểm tra nhất quán (Consistency Check)**:
+Before completing the prompt, you MUST run a deep validation ensuring zero styling anomalies:
+- Đúng nhân vật cốt truyện;
+- Đúng giới tính sinh học;
+- Đúng độ tuổi và khí chất;
+- Đúng kiểu tóc và màu tóc thiết lập;
+- Đúng màu mắt và hình dáng mắt;
+- Đúng vóc dáng hình thể;
+- Đúng trang phục mô tả;
+- Đúng biểu cảm cảm xúc;
+- Đúng mối quan hệ không gian giữa các nhân vật;
+- Tuyệt đối cấm trộn lẫn đặc điểm ngoại hình giữa các nhân vật trong cảnh;
+- Cấm sao chép nguyên xi khuôn mặt của người trong ảnh tham chiếu nếu họ không đúng nhân vật cốt truyện;
+- Nhưng cách thể hiện, nét vẽ, màu sắc và render phải bám sát và học hỏi nghiêm ngặt từ ảnh tham chiếu.
+- Tuyệt đối không được tự suy đoán thiếu căn cứ.
+
 Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference Images", "Room:", "Card:", or technical metadata inside this [FINAL PROMPT] section!)`}`).join("\n\n")}
 `;
 
-    rs.result = "";
+    finalRoomState.result = "";
     for (const c of cards) {
-      if (!rs.cards[c.id]) rs.cards[c.id] = { note: "", refs: [], output: "", report: "" };
-      rs.cards[c.id].output = "";
-      rs.cards[c.id].report = "";
+      if (!finalRoomState.cards[c.id]) finalRoomState.cards[c.id] = { note: "", refs: [], output: "", report: "" };
+      finalRoomState.cards[c.id].output = "";
+      finalRoomState.cards[c.id].report = "";
     }
 
     // Clear UI completely before stream starts
-    currentStory.rooms[roomDef.id] = { ...rs };
+    currentStory.rooms[roomDef.id] = { ...finalRoomState };
     save(state);
 
     const contentArray: any[] = [{ type: "text", text: prompt }];
-    const sentImageUrls = new Set<string>();
     for (const img of orderedVisionRefs) {
       const imgUrl = img.data || img.previewUrl || img.storageUrl;
-      if (imgUrl && !sentImageUrls.has(imgUrl)) {
-        sentImageUrls.add(imgUrl);
+      if (imgUrl) {
         contentArray.push({
           type: "image_url",
           image_url: { url: imgUrl }
@@ -3364,16 +3454,15 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
       }
     }
 
-    // Include any Outfit Reference Images uploaded via Candy button as visual visual context to the AI Model
+    // Include any Outfit Reference Images uploaded via Candy button as visual context to the AI Model
     const allOutfitRefs: any[] = [];
-    for (const cardKey of Object.keys(rs.cards)) {
-      const cs = rs.cards[cardKey];
+    for (const cardKey of Object.keys(finalRoomState.cards)) {
+      const cs = finalRoomState.cards[cardKey];
       if (cs && cs.outfitRefs && Array.isArray(cs.outfitRefs)) {
         for (const or of cs.outfitRefs) {
           allOutfitRefs.push(or);
           const orUrl = or.data || or.previewUrl || or.storageUrl;
-          if (orUrl && !sentImageUrls.has(orUrl)) {
-            sentImageUrls.add(orUrl);
+          if (orUrl) {
             contentArray.push({
               type: "image_url",
               image_url: { url: orUrl }
@@ -3382,6 +3471,19 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
         }
       }
     }
+
+    // Khi gửi vào Context Windows, cập nhật toàn bộ ảnh sang trạng thái đã đọc thành công trên cả roomState, styleAnalyzer, workCards và botCharacters
+    const updateRefStatus = (img: any) => {
+      if (!img) return;
+      img.analysisStatus = 'analyzed';
+      if (!img.imageAnalysisText || img.imageAnalysisText === 'Chưa phân tích') {
+        img.imageAnalysisText = 'Đã đọc trực tiếp trong Context Windows';
+      }
+    };
+
+    allRefsList.forEach(updateRefStatus);
+    orderedVisionRefs.forEach(updateRefStatus);
+    allOutfitRefs.forEach(updateRefStatus);
 
     setApiSignals(prev => ({
       ...prev,
@@ -3436,12 +3538,6 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             "🚨 MANDATE #11: 100% REF-STEALTH & ANONYMOUS GEOMETRY RECONSTRUCTION (BẢO MẬT TUYỆT ĐỐI ẢNH THAM CHIẾU - BÁM CHẶT BỐ CỤC/GÓC MÁY/NÉT VẼ NHƯNG PHÁT TRIỂN PROMPT SÁNG TẠO KHÔNG LỘ BẢN GỐC) 🚨:\n" +
             "  - No Identity/Literal Leak (Không rò rỉ danh tính/đặc trưng bản gốc): You are STRICTLY FORBIDDEN from copying or naming specific copyrighted props, unique weapons, specific tools, character names, or literal metadata of the reference image. Translate these elements into fully customized props matching the user's characters/story.\n" +
             "  - Stealth Professional Art Formulation (Mô tả nghệ thuật ẩn danh chuyên nghiệp): Describe the camera angles, visual path/lines (đường thị giác, điểm nhìn, tầm nhìn), light source vectors, perspective depth, and artistic brushstrokes with 100% precision using professional visual art terminology, while keeping the prompt itself beautifully original. No reader should ever be able to guess or trace back the original reference image from the prompt text alone, yet the generative AI reading the prompt will reproduce the exact same composition framework, line-weight DNA, perspective structure, and color theory as the reference image, matching 100% the story characters!\n\n" +
-            "🚨 MANDATE #12: ULTRA-DETAILED PROMPT EXPANSION (BẮT BUỘC MÔ TẢ CHI TIẾT TỪ 5000 ĐẾN 7000 KÝ TỰ, CHI TIẾT NÉT VẼ, TÓC, ÁNH SÁNG) 🚨:\n" +
-            "You MUST generate incredibly long, comprehensive, and exhaustive prompts. The total prompt length MUST be between 5000 and 7000 characters. You must include EXTREMELY detailed descriptions of the following:\n" +
-            "1. LINE DETAILS (Chi tiết Nét Vẽ): Describe the exact line weight, ink density, stroke dynamics, pencil/brush texture, hatching/cross-hatching techniques, and edge crispness. The structural line work MUST be explicitly prompted to guarantee structural integrity before coloring. \n" +
-            "2. HAIR ARCHITECTURE (Cấu trúc Tóc): Describe the hair flow, clumping, strands, volume, and gravity with precise physical geometry. AVOID 'splitting/clumping' AI artifacts. The character's specific hairstyle comes from the Story Profile, but the DRAWING STYLE/NÉT VẼ of the hair MUST be an exact match to the Reference Image's artistic technique.\n" +
-            "3. LIGHTING, COLOR, AND QUALITY CORRECTION (Ánh sáng, Màu sắc & Sửa lỗi chất lượng): Detail the exact color grading, light source origin, volumetric rays, shadow depth, chromatic aberration (or lack thereof), and material light interactions. Actively prompt to PREVENT 'washed out', 'generic', or 'plastic' AI-generated lighting. The output must be breathtaking, rivaling master-level human artwork.\n" +
-            "4. CAMERA & GEOMETRY (Góc máy & Hình học): Explicitly describe camera placement, viewing distance, arcs, geometry, visual recognition forms, and leading lines (đường thị giác).\n\n" +
             "🚨 SUPREME COMMAND FOR HIGH-FIDELITY DETAILS (MỆNH LỆNH THỐNG TRỊ CHI TIẾT TỰA THỰC 100%): Write incredibly long, precise, and vivid paragraphs for each part! Do not summarize or use generic terms! Use advanced terminology such as 'Fujifilm Superia color space, Hasselblad HC 80mm color accuracy, Arri Alexa cinematic tone, 0.05mm ultra-fine rotring ink brush, meticulous cross-hatching shade layers, anatomically flawless hands with five long slender digits, perfect fabric drape tension folds' in every description. This ensures that the generated prompt perfectly forces Midjourney/Stable Diffusion/Ideogram/Flux to reproduce the reference style, dynamic composition lines, and rich, non-blurry colors and shapes with 100% fidelity, while allowing the character's pose and actions to be creatively driven by the STORY!\n\n" +
             "🚨 NO COGNITIVE ANALYSIS FLUFF (BẮT BUỘC BỎ QUA PHẦN PHÂN TÍCH SUY NGHĨ TIẾNG VIỆT) 🚨: To maintain ultimate stream efficiency, YOU MUST NOT output any [REFERENCE FIDELITY REPORT] or Vietnamese thinking/analysis text. Start the response immediately with [FINAL PROMPT] followed by the requested parts. Just write the highly detailed prompt ready for direct image creation! Each panel/card must start immediately with '[FINAL PROMPT]'.\n\n" +
             "Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...]."
@@ -3452,8 +3548,8 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             "  2. Visual Storytelling (Kể chuyện qua hình ảnh): Even if the reference images are just 'beautiful' and unrelated to the plot, you must FORCE the scene to reflect the story's vibe. Every shadow, object, and expression must tell a piece of the story. Looking at the image must reveal the story's genre and plot ideas!\n" +
             "  3. The Reference Image (Ảnh tham chiếu) is ONLY the 'Brush' and 'Paint': Extract the linework, color palette, and lighting style. Apply these artistic techniques to the story's specific character and narrative. DO NOT clone the character identity from the reference image!\n\n" +
             "🚨 SUPREME MANDATE #3: EXACT STYLE, COLOR, EYE & EXTRAORDINARY HAIR PRECISION (QUY TẮC ĐỒNG BỘ CHI TIẾT NÉT VẼ, TONE MÀU, LÊN MÀU, VẼ MẮT, VÀ TÓC THEO THAM CHIẾU - SÁNG TẠO POSE THEO TRUYỆN) 🚨: When describing the character, hairstyle, eyes, outfit, and background, you MUST replicate the exact aesthetic style of the reference image. Keep the art medium, line art weight, shading depth, and color blending techniques of the reference image.\n" +
-            "  1. Hair Precision (Học vẽ tóc, mô tả siêu chi tiết để tránh tóc xấu): You must describe hair with extreme clarity, structure, and beauty! Capture the EXACT rendering technique of the hair from the reference (e.g., individual wispy strands, bold cel-shaded chunks, or soft painterly highlights). Clearly define the hairstyle structure, individual silky hair strands flowing gracefully, parting lines, highlight reflections, and fine wisps catching volumetric backlighting. NEVER default to generic AI hair textures!\n" +
-            "  2. Eye & Face Precision (Học vẽ mắt, học lên màu, nét vẽ khuôn mặt): You must strictly imitate the EXACT facial drawing style of the reference image (e.g., the specific thickness of the eyelid lines, the shape of the pupils, the subtle blush rendering). Specify the exact drawing style of the eyes from the reference (e.g., highly glossy irises, heavy lash lines, specific gaze direction, light reflection points). Describe the coloring and shading gradients with professional vocabulary to perfectly capture the color palette. Absolutely avoid generic AI face rendering!\n" +
+            "  1. Hair Precision (Học vẽ tóc, mô tả siêu chi tiết để tránh tóc xấu): You must describe hair with extreme clarity, structure, and beauty! Clearly define the hairstyle structure, individual silky hair strands flowing gracefully, parting lines, highlight reflections, and fine wisps catching volumetric backlighting. Never write vague hair descriptions that lead to ugly AI rendering! Make it as detailed and gorgeous as the reference image.\n" +
+            "  2. Eye & Face Precision (Học vẽ mắt, học lên màu): Specify the exact drawing style of the eyes from the reference (e.g., highly glossy irises, heavy lash lines, specific gaze direction, light reflection points). Describe the coloring and shading gradients with professional vocabulary to perfectly capture the color palette.\n" +
             "  3. Character Posture: The character pose, gesture, stance, and action must be dynamically generated to match the STORY SETTING, using the reference's composition lines and camera angles (Dutch tilt, low-angle sweeping shot, cinematic framing) to frame the story actions beautifully, rather than cloning the exact pose of the reference image rigidly!\n\n" +
             "🚨 SUPREME MANDATE #4: STRICT CARD PORTAL ISOLATION & MULTI-IMAGE FULL UTILIZATION (QUY TẮC PHÂN LUỒNG TỪNG MỤC THẺ ẢNH QUYẾT LIỆT VÀ KHÔNG BỎ SÓT BẤT KỲ ẢNH NÀO) 🚨: You must strictly read and process the requirements of each Work Card one-by-one according to its specific functional domain (Hair from Hair Card, Pose/Angle from Pose Card, Clothing/Outfit from Outfit Card, Setting from Environment Card, Makeup/Expression from Face Card, Art Style from Style Analyzer, and Art Direction from Aesthetic Study). Each card's assigned reference image is the primary visual authority for that domain. Do NOT mix them up, do NOT omit any, and do NOT let one single image dominate the entire prompt! Study each card's reference image thoroughly, and synthesize these distinct modular traits together into a harmonious, balanced multi-reference masterpiece!\n\n" +
             "🚨 MANDATE FOR MULTIPLE IMAGES PER CARD (BẮT BUỘC HỌC HỎI TẤT CẢ ẢNH KHI THẺ CÓ NHIỀU ẢNH THAM CHIẾU) 🚨: If a single Work Card has multiple attached reference images (e.g. 2, 3 or more reference images inside the Outfit Card), YOU ARE STRICTLY FORBIDDEN from choosing only one image and ignoring the rest! You must look at every single image attached, analyze their unique aesthetic elements, and blend their traits (e.g., combining the fabric textures of all references) into the [FINAL PROMPT] to achieve 100% reference utilization! Every single attached image is a mandatory piece of visual material and MUST be utilized!\n\n" +
@@ -3481,29 +3577,39 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             "🚨 MANDATE #11: 100% REF-STEALTH & ANONYMOUS GEOMETRY RECONSTRUCTION (BẢO MẬT TUYỆT ĐỐI ẢNH THAM CHIẾU - BÁM CHẶT BỐ CỤC/GÓC MÁY/NÉT VẼ NHƯNG PHÁT TRIỂN PROMPT SÁNG TẠO KHÔNG LỘ BẢN GỐC) 🚨:\n" +
             "  - No Identity/Literal Leak (Không rò rỉ danh tính/đặc trưng bản gốc): You are STRICTLY FORBIDDEN from copying or naming specific copyrighted props, unique weapons, specific tools, character names, or literal metadata of the reference image. Translate these elements into fully customized props matching the user's characters/story.\n" +
             "  - Stealth Professional Art Formulation (Mô tả nghệ thuật ẩn danh chuyên nghiệp): Describe the camera angles, visual path/lines (đường thị giác, điểm nhìn, tầm nhìn), light source vectors, perspective depth, and artistic brushstrokes with 100% precision using professional visual art terminology, while keeping the prompt itself beautifully original. No reader should ever be able to guess or trace back the original reference image from the prompt text alone, yet the generative AI reading the prompt will reproduce the exact same composition framework, line-weight DNA, perspective structure, and color theory as the reference image, matching 100% the story characters!\n\n" +
-            "🚨 MANDATE #12: ULTRA-DETAILED PROMPT EXPANSION (BẮT BUỘC MÔ TẢ CHI TIẾT TỪ 5000 ĐẾN 7000 KÝ TỰ, CHI TIẾT NÉT VẼ, TÓC, ÁNH SÁNG) 🚨:\n" +
-            "You MUST generate incredibly long, comprehensive, and exhaustive prompts. The total prompt length MUST be between 5000 and 7000 characters. You must include EXTREMELY detailed descriptions of the following:\n" +
-            "1. LINE DETAILS (Chi tiết Nét Vẽ): Describe the exact line weight, ink density, stroke dynamics, pencil/brush texture, hatching/cross-hatching techniques, and edge crispness. The structural line work MUST be explicitly prompted to guarantee structural integrity before coloring. \n" +
-            "2. HAIR ARCHITECTURE (Cấu trúc Tóc): Describe the hair flow, clumping, strands, volume, and gravity with precise physical geometry. AVOID 'splitting/clumping' AI artifacts. The character's specific hairstyle comes from the Story Profile, but the DRAWING STYLE/NÉT VẼ of the hair MUST be an exact match to the Reference Image's artistic technique.\n" +
-            "3. LIGHTING, COLOR, AND QUALITY CORRECTION (Ánh sáng, Màu sắc & Sửa lỗi chất lượng): Detail the exact color grading, light source origin, volumetric rays, shadow depth, chromatic aberration (or lack thereof), and material light interactions. Actively prompt to PREVENT 'washed out', 'generic', or 'plastic' AI-generated lighting. The output must be breathtaking, rivaling master-level human artwork.\n" +
-            "4. CAMERA & GEOMETRY (Góc máy & Hình học): Explicitly describe camera placement, viewing distance, arcs, geometry, visual recognition forms, and leading lines (đường thị giác).\n\n" +
             "🚨 SUPREME COMMAND FOR HIGH-FIDELITY DETAILS (MỆNH LỆNH THỐNG TRỊ CHI TIẾT TỰA THỰC 100%): Write incredibly long, precise, and vivid paragraphs for each part! Use advanced terminology such as 'Fujifilm Superia color space, Hasselblad HC 80mm color accuracy, Arri Alexa cinematic tone, 0.05mm ultra-fine rotring ink brush, meticulous cross-hatching shade layers, anatomically flawless hands with five long slender digits, perfect fabric drape tension folds' in every description. Ensure that every item—whether adapted or invented—is rendered with the same technical excellence, EXACT LINEWORK, and EXACT COLORS as the reference DNA!\n\n" +
             "🚨 MANDATE #10: ABSOLUTE AVOIDANCE OF GENERIC AI STYLE (TUYỆT ĐỐI KHÔNG SỬ DỤNG PHONG CÁCH AI MẶC ĐỊNH) 🚨: YOU ARE STRICTLY FORBIDDEN FROM PRODUCING GENERIC, PLASTIC, OVERLY-SMOOTH, OR TYPICAL 'AI-ART' LOOKS. The artwork must NOT feel digital, synthetic, or generic. You must ONLY produce artwork that looks like it was created by a master human artist using the specific medium and linework defined in the reference images. If the reference is watercolor, the AI output MUST look like 100% genuine watercolor with authentic paper texture, ink bleeds, and organic brush strokes. If the reference is ink, it MUST look like authentic, hand-drawn ink with variable line weight and organic human imperfections! Reject all smooth, artificial, shiny, or 'AI-looking' aesthetic conventions immediately!\n\n" +
             "🚨 NO COGNITIVE ANALYSIS FLUFF (BẮT BUỘC BỎ QUA PHẦN PHÂN TÍCH SUY NGHĨ TIẾNG VIỆT) 🚨: To maintain ultimate stream efficiency, YOU MUST NOT output any [REFERENCE FIDELITY REPORT] or Vietnamese thinking/analysis text. Start the response immediately with [FINAL PROMPT] followed by the requested parts. Just write the highly detailed prompt ready for direct image creation! Each card must start immediately with '[FINAL PROMPT]'.\n\n" +
             "CRITICAL RULE ON REFERENCE IMAGES: When studying reference images in the Context Window, achieve ABSOLUTE FIDELITY in 'Visual Vision' (Art style, medium texture, color palette, technical lighting, and EXACT camera perspective/angle/framing). However, you MUST practice 'Creative Adaptation' for the subject matter: replace literal props, specific tools, and background objects with new elements that make sense for the STORY CHARACTER. The goal is to see the STORY'S CHARACTER through the REFERENCE'S CINEMATIC LENS. Do NOT output bare filenames or placeholder image IDs in the final prompt.\n\n" +
-            "For EACH Work Card, you MUST directly start with '[FINAL PROMPT]' with the standalone descriptive instruction ready for direct image generation! In [FINAL PROMPT], you MUST structure the output into exactly 10 STANDALONE EXHAUSTIVE SECTIONS (### 👑 TƯ LIỆU THAM CHIẾU & AESTHETIC DNA BẮT BUỘC, followed by ### 🧑 SECTION 1 to ### 📸 SECTION 10), and end with '### 🎨 PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)' combining all 10 sections and reference enforcement into a single pure English production-ready block!\n\n" +
-            "Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...].",
+            "For EACH Work Card, you MUST directly start with '[FINAL PROMPT]' with the standalone descriptive instruction ready for direct image generation! In [FINAL PROMPT], you MUST structure the output into exactly 17 STANDALONE PARTS:\n" +
+"**[1/17] Mục tiêu cảnh (Scene Goal)**\n" +
+"**[2/17] Nhân vật (Character)**\n" +
+"**[3/17] Biểu cảm (Expression)**\n" +
+"**[4/17] Pose (Posture & Hands)**\n" +
+"**[5/17] Tỷ lệ cơ thể (Body Proportions)**\n" +
+"**[6/17] Góc máy (Camera Angle)**\n" +
+"**[7/17] Bố cục (Composition)**\n" +
+"**[8/17] Line-art construction (Nét vẽ)** (Must be extremely detailed, defining line weight, sharpness, thickness, intersection handling, and silhouette clarity!)\n" +
+"**[9/17] Tóc (Hair & Strands)** (Must detail hair length, parting, main clumps, flow direction, thickness, volume, curl, highlights, shadows, avoiding AI messy branching!)\n" +
+"**[10/17] Trang phục (Outfit & Folds)**\n" +
+"**[11/17] Ánh sáng (Lighting)** (Define main light, rim light, ambient, bounce, direction, softness/hardness, contrast!)\n" +
+"**[12/17] Màu sắc (Color Palette)** (Define skin tone, background color, color balance, saturation, exposure!)\n" +
+"**[13/17] Chất liệu (Materials)**\n" +
+"**[14/17] Background (Setting)**\n" +
+"**[15/17] Chất lượng render (Render Quality)**\n" +
+"**[16/17] Negative constraints (Lỗi cần tránh)**\n" +
+"**[17/17] Reference application rules (Quy tắc áp dụng tham chiếu)**\n\n" +
+"After all 17 parts, you MUST end with '### 🎨 PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)' combining all parts into a single pure English production-ready block!\n\n" +
+"Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...].",
         onToken: (token) => {
           streamBufferRef.current += token;
           chunksCountRef.current += 1;
           
-          // Append the new token directly to the UI state as explicitly requested
-          setLivePreviewText(prev => prev + token);
-          
           const now = performance.now();
-          if (now - lastFlushTimeRef.current >= 150) {
+          if (now - lastFlushTimeRef.current >= 300) {
             lastFlushTimeRef.current = now;
-            distributeStreamToCardsLive(streamBufferRef.current);
+            setLivePreviewText(streamBufferRef.current);
+            // KHÔNG phân bổ vào thẻ khi đang stream để tránh treo main thread
             
             const charCount = streamBufferRef.current.length;
             const currentChunks = chunksCountRef.current;
@@ -3539,7 +3645,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
             flushTimerRef.current = setTimeout(() => {
               setLivePreviewText(streamBufferRef.current);
-              distributeStreamToCardsLive(streamBufferRef.current);
+              // KHÔNG phân bổ vào thẻ khi đang stream để tránh treo main thread
               const charCount = streamBufferRef.current.length;
               const currentChunks = chunksCountRef.current;
               const newTokens = Math.ceil(charCount / 4);
@@ -3551,95 +3657,119 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
                 estimatedTokensReceived: newTokens,
                 elapsedSeconds: elapsedSec
               }));
-            }, 150);
+            }, 200);
           }
         },
-        onDone: () => {
+        onDone: async () => {
           if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
           const finalResultText = streamBufferRef.current || "";
+          
+          // 1. Giải phóng buffer ngay lập tức để tiết kiệm RAM
+          streamBufferRef.current = "";
+          
           if (!finalResultText.trim()) {
-            const emptyMsg = "API trả về kết quả trống (0 token). Có thể do đường truyền Proxy tạm thời bị gián đoạn hoặc model đang xử lý lượng dữ liệu lớn. Vui lòng thử chọn model khác trong API Proxy hoặc kiểm tra lại kết nối mạng.";
+            const emptyMsg = "API trả về kết quả trống (0 token). Vui lòng thử lại.";
             setApiError(emptyMsg);
             setIsApiRunning(false);
-            setApiSignals(prev => ({
-              ...prev,
-              streaming: false,
-              completed: true,
-              error: emptyMsg,
-              stage: 'done',
-              stageLabel: '❌ Kết quả trắng (Empty Response)',
-              stageDetail: emptyMsg
-            }));
-            toast("❌ " + emptyMsg);
+            setApiSignals(prev => ({ ...prev, streaming: false, completed: true, stage: 'done' }));
             return;
           }
 
-          setLivePreviewText(finalResultText);
+          // Gán kết quả thô vào roomState trước
           rs.result = finalResultText;
-          distributeStreamToCardsLive(finalResultText);
-          
+          rs.lastRunId = uuidv4();
+          setLivePreviewText(finalResultText);
+
           setApiSignals(prev => ({
             ...prev,
             streaming: false,
             stage: 'parsing_result',
-            stageLabel: '6. Parsing Result',
-            stageDetail: 'Đang hoàn tất tự động phân bổ kết quả vào từng Work Card...'
+            stageLabel: '6. Processing Result',
+            stageDetail: 'Đang xử lý dữ liệu và phân bổ vào các thẻ...'
+          }));
+
+          // 2. Chờ 1 nhịp để trình duyệt rảnh tay
+          await new Promise(r => setTimeout(r, 150));
+          
+          // 3. Phân bổ kết quả vào thẻ - Đã có batching bên trong
+          try {
+            await distributeStreamToCardsLive(finalResultText);
+          } catch (e) {
+            console.error("Distribute cards failed in onDone (Raw fallback):", e);
+          }
+          
+          // 4. Yield cực mạnh để giải phóng bộ nhớ cũ trước khi tạo history
+          await new Promise(r => setTimeout(r, 300));
+          
+          setApiSignals(prev => ({
+            ...prev,
+            stage: 'saving',
+            stageLabel: '7. Finalizing',
+            stageDetail: 'Đang chuẩn bị lưu lịch sử và nén dữ liệu...'
           }));
           setProgress(95);
 
+          // 5. Tạo historyItem - Chỉ giữ metadata tối thiểu
+          const historyId = uuidv4();
+          const prunedPayload = {
+            roomName: roomDef.title,
+            cardsCount: (payloadObj?.workCards || []).length
+          };
+
+          const historyItem = {
+            id: historyId,
+            time: new Date().toISOString(),
+            storyId: currentStory.id,
+            roomId: roomDef.id,
+            selectedTarget: target,
+            payload: prunedPayload, 
+            result: finalResultText,
+            selectedStyles: Array.isArray(sa.selected) ? [...sa.selected] : [],
+            referenceImages: (allRefsList || []).slice(0, 3).map((r: any) => ({
+              id: r.id,
+              name: (r.name || "ref").slice(0, 20),
+              previewUrl: "" 
+            })),
+            streamStatus: 'completed' as const,
+            cards: Object.keys(rs.cards || {}).reduce((acc: any, k: string) => {
+              const c = rs.cards[k];
+              if (c && c.output) acc[k] = { output: c.output.slice(0, 2000) };
+              return acc;
+            }, {})
+          };
+          
+          // 6. Cập nhật history (Giới hạn tối đa 2 mục cho nhẹ)
+          if (!rs.history) rs.history = [];
+          rs.history.unshift(historyItem);
+          if (rs.history.length > 2) rs.history = rs.history.slice(0, 2);
+          
+          updateGlobalState(rs);
+          setIsWorkListCollapsed(true);
+          
+          // 7. GIẢI PHÓNG BỘ NHỚ LỚN NGAY LẬP TỨC
+          (payloadObj as any) = null;
+          (allRefsList as any) = null;
+          
+          // 8. Đợi thêm một nhịp nữa trước khi gọi Save database
+          await new Promise(r => setTimeout(r, 500));
+          setProgress(98);
+
+          setProgress(100);
+          setApiSignals(prev => ({
+            ...prev,
+            completed: true,
+            stage: 'done',
+            stageLabel: '8. Completed',
+            stageDetail: '✅ Hoàn tất thành công!'
+          }));
+          setIsApiRunning(false);
+          forceUpdate();
+          toast("✅ Đã tạo xong Prompt Image!");
+          
           setTimeout(() => {
-            setApiSignals(prev => ({
-              ...prev,
-              stage: 'saving',
-              stageLabel: '7. Saving History',
-              stageDetail: 'Đang lưu resultRun mới vào History & chuẩn bị nút copy...'
-            }));
-            setProgress(98);
-
-            const historyItem = {
-              id: uuidv4(),
-              time: new Date().toISOString(),
-              storyId: currentStory.id,
-              roomId: roomDef.id,
-              selectedTarget: target,
-              payload: payloadObj,
-              result: finalResultText,
-              selectedStyles: [...(sa.selected || [])],
-              referenceImages: allRefsList.map((r: any) => ({
-                id: r.id,
-                name: r.name || r.fileName || "ref",
-                previewUrl: (r.previewUrl ? r.previewUrl.slice(0, 100) : null) || (r.data?.slice(0, 500) + "...") || ""
-              })),
-              streamStatus: 'completed' as const,
-              cards: Object.keys(rs.cards || {}).reduce((acc: any, k: string) => {
-                acc[k] = { note: rs.cards[k]?.note || "", output: rs.cards[k]?.output || "" };
-                return acc;
-              }, {})
-            };
-            if (!rs.history) rs.history = [];
-            rs.history.unshift(historyItem);
-            if (rs.history.length > 10) rs.history = rs.history.slice(0, 10);
-            currentStory.rooms[roomDef.id] = { ...rs };
-            setIsWorkListCollapsed(true);
-            save(state);
-
-            setTimeout(() => {
-              setProgress(100);
-              setApiSignals(prev => ({
-                ...prev,
-                completed: true,
-                stage: 'done',
-                stageLabel: '8. Completed',
-                stageDetail: '✅ Hoàn tất! Tất cả thẻ đã nhận đầy đủ prompt chuyên sâu.'
-              }));
-              setIsApiRunning(false);
-              toast("✅ Đã tạo xong Prompt Image production-ready cho toàn bộ phòng!");
-              setTimeout(() => {
-                setProgress(0);
-                setApiSignals(prev => ({ ...prev, requestStarted: false }));
-              }, 8000);
-            }, 300);
-          }, 300);
+            setProgress(0);
+            setApiSignals(prev => ({ ...prev, requestStarted: false }));
+          }, 5000);
         },
         onError: (err) => {
           if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
@@ -3773,7 +3903,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
                 {cover && <SafeImg src={cover} alt="" style={{width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0}} />}
                 <div className="room-avatar" style={{position: 'relative', zIndex: 2}}>{avatar ? <SafeImg src={avatar} alt=""/> : ''}</div>
               </div>
-              <div className="room-intro" style={{padding: '24px 28px 18px', background: 'rgba(255,255,255,0.25)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.3)'}}>
+              <div className="room-intro" style={{padding: '24px 28px 18px', background: 'rgba(255,255,255,0.85)'}}>
                 <h1 style={{margin: 0, fontSize: '28px', color: '#8c526b'}}>{roomDef.title}</h1>
                 <p style={{margin: '6px 0 0', color: '#51404c', fontSize: '15px'}}>{roomDef.desc}</p>
               </div>
@@ -3784,8 +3914,8 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
           <div style={{
             position: 'relative',
             zIndex: 1000,
-            background: "linear-gradient(rgba(255, 255, 255, 0.25), rgba(255, 240, 246, 0.35)), url('https://i.postimg.cc/vHjZ1k3S/215b99c879bdd6e6511287efda1b90ee.jpg') center/cover no-repeat",
-            border: '2px solid rgba(220, 105, 150, 0.45)',
+            background: "linear-gradient(rgba(255, 255, 255, 0.82), rgba(255, 240, 246, 0.88)), url('https://i.postimg.cc/vHjZ1k3S/215b99c879bdd6e6511287efda1b90ee.jpg') center/cover no-repeat",
+            border: '2px solid rgba(220, 105, 150, 0.65)',
             borderRadius: '20px',
             padding: '12px 20px',
             margin: '0 0 16px 0',
@@ -3794,9 +3924,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             gap: '12px',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            boxShadow: '0 8px 24px rgba(140, 82, 107, 0.12)'
+            boxShadow: '0 8px 24px rgba(140, 82, 107, 0.18)'
           }}>
             <div style={{display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap'}}>
               <button 
@@ -3871,12 +3999,10 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
         gap: '14px',
         margin: '16px 0 20px 0',
         padding: '16px 24px',
-        background: "linear-gradient(rgba(255, 255, 255, 0.25), rgba(255, 240, 246, 0.35)), url('https://i.postimg.cc/vHjZ1k3S/215b99c879bdd6e6511287efda1b90ee.jpg') center/cover no-repeat",
-        border: '2.5px solid rgba(233, 107, 155, 0.5)',
+        background: "linear-gradient(rgba(255, 255, 255, 0.78), rgba(255, 240, 246, 0.86)), url('https://i.postimg.cc/vHjZ1k3S/215b99c879bdd6e6511287efda1b90ee.jpg') center/cover no-repeat",
+        border: '2.5px solid #e96b9b',
         borderRadius: '24px',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        boxShadow: '0 10px 28px rgba(210, 58, 115, 0.15)',
+        boxShadow: '0 10px 28px rgba(210, 58, 115, 0.22)',
         animation: 'fadeIn 0.3s ease'
       }}>
         <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap'}}>
@@ -4055,10 +4181,9 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
         <div style={{
           position: 'fixed',
           bottom: '24px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: isWidgetCollapsed ? '320px' : '90vw',
-          maxWidth: '500px',
+          right: '24px',
+          width: isWidgetCollapsed ? '320px' : '450px',
+          maxWidth: 'calc(100vw - 32px)',
           background: 'rgba(255, 255, 255, 0.98)',
           border: '2px solid #e96b9b',
           borderRadius: '20px',
@@ -4165,7 +4290,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
                       <strong style={{color: '#6a1b9a', fontSize: '0.8rem'}}>🎨 Aesthetic DNA tham chiếu ({analyzedRefs.length} ảnh):</strong>
                       <span style={{fontSize: '0.7rem', background: '#e8f5e9', color: '#1b5e20', padding: '2px 6px', borderRadius: '6px', fontWeight: 800}}>Bám sát ảnh để học & ứng dụng (No no các vấn đề khác)</span>
                     </div>
-                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '4px', maxHeight: '60px', overflowY: 'auto'}}>
+                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '4px'}}>
                       {Array.from(new Set(analyzedRefs.flatMap(r => r.imageAnalysisJson?.promptKeywords || []))).slice(0, 10).map((kw, idx) => (
                         <span key={idx} style={{background: '#fff', color: '#6a1b9a', border: '1px solid #ce93d8', padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600}}>
                           ✨ {kw}
@@ -4274,9 +4399,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
         border: '2px solid #e96b9b',
         borderRadius: '24px',
         padding: '12px 18px',
-        margin: '0 auto 16px auto',
-        maxWidth: '1000px',
-        width: '100%',
+        margin: '0 0 16px 0',
         boxShadow: '0 8px 24px rgba(233, 107, 155, 0.12)'
       }}>
         <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
@@ -4293,8 +4416,8 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
         {renderTargetSelector(true)}
       </div>
 
-      <section className="work-list-container" style={{marginBottom: '32px', width: '100%', maxWidth: '1200px', margin: '0 auto', boxSizing: 'border-box', overflowX: 'auto'}}>
-        <div className="work-list-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', background: 'rgba(255, 240, 245, 0.35)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', padding: '12px 16px', borderRadius: '16px', border: '1px solid rgba(252, 228, 236, 0.5)', width: '100%', maxWidth: '100%', boxSizing: 'border-box'}}>
+      <section className="work-list-container" style={{marginBottom: '32px'}}>
+        <div className="work-list-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', background: '#fff0f5', padding: '12px 16px', borderRadius: '16px', border: '1px solid #fce4ec'}}>
           <h2 style={{margin: 0, color: '#c2185b', fontSize: '1.2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px'}}>
             <span>📋</span> Bảng Thiết Lập Thẻ Công Việc
           </h2>
@@ -4304,7 +4427,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
         </div>
 
         {!isWorkListCollapsed && (
-          <div className="work-list" style={{display: 'grid', gridTemplateColumns: '1fr', gap: '20px', width: '100%', maxWidth: '1200px', margin: '0 auto', boxSizing: 'border-box'}}>
+          <div className="work-list" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px'}}>
             {roomDef.cards.map((c: any, i: number) => (
               <WorkCardItem
                 key={`card_${roomDef.id}_${c.id}_${i}`}
@@ -4327,6 +4450,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
                 setSelectedImgDetail={setSelectedImgDetail}
                 renderTargetSelector={renderTargetSelector}
                 updateGlobalState={updateGlobalState}
+                viewHistoryIndex={viewHistoryIndex}
               />
             ))}
           </div>
@@ -4336,38 +4460,33 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
       <StyleAnalyzer roomState={roomState} currentStory={currentStory} roomDef={roomDef} state={state} save={save} toast={toast} />
 
       {/* COMPREHENSIVE SINGLE RESULT CARD - NOW JUST A SUCCESS HEADER */}
-      {((roomState.result && roomState.result.length > 0) && viewHistoryIndex === null) && (
-        <section className="glass-panel" style={{margin: '16px 0', padding: '24px', background: 'rgba(255,255,255,0.25)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: '24px', border: '2px solid rgba(220,105,150,0.35)', boxShadow: '0 12px 36px rgba(232,106,153,0.12)', width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'auto'}}>
-          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px'}}>
-            <div>
-              <p className="eyebrow" style={{color: '#d23a73', margin: 0, fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase'}}>Kết quả tổng hợp đợt này</p>
-              <h2 style={{margin: '4px 0 0 0', color: '#3e333e', fontSize: '1.45rem', fontWeight: 900}}>✨ API Đã Trả Kết Quả Về Từng Thẻ</h2>
-              <p style={{margin: '8px 0 0', color: '#51404c', fontSize: '0.9rem'}}>Kết quả chi tiết đã được tự động phân bổ vào từng thẻ công việc bên trên.</p>
+      {(() => {
+        const displayResult = (viewHistoryIndex !== null && roomState.history && roomState.history[viewHistoryIndex])
+          ? roomState.history[viewHistoryIndex].result
+          : roomState.result;
+
+        return (displayResult && displayResult.length > 0) ? (
+          <>
+            <div className="flex items-center gap-3 mb-6 px-4">
+              <div className="w-1.5 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full" />
+              <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
+                Result Area {viewHistoryIndex !== null && `(Xem Lịch Sử Đợt #${roomState.history.length - viewHistoryIndex})`}
+              </h3>
             </div>
-            <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-              <button className="btn primary small" onClick={() => {
-                const combined = roomDef.cards.map((c: any) => {
-                  const out = roomState.cards?.[c.id]?.output;
-                  return out ? `--- ${c.title} ---\n${out}` : '';
-                }).filter(Boolean).join('\n\n');
-                if (!combined) { toast("Chưa có nội dung để copy."); return; }
-                copyToClipboardSafe(combined);
-                toast("📋 Đã copy toàn bộ Prompt Image vào Clipboard!");
-              }} style={{fontWeight: 800, padding: '8px 16px'}}>📋 Copy Toàn Bộ Prompt</button>
-              <button className="btn ghost small" onClick={runRoom} style={{fontWeight: 800, padding: '8px 14px'}}>🔄 Tạo Lại</button>
-            </div>
-          </div>
-          
-          {/* STATS AND METADATA BAR */}
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', background: '#fff9fb', padding: '14px', borderRadius: '16px', border: '1px solid #f0d5e2', marginTop: '16px', fontSize: '0.85rem', color: '#3e333e'}}>
-            <div><b>📖 Story:</b> {currentStory.title}</div>
-            <div><b>🏛️ Hạng mục:</b> {roomDef.title}</div>
-            <div><b>🕒 Tạo lúc:</b> {new Date().toLocaleTimeString('vi-VN')}</div>
-            <div><b>🎯 Target:</b> <span style={{color: '#d23a73', fontWeight: 700}}>{roomState.targetMode || 'bot'}</span></div>
-            <div><b>✦ Styles đã chọn:</b> {roomState.styleAnalyzer?.selected?.length || 0} phong cách</div>
-          </div>
-        </section>
-      )}
+            <PromptSummaryPanel
+              apiSignals={apiSignals}
+              promptRunId={(viewHistoryIndex !== null && roomState.history && roomState.history[viewHistoryIndex]) ? (roomState.history[viewHistoryIndex].lastRunId || "unknown") : (roomState.lastRunId || "unknown")}
+              orderedVisionRefs={buildContextWindow(currentStory, roomDef.id, roomDef.cards.map(c => c.id), roomState).orderedVisionRefs}
+              currentStory={currentStory}
+              roomDef={roomDef}
+              cards={roomDef.cards}
+              contentArray={[]} 
+              finalPrompt={displayResult}
+              toast={toast}
+            />
+          </>
+        ) : null;
+      })()}
 
 
 
@@ -4518,7 +4637,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
               <div>
                 <b>📦 Toàn bộ Payload (JSON metadata):</b>
                 <pre style={{background: '#1e1e1e', color: '#00ffcc', padding: '12px', borderRadius: '8px', overflowX: 'auto', fontSize: '0.8rem'}}>
-                  {JSON.stringify(selectedHistoryPayload.payload, null, 2)}
+                  {JSON.stringify(pruneBase64(selectedHistoryPayload.payload), null, 2)}
                 </pre>
               </div>
               <div>
@@ -4528,11 +4647,11 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             </div>
             <div style={{display: 'flex', justifyContent: 'flex-end', padding: '16px', borderTop: '1px solid #eee', gap: '8px', flexWrap: 'wrap'}}>
               <button className="btn ghost small" onClick={() => {
-                copyToClipboardSafe(JSON.stringify(selectedHistoryPayload.payload, null, 2));
+                copyToClipboardSafe(JSON.stringify(pruneBase64(selectedHistoryPayload.payload), null, 2));
                 toast("📋 Đã copy toàn bộ Payload JSON!");
               }}>📋 Copy Payload JSON</button>
               <button className="btn primary" onClick={() => {
-                replayHistory(selectedHistoryPayload);
+                replayHistory(selectedHistoryPayload, viewHistoryIndex!);
                 setSelectedHistoryPayload(null);
               }}>🔄 Replay Kết Quả Này Vào Phòng</button>
               <button className="btn ghost" onClick={() => setSelectedHistoryPayload(null)}>Đóng</button>
@@ -4543,7 +4662,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 
       {/* Modal Context Preview */}
       {showContextPreview && (
-        <div className="modal show" style={{zIndex: 1050, background: 'rgba(10,5,15,0.72)', backdropFilter: 'blur(8px)'}}>
+        <div className="modal show" style={{zIndex: 1050, background: 'rgba(0,0,0,0.65)'}}>
           <div className="modal-card" style={{maxWidth: '900px', maxHeight: '90vh', display: 'flex', flexDirection: 'column'}}>
             <div className="modal-head">
               <div>
@@ -4562,126 +4681,122 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
               </button>
             </div>
 
-            {previewTab === 'human' && currentPayload ? (
-              <div style={{flex: 1, overflowY: 'auto', padding: '12px 0', textAlign: 'left'}}>
-                <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, background: '#fff0f6', padding: 12, borderRadius: 12, border: '1px solid #f8bbd0', marginBottom: 16}}>
-                  <div><b>Story đang chọn:</b> <span style={{color: '#880e4f'}}>{currentPayload.currentStory.title}</span></div>
-                  <div><b>Phòng làm việc:</b> <span style={{color: '#880e4f'}}>{currentPayload.currentRoom.roomTitle}</span></div>
-                  <div><b>Target Mode:</b> <span style={{color: '#880e4f'}}>{currentPayload.selectedTarget.label}</span></div>
-                  <div><b>Tổng token ước tính:</b> <span style={{color: '#c62828', fontWeight: 800}}>~{stats?.estimatedTotalTokens} tokens</span></div>
-                </div>
-
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16}}>
-                  <div style={{background: '#fff', border: '1px solid #ddd', borderRadius: 10, padding: 12}}>
-                    <h4 style={{margin: '0 0 8px 0', color: '#ad1457'}}>✍️ Dữ liệu nhập tay ({stats?.manualWordCount} từ)</h4>
-                    <ul style={{margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.6}}>
-                      <li><b>Cốt truyện chính:</b> {currentPayload.currentStory.manualInput.storyText ? `Có (${currentPayload.currentStory.manualInput.storyText.length} ký tự)` : '⚠️ Trống'}</li>
-                      <li><b>Hồ sơ User:</b> {currentPayload.currentStory.manualInput.userProfile ? `Có (${currentPayload.currentStory.manualInput.userProfile.length} ký tự)` : '⚠️ Trống'}</li>
-                      <li><b>Danh sách Bot Char:</b> {currentPayload.currentStory.manualInput.botCharacters ? `Có (${currentPayload.currentStory.manualInput.botCharacters.length} nhân vật động)` : (currentPayload.currentStory.manualInput.botProfiles ? `Có (${currentPayload.currentStory.manualInput.botProfiles.length} ký tự)` : '⚠️ Trống')}</li>
-                      <li><b>Nhân vật phụ:</b> {currentPayload.currentStory.manualInput.sideCharacters ? `Có (${currentPayload.currentStory.manualInput.sideCharacters.length} ký tự)` : 'Chưa nhập'}</li>
-                      <li><b>Yêu cầu tạo ảnh:</b> {currentPayload.currentStory.manualInput.imageRequirements ? `Có (${currentPayload.currentStory.manualInput.imageRequirements.length} ký tự)` : 'Chưa nhập'}</li>
-                    </ul>
+            {previewTab === 'human' ? (() => {
+              const payload = buildContextPayload();
+              const stats = payload.contextStats;
+              return (
+                <div style={{flex: 1, overflowY: 'auto', padding: '12px 0', textAlign: 'left'}}>
+                  <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, background: '#fff0f6', padding: 12, borderRadius: 12, border: '1px solid #f8bbd0', marginBottom: 16}}>
+                    <div><b>Story đang chọn:</b> <span style={{color: '#880e4f'}}>{payload.currentStory.title}</span></div>
+                    <div><b>Phòng làm việc:</b> <span style={{color: '#880e4f'}}>{payload.currentRoom.roomTitle}</span></div>
+                    <div><b>Target Mode:</b> <span style={{color: '#880e4f'}}>{payload.selectedTarget.label}</span></div>
+                    <div><b>Tổng token ước tính:</b> <span style={{color: '#c62828', fontWeight: 800}}>~{stats.estimatedTotalTokens} tokens</span></div>
                   </div>
 
-                  <div style={{background: '#fff', border: '1px solid #ddd', borderRadius: 10, padding: 12}}>
-                    <h4 style={{margin: '0 0 8px 0', color: '#2e7d32'}}>📁 File tài liệu đính kèm ({stats?.filesCount} file)</h4>
-                    {currentPayload.currentStory.importedFiles.length === 0 ? (
-                      <p style={{fontSize: 13, color: '#888', fontStyle: 'italic'}}>Không có file tài liệu nào trong Story.</p>
+                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16}}>
+                    <div style={{background: '#fff', border: '1px solid #ddd', borderRadius: 10, padding: 12}}>
+                      <h4 style={{margin: '0 0 8px 0', color: '#ad1457'}}>✍️ Dữ liệu nhập tay ({stats.manualWordCount} từ)</h4>
+                      <ul style={{margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.6}}>
+                        <li><b>Cốt truyện chính:</b> {payload.currentStory.manualInput.storyText ? `Có (${payload.currentStory.manualInput.storyText.length} ký tự)` : '⚠️ Trống'}</li>
+                        <li><b>Hồ sơ User:</b> {payload.currentStory.manualInput.userProfile ? `Có (${payload.currentStory.manualInput.userProfile.length} ký tự)` : '⚠️ Trống'}</li>
+                        <li><b>Danh sách Bot Char:</b> {payload.currentStory.manualInput.botCharacters ? `Có (${payload.currentStory.manualInput.botCharacters.length} nhân vật động)` : (payload.currentStory.manualInput.botProfiles ? `Có (${payload.currentStory.manualInput.botProfiles.length} ký tự)` : '⚠️ Trống')}</li>
+                        <li><b>Nhân vật phụ:</b> {payload.currentStory.manualInput.sideCharacters ? `Có (${payload.currentStory.manualInput.sideCharacters.length} ký tự)` : 'Chưa nhập'}</li>
+                        <li><b>Yêu cầu tạo ảnh:</b> {payload.currentStory.manualInput.imageRequirements ? `Có (${payload.currentStory.manualInput.imageRequirements.length} ký tự)` : 'Chưa nhập'}</li>
+                      </ul>
+                    </div>
+
+                    <div style={{background: '#fff', border: '1px solid #ddd', borderRadius: 10, padding: 12}}>
+                      <h4 style={{margin: '0 0 8px 0', color: '#2e7d32'}}>📁 File tài liệu đính kèm ({stats.filesCount} file)</h4>
+                      {payload.currentStory.importedFiles.length === 0 ? (
+                        <p style={{fontSize: 13, color: '#888', fontStyle: 'italic'}}>Không có file tài liệu nào trong Story.</p>
+                      ) : (
+                        <div style={{display: 'flex', flexDirection: 'column', gap: 6}}>
+                          {payload.currentStory.importedFiles.map((f: any, i: number) => (
+                            <div key={i} style={{fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f1f8e9', padding: '4px 8px', borderRadius: 6, border: '1px solid #c8e6c9'}}>
+                              <span>📄 <b>{f.fileName}</b> ({f.fileSizeReadable} | ~{f.wordCount} từ)</span>
+                              <button className="btn ghost small" style={{fontSize: 11, padding: '2px 6px'}} onClick={() => setSelectedFileDetail(f)}>Xem text</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{background: '#fff', border: '1px solid #ddd', borderRadius: 10, padding: 12, marginBottom: 16}}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: '1px solid #eee', paddingBottom: 8}}>
+                      <div>
+                        <h4 style={{margin: 0, color: '#1565c0'}}>🖼️ Reference Image Manifest (Đọc & Ghi toàn bộ vào Context Window)</h4>
+                        <span style={{fontSize: 11, color: '#1b5e20', fontWeight: 'bold'}}>Luật: Bám sát ảnh tham chiếu để học & ứng dụng vào cốt truyện (No no các vấn đề khác)</span>
+                      </div>
+                      <div style={{display: 'flex', gap: 6, fontSize: 12}}>
+                        <span style={{background: '#e3f2fd', color: '#0d47a1', padding: '2px 8px', borderRadius: 10, fontWeight: 'bold'}}>Tổng: {stats.imagesCount} ảnh</span>
+                        <span style={{background: '#e8f5e9', color: '#1b5e20', padding: '2px 8px', borderRadius: 10, fontWeight: 'bold'}}>Đã hiểu: {stats.analyzedImagesCount} ảnh</span>
+                      </div>
+                    </div>
+
+                    {stats.imagesCount === 0 ? (
+                      <p style={{fontSize: 13, color: '#888', fontStyle: 'italic', margin: '8px 0'}}>Chưa có ảnh tham chiếu trong phòng hoặc Style Analyzer.</p>
                     ) : (
-                      <div style={{display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 130, overflowY: 'auto'}}>
-                        {currentPayload.currentStory.importedFiles.map((f: any, i: number) => (
-                          <div key={i} style={{fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f1f8e9', padding: '4px 8px', borderRadius: 6, border: '1px solid #c8e6c9'}}>
-                            <span>📄 <b>{f.fileName}</b> ({f.fileSizeReadable} | ~{f.wordCount} từ)</span>
-                            <button className="btn ghost small" style={{fontSize: 11, padding: '2px 6px'}} onClick={() => setSelectedFileDetail(f)}>Xem text</button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: 10}}>
+                        <div style={{display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 11, background: '#f8f9fa', padding: 8, borderRadius: 8}}>
+                          <b>Phân bổ theo mục đích:</b>
+                          <span style={{color: '#6a1b9a'}}>🎨 Style Analyzer: <b>{payload.referenceImageManifest.filter((img: any) => img.cardId === 'style_analyzer').length}</b></span> |
+                          <span style={{color: '#ad1457'}}>💇‍♀️ Thẻ Tóc (Hair): <b>{payload.referenceImageManifest.filter((img: any) => img.purpose?.includes('hair_reference')).length}</b></span> |
+                          <span style={{color: '#e65100'}}>💃 Thẻ Dáng (Pose): <b>{payload.referenceImageManifest.filter((img: any) => img.purpose?.includes('pose_reference')).length}</b></span> |
+                          <span style={{color: '#2e7d32'}}>👗 Thẻ Trang phục (Outfit): <b>{payload.referenceImageManifest.filter((img: any) => img.purpose?.includes('outfit_reference')).length}</b></span> |
+                          <span style={{color: '#00838f'}}>🤖 Bot Profile: <b>{payload.referenceImageManifest.filter((img: any) => img.purpose?.includes('bot_character_reference')).length}</b></span>
+                        </div>
 
-                <div style={{background: '#fff', border: '1px solid #ddd', borderRadius: 10, padding: 12, marginBottom: 16, width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'auto'}}>
-                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: '1px solid #eee', paddingBottom: 8}}>
-                    <div>
-                      <h4 style={{margin: 0, color: '#1565c0'}}>🖼️ Reference Image Manifest (Đọc & Ghi toàn bộ vào Context Window)</h4>
-                      <span style={{fontSize: 11, color: '#1b5e20', fontWeight: 'bold'}}>Luật: Bám sát ảnh tham chiếu để học & ứng dụng vào cốt truyện (No no các vấn đề khác)</span>
-                    </div>
-                    <div style={{display: 'flex', gap: 6, fontSize: 12}}>
-                      <span style={{background: '#e3f2fd', color: '#0d47a1', padding: '2px 8px', borderRadius: 10, fontWeight: 'bold'}}>Tổng: {stats?.imagesCount} ảnh</span>
-                      <span style={{background: '#e8f5e9', color: '#1b5e20', padding: '2px 8px', borderRadius: 10, fontWeight: 'bold'}}>Đã hiểu: {stats?.analyzedImagesCount} ảnh</span>
-                    </div>
-                  </div>
-
-                  {stats?.imagesCount === 0 ? (
-                    <p style={{fontSize: 13, color: '#888', fontStyle: 'italic', margin: '8px 0'}}>Chưa có ảnh tham chiếu trong phòng hoặc Style Analyzer.</p>
-                  ) : (
-                    <div style={{display: 'flex', flexDirection: 'column', gap: 10}}>
-                      <div style={{display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 11, background: '#f8f9fa', padding: 8, borderRadius: 8}}>
-                        <b>Phân bổ theo mục đích:</b>
-                        <span style={{color: '#6a1b9a'}}>🎨 Style Analyzer: <b>{currentPayload.referenceImageManifest.filter((img: any) => img.cardId === 'style_analyzer').length}</b></span> |
-                        <span style={{color: '#ad1457'}}>💇‍♀️ Thẻ Tóc (Hair): <b>{currentPayload.referenceImageManifest.filter((img: any) => img.purpose?.includes('hair_reference')).length}</b></span> |
-                        <span style={{color: '#e65100'}}>💃 Thẻ Dáng (Pose): <b>{currentPayload.referenceImageManifest.filter((img: any) => img.purpose?.includes('pose_reference')).length}</b></span> |
-                        <span style={{color: '#2e7d32'}}>👗 Thẻ Trang phục (Outfit): <b>{currentPayload.referenceImageManifest.filter((img: any) => img.purpose?.includes('outfit_reference')).length}</b></span> |
-                        <span style={{color: '#00838f'}}>🤖 Bot Profile: <b>{currentPayload.referenceImageManifest.filter((img: any) => img.purpose?.includes('bot_character_reference')).length}</b></span>
-                      </div>
-
-                      <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, maxHeight: 340, overflowY: 'auto', paddingRight: 4}}>
-                        {currentPayload.referenceImageManifest.map((img: any, idx: number) => (
-                          <div key={idx} style={{display: 'flex', gap: 10, background: img.cardId === 'style_analyzer' ? '#f3e5f5' : '#fff8e1', border: '1px solid', borderColor: img.cardId === 'style_analyzer' ? '#ce93d8' : '#ffe082', borderRadius: 8, padding: 8, cursor: 'pointer', transition: 'all 0.2s'}} onClick={() => setSelectedImgDetail(img)}>
-                            <SafeImg src={img.previewUrl || img.storageUrl} alt="" style={{width: 70, height: 70, objectFit: 'cover', borderRadius: 6, flexShrink: 0, border: '1px solid #ccc'}} />
-                            <div style={{flex: 1, minWidth: 0, fontSize: 11, display: 'flex', flexDirection: 'column', justifyContent: 'space-between'}}>
-                              <div>
-                                <div style={{fontWeight: 'bold', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={img.fileName}>📄 {img.fileName}</div>
-                                <div style={{color: '#d23a73', fontWeight: 600, marginTop: 2}}>📌 Card: [{img.cardId}] - {img.cardTitle}</div>
-                                <div style={{color: '#555', fontSize: 10, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={img.purpose}>🎯 {img.purpose}</div>
-                              </div>
-                              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, borderTop: '1px dashed #ddd', paddingTop: 4}}>
-                                <span style={{color: img.analysisStatus === 'analyzed' ? 'green' : (img.analysisStatus === 'failed' ? '#e65100' : '#00897b'), fontWeight: 'bold'}}>{img.analysisStatus === 'analyzed' ? '✅ Đã đọc thành công' : (img.analysisStatus === 'failed' ? '❌ Lỗi' : '✅ Sẵn sàng trong Context')}</span>
-                                <span style={{color: '#0066cc', textDecoration: 'underline', fontSize: 10}}>Xem Vision Report</span>
+                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, paddingRight: 4}}>
+                          {payload.referenceImageManifest.map((img: any, idx: number) => (
+                            <div key={idx} style={{display: 'flex', gap: 10, background: img.cardId === 'style_analyzer' ? '#f3e5f5' : '#fff8e1', border: '1px solid', borderColor: img.cardId === 'style_analyzer' ? '#ce93d8' : '#ffe082', borderRadius: 8, padding: 8, cursor: 'pointer', transition: 'all 0.2s'}} onClick={() => setSelectedImgDetail(img)}>
+                              <SafeImg src={img.previewUrl || img.storageUrl} alt="" style={{width: 70, height: 70, objectFit: 'cover', borderRadius: 6, flexShrink: 0, border: '1px solid #ccc'}} />
+                              <div style={{flex: 1, minWidth: 0, fontSize: 11, display: 'flex', flexDirection: 'column', justifyContent: 'space-between'}}>
+                                <div>
+                                  <div style={{fontWeight: 'bold', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={img.fileName}>📄 {img.fileName}</div>
+                                  <div style={{color: '#d23a73', fontWeight: 600, marginTop: 2}}>📌 Card: [{img.cardId}] - {img.cardTitle}</div>
+                                  <div style={{color: '#555', fontSize: 10, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={img.purpose}>🎯 {img.purpose}</div>
+                                </div>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, borderTop: '1px dashed #ddd', paddingTop: 4}}>
+                                  <span style={{color: img.analysisStatus === 'analyzed' ? 'green' : (img.analysisStatus === 'failed' ? '#e65100' : '#00897b'), fontWeight: 'bold'}}>{img.analysisStatus === 'analyzed' ? '✅ Đã đọc thành công' : (img.analysisStatus === 'failed' ? '❌ Lỗi' : '✅ Sẵn sàng trong Context')}</span>
+                                  <span style={{color: '#0066cc', textDecoration: 'underline', fontSize: 10}}>Xem Vision Report</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div style={{background: '#fcf4f8', border: '1px solid #f8bbd0', borderRadius: 10, padding: 12}}>
-                  <h4 style={{margin: '0 0 6px 0', color: '#880e4f'}}>🎨 Style Analyzer & Danh sách Thẻ làm việc ({currentPayload.workCards.length} thẻ)</h4>
-                  <p style={{fontSize: 13, margin: '0 0 10px 0'}}><b>Nét vẽ chọn ({currentPayload.styleAnalyzer.selectedStyles.length} style):</b> {currentPayload.styleAnalyzer.selectedStyles.map((s: any) => s.styleName).join(", ") || "Chưa chọn nét nào"}</p>
-                  
-                  <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
-                    {currentPayload.workCards.length === 0 ? (
-                      <div style={{fontSize: 13, color: 'red', fontWeight: 'bold'}}>⚠️ Không tìm thấy thẻ công việc nào! (API sẽ bị chặn)</div>
-                    ) : (
-                      currentPayload.workCards.map((c: any, idx: number) => (
-                        <div key={idx} style={{background: '#fff', border: '1px solid #e1bee7', borderRadius: 8, padding: 10}}>
-                          <div style={{fontSize: 14, fontWeight: 'bold', color: '#6a1b9a', marginBottom: 4}}>{idx + 1}. {c.title}</div>
-                          <div style={{fontSize: 13, color: '#333'}}>
-                            <span style={{marginRight: 12}}>📝 Ghi chú: {c.userNote ? <b style={{color: 'green'}}>Có ({c.userNote.length} ký tự)</b> : <span style={{color: 'gray'}}>Trống</span>}</span>
-                            <span style={{marginRight: 12}}>🖼️ Ảnh tham chiếu: <b style={{color: c.referenceImages.length > 0 ? 'blue' : 'gray'}}>{c.referenceImages.length} ảnh</b></span>
-                            <span>✅ Ảnh trong Context: <b style={{color: c.referenceImages.length > 0 ? 'green' : 'gray'}}>{c.referenceImages.filter((r: any) => r.analysisStatus !== 'failed').length} ảnh (Sẵn sàng AI đọc)</b></span>
-                          </div>
+                          ))}
                         </div>
-                      ))
+                      </div>
                     )}
                   </div>
+
+                  <div style={{background: '#fcf4f8', border: '1px solid #f8bbd0', borderRadius: 10, padding: 12}}>
+                    <h4 style={{margin: '0 0 6px 0', color: '#880e4f'}}>🎨 Style Analyzer & Danh sách Thẻ làm việc ({payload.workCards.length} thẻ)</h4>
+                    <p style={{fontSize: 13, margin: '0 0 10px 0'}}><b>Nét vẽ chọn ({payload.styleAnalyzer.selectedStyles.length} style):</b> {payload.styleAnalyzer.selectedStyles.map((s: any) => s.styleName).join(", ") || "Chưa chọn nét nào"}</p>
+                    
+                    <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+                      {payload.workCards.length === 0 ? (
+                        <div style={{fontSize: 13, color: 'red', fontWeight: 'bold'}}>⚠️ Không tìm thấy thẻ công việc nào! (API sẽ bị chặn)</div>
+                      ) : (
+                        payload.workCards.map((c: any, idx: number) => (
+                          <div key={idx} style={{background: '#fff', border: '1px solid #e1bee7', borderRadius: 8, padding: 10}}>
+                            <div style={{fontSize: 14, fontWeight: 'bold', color: '#6a1b9a', marginBottom: 4}}>{idx + 1}. {c.title}</div>
+                            <div style={{fontSize: 13, color: '#333'}}>
+                              <span style={{marginRight: 12}}>📝 Ghi chú: {c.userNote ? <b style={{color: 'green'}}>Có ({c.userNote.length} ký tự)</b> : <span style={{color: 'gray'}}>Trống</span>}</span>
+                              <span style={{marginRight: 12}}>🖼️ Ảnh tham chiếu: <b style={{color: c.referenceImages.length > 0 ? 'blue' : 'gray'}}>{c.referenceImages.length} ảnh</b></span>
+                              <span>✅ Ảnh trong Context: <b style={{color: c.referenceImages.length > 0 ? 'green' : 'gray'}}>{c.referenceImages.filter((r: any) => r.analysisStatus !== 'failed').length} ảnh (Sẵn sàng AI đọc)</b></span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div style={{flex: 1, overflowY: 'auto', background: '#1e1e1e', color: '#d4d4d4', padding: '16px', borderRadius: '12px', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap', border: '1px solid #333', textAlign: 'left', margin: '12px 0'}}>
+              );
+            })() : (
+              <div style={{flex: 1, background: '#1e1e1e', color: '#d4d4d4', padding: '16px', borderRadius: '12px', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap', border: '1px solid #333', textAlign: 'left', margin: '12px 0'}}>
                 <details>
                   <summary style={{cursor: 'pointer', color: '#d23a73', fontWeight: 'bold', marginBottom: '8px'}}>Nhấn để xem JSON Context Payload (Dữ liệu lớn)</summary>
-                  <p style={{fontSize: 11, color: '#888', marginBottom: 8}}><i>Lưu ý: Dữ liệu này chứa toàn bộ ảnh tham chiếu dưới dạng base64, có thể gây lag trình duyệt khi hiển thị.</i></p>
-                  <button className="btn primary small" onClick={() => {
-                    const el = document.getElementById('json-payload-display');
-                    if (el) {
-                      el.textContent = JSON.stringify(currentPayload, null, 2);
-                      toast("Đã tải xong JSON!");
-                    }
-                  }}>Tải JSON lên màn hình</button>
-                  <pre id="json-payload-display" style={{marginTop: '12px', maxHeight: '500px', overflowY: 'auto', border: '1px solid #444', padding: '10px', background: '#000'}}></pre>
+                  <pre style={{marginTop: '12px'}}>{JSON.stringify(pruneBase64(buildContextPayload()), null, 2)}</pre>
                 </details>
               </div>
             )}
@@ -4689,7 +4804,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, borderTop: '1px solid #ddd', paddingTop: 12}}>
               <div style={{display: 'flex', gap: 8}}>
                 <button className="btn ghost small" onClick={() => {
-                  copyToClipboardSafe(JSON.stringify(buildContextPayload(), null, 2));
+                  copyToClipboardSafe(JSON.stringify(pruneBase64(buildContextPayload()), null, 2));
                   toast("📋 Đã copy JSON Context Payload vào Clipboard!");
                 }}>📋 Copy JSON Context</button>
                 <button className="btn ghost small" onClick={() => {
@@ -4711,7 +4826,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 
       {/* Modal chi tiết file khi bấm xem từ preview hoặc từ thẻ */}
       {selectedFileDetail && (
-        <div className="modal show" style={{zIndex: 1150, background: 'rgba(10,5,15,0.72)', backdropFilter: 'blur(8px)'}}>
+        <div className="modal show" style={{zIndex: 1150, background: 'rgba(0,0,0,0.7)'}}>
           <div className="modal-card" style={{maxWidth: '700px', maxHeight: '85vh', display: 'flex', flexDirection: 'column'}}>
             <div className="modal-head">
               <div><p className="eyebrow">File Extracted Text</p><h3 style={{margin: 0}}>📄 {selectedFileDetail.fileName || selectedFileDetail.name}</h3></div>
@@ -4769,7 +4884,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
         const currentAnnotations = selectedImgDetail.annotations || [];
 
         return (
-          <div className="modal show" style={{zIndex: 1150, background: 'rgba(10,5,15,0.72)', backdropFilter: 'blur(8px)'}}>
+          <div className="modal show" style={{zIndex: 1150, background: 'rgba(10,5,15,0.82)'}}>
             <div className="modal-card" style={{maxWidth: '1180px', width: '95vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column', border: '2px solid #ff4081', boxShadow: '0 8px 32px rgba(233,30,99,0.35)'}}>
               <div className="modal-head" style={{borderBottom: '2px solid #ffcbdc', paddingBottom: '10px'}}>
                 <div>
@@ -5241,12 +5356,12 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
                               <b style={{color: '#d23a73'}}>✨ Tóm tắt (High Reference Fidelity):</b><br/>
                               {selectedImgDetail.imageAnalysisJson.summary || "Không có"}
                             </div>
-                            <div style={{marginBottom: 8}}><b>🎨 Visual Style Extracted:</b> {typeof selectedImgDetail.imageAnalysisJson.visualStyleExtracted === 'string' ? selectedImgDetail.imageAnalysisJson.visualStyleExtracted : JSON.stringify(selectedImgDetail.imageAnalysisJson.visualStyleExtracted || selectedImgDetail.imageAnalysisJson.style || {})}</div>
-                            <div style={{marginBottom: 8}}><b>🌈 Color Palette Extracted:</b> {typeof selectedImgDetail.imageAnalysisJson.colorPaletteExtracted === 'string' ? selectedImgDetail.imageAnalysisJson.colorPaletteExtracted : JSON.stringify(selectedImgDetail.imageAnalysisJson.colorPaletteExtracted || selectedImgDetail.imageAnalysisJson.color || {})}</div>
-                            <div style={{marginBottom: 8}}><b>🖌️ Line &amp; Render Extracted:</b> {typeof selectedImgDetail.imageAnalysisJson.lineAndRenderExtracted === 'string' ? selectedImgDetail.imageAnalysisJson.lineAndRenderExtracted : JSON.stringify(selectedImgDetail.imageAnalysisJson.lineAndRenderExtracted || selectedImgDetail.imageAnalysisJson.layer5_artStyle || {})}</div>
-                            <div style={{marginBottom: 8}}><b>✨ Mood Extracted:</b> {typeof selectedImgDetail.imageAnalysisJson.moodExtracted === 'string' ? selectedImgDetail.imageAnalysisJson.moodExtracted : JSON.stringify(selectedImgDetail.imageAnalysisJson.moodExtracted || selectedImgDetail.imageAnalysisJson.layer8_vibe || {})}</div>
-                            <div style={{marginBottom: 8}}><b>👗 Outfit Fidelity Extracted:</b> {typeof selectedImgDetail.imageAnalysisJson.outfitExtracted === 'string' ? selectedImgDetail.imageAnalysisJson.outfitExtracted : JSON.stringify(selectedImgDetail.imageAnalysisJson.outfitExtracted || selectedImgDetail.imageAnalysisJson.layer4_outfit || {})}</div>
-                            <div style={{marginBottom: 8}}><b>📐 Composition Rhythm Extracted:</b> {typeof selectedImgDetail.imageAnalysisJson.compositionExtracted === 'string' ? selectedImgDetail.imageAnalysisJson.compositionExtracted : JSON.stringify(selectedImgDetail.imageAnalysisJson.compositionExtracted || selectedImgDetail.imageAnalysisJson.composition || {})}</div>
+                            <div style={{marginBottom: 8}}><b>🎨 Visual Style Extracted:</b> {typeof selectedImgDetail.imageAnalysisJson.visualStyleExtracted === 'string' ? selectedImgDetail.imageAnalysisJson.visualStyleExtracted : JSON.stringify(pruneBase64(selectedImgDetail.imageAnalysisJson.visualStyleExtracted || selectedImgDetail.imageAnalysisJson.style || {}))}</div>
+                            <div style={{marginBottom: 8}}><b>🌈 Color Palette Extracted:</b> {typeof selectedImgDetail.imageAnalysisJson.colorPaletteExtracted === 'string' ? selectedImgDetail.imageAnalysisJson.colorPaletteExtracted : JSON.stringify(pruneBase64(selectedImgDetail.imageAnalysisJson.colorPaletteExtracted || selectedImgDetail.imageAnalysisJson.color || {}))}</div>
+                            <div style={{marginBottom: 8}}><b>🖌️ Line &amp; Render Extracted:</b> {typeof selectedImgDetail.imageAnalysisJson.lineAndRenderExtracted === 'string' ? selectedImgDetail.imageAnalysisJson.lineAndRenderExtracted : JSON.stringify(pruneBase64(selectedImgDetail.imageAnalysisJson.lineAndRenderExtracted || selectedImgDetail.imageAnalysisJson.layer5_artStyle || {}))}</div>
+                            <div style={{marginBottom: 8}}><b>✨ Mood Extracted:</b> {typeof selectedImgDetail.imageAnalysisJson.moodExtracted === 'string' ? selectedImgDetail.imageAnalysisJson.moodExtracted : JSON.stringify(pruneBase64(selectedImgDetail.imageAnalysisJson.moodExtracted || selectedImgDetail.imageAnalysisJson.layer8_vibe || {}))}</div>
+                            <div style={{marginBottom: 8}}><b>👗 Outfit Fidelity Extracted:</b> {typeof selectedImgDetail.imageAnalysisJson.outfitExtracted === 'string' ? selectedImgDetail.imageAnalysisJson.outfitExtracted : JSON.stringify(pruneBase64(selectedImgDetail.imageAnalysisJson.outfitExtracted || selectedImgDetail.imageAnalysisJson.layer4_outfit || {}))}</div>
+                            <div style={{marginBottom: 8}}><b>📐 Composition Rhythm Extracted:</b> {typeof selectedImgDetail.imageAnalysisJson.compositionExtracted === 'string' ? selectedImgDetail.imageAnalysisJson.compositionExtracted : JSON.stringify(pruneBase64(selectedImgDetail.imageAnalysisJson.compositionExtracted || selectedImgDetail.imageAnalysisJson.composition || {}))}</div>
                             
                             <div style={{marginTop: 12, padding: 8, background: '#e8f5e9', borderRadius: 6, borderLeft: '4px solid #4caf50'}}>
                               <b>✅ Details to Preserve (70%–85% Aesthetic Fidelity):</b><br/>
@@ -5316,7 +5431,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 
       {/* Modal Image Review Panel */}
       {showImageReviewPanel && (
-        <div className="modal show" style={{zIndex: 1160, background: 'rgba(10,5,15,0.72)', backdropFilter: 'blur(8px)'}}>
+        <div className="modal show" style={{zIndex: 1160, background: 'rgba(0,0,0,0.8)'}}>
           <div className="modal-card" style={{maxWidth: '850px', maxHeight: '90vh', display: 'flex', flexDirection: 'column'}}>
             <div className="modal-head" style={{borderBottom: '2px solid #f8bbd0', paddingBottom: 12}}>
               <div>
@@ -5400,7 +5515,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 
       {/* Modal Thẻ Hồng Cốt Truyện trong RoomView */}
       {showStoryPinkCardsModal && (
-        <div className="modal show" style={{zIndex: 1160, background: 'rgba(10,5,15,0.72)', backdropFilter: 'blur(8px)'}}>
+        <div className="modal show" style={{zIndex: 1160, background: 'rgba(0,0,0,0.75)'}}>
           <div className="modal-card" style={{maxWidth: '850px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: '#fff8fb'}}>
             <div className="modal-head" style={{borderBottom: '2px solid #f8bbd0', paddingBottom: 12}}>
               <div>
@@ -5546,7 +5661,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 
       {/* Modal Cẩm Nang Prompt Ref DNA */}
       {showPromptRefDocModal && (
-        <div className="modal show" style={{zIndex: 1170, background: 'rgba(10,5,15,0.72)', backdropFilter: 'blur(8px)'}}>
+        <div className="modal show" style={{zIndex: 1170, background: 'rgba(20, 10, 15, 0.82)', backdropFilter: 'blur(8px)'}}>
           <div className="modal-card" style={{maxWidth: '960px', width: '95%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', background: '#fff9fb', border: '2px solid #f48fb1', borderRadius: '24px', boxShadow: '0 12px 40px rgba(140, 38, 78, 0.25)', overflow: 'hidden'}}>
             
             {/* Header Modal */}
@@ -5672,7 +5787,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
               </div>
 
               {/* Cột Phải: Nội dung chi tiết của tab */}
-              <div style={{flex: 1, background: 'rgba(255, 255, 255, 0.35)', backdropFilter: 'blur(15px)', WebkitBackdropFilter: 'blur(15px)', padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column'}}>
+              <div style={{flex: 1, background: '#ffffff', padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column'}}>
                 
                 {/* TAB 1: LINES */}
                 {docTab === 'lines' && (
@@ -6018,8 +6133,7 @@ function HistorySection({ roomState, viewHistoryIndex, setViewHistoryIndex, repl
               <div key={index} style={{position: 'relative', display: 'inline-block'}}>
                 <button
                   onClick={() => {
-                    setViewHistoryIndex(index);
-                    replayHistory(h);
+                    replayHistory(h, index);
                   }}
                   style={{
                     padding: '8px 32px 8px 16px',
@@ -6079,7 +6193,4 @@ function HistorySection({ roomState, viewHistoryIndex, setViewHistoryIndex, repl
       </p>
     </section>
   );
-};
-
-const RoomView = React.memo(RoomViewBase);
-export default RoomView;
+}

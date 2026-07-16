@@ -66,41 +66,59 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
         <section className="home-pages">
           <div className="home-page">
             <button className="app-icon" onClick={() => onOpenApp("lipstick")}>
-              <span className="app-bubble" style={{
-                backgroundImage: "url('https://i.postimg.cc/SR6KbDxB/cb535764613eeef9220bea58d05babfd.jpg')",
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                border: '2px solid #ff80ab',
-                boxShadow: '0 8px 24px rgba(255,128,171,0.3)',
-                position: 'relative'
-              }}>
-                <div className="absolute inset-0 bg-white/10 opacity-0 hover:opacity-100 transition-opacity rounded-[23px]" />
+              <span className="app-bubble" style={{background: 'linear-gradient(145deg, #fff, #ffe1ec)', border: '1px solid rgba(220,105,150,0.28)', boxShadow: '0 10px 24px rgba(232,106,153,0.18)'}}>
+                <div style={{
+                  position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  {/* Lipstick Body - deep purple/black */}
+                  <div style={{
+                    position: 'absolute', width: '17px', height: '14px',
+                    borderRadius: '4px', background: '#3e333e',
+                    left: '13px', bottom: '10px', transform: 'rotate(-28deg)',
+                    boxShadow: 'inset -2px -2px 4px rgba(0,0,0,0.3)'
+                  }}></div>
+                  {/* Lipstick Gold Collar */}
+                  <div style={{
+                    position: 'absolute', width: '15px', height: '4px',
+                    borderRadius: '1px', background: 'linear-gradient(90deg, #ffd700, #ffb6c1, #ffd700)',
+                    left: '16px', bottom: '21px', transform: 'rotate(-28deg)'
+                  }}></div>
+                  {/* Lipstick Tip - deep pink */}
+                  <div style={{
+                    position: 'absolute', width: '12px', height: '22px',
+                    borderRadius: '8px 8px 3px 3px', background: 'linear-gradient(180deg,#ff9dbc,#d23a73)',
+                    left: '19px', top: '9px', transform: 'rotate(-28deg)',
+                    boxShadow: 'inset -1px 0 2px rgba(255,255,255,0.4)'
+                  }}></div>
+                </div>
               </span>
               <span>୨ৎ Lipstick<br />Prompt</span>
             </button>
             <button className="app-icon" onClick={() => onOpenApp("promptMarkdown")}>
-              <span className="app-bubble" style={{
-                backgroundImage: "url('https://i.postimg.cc/3x7vNDMv/f611dc0acb4f072dd942c38db713958f.jpg')",
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                border: '2px solid #ff80ab',
-                boxShadow: '0 8px 24px rgba(255,128,171,0.3)',
-                position: 'relative'
-              }}>
-                <div className="absolute inset-0 bg-white/10 opacity-0 hover:opacity-100 transition-opacity rounded-[23px]" />
+              <span className="app-bubble" style={{background: 'linear-gradient(135deg, #ffb6d0, #ff82b2)'}}>
+                <svg viewBox="0 0 48 48">
+                  <path fill="#ffffff" d="M24 40c-9 0-14-9-14-18 0-7 5-12 14-12s14 5 14 12c0 9-5 18-14 18z"></path>
+                  <path fill="#7bc950" d="M24 6c-3 0-5 3-7 5 3-1 6-2 7-2 1 0 4 1 7 2-2-2-4-5-7-5z"></path>
+                  <path fill="#7bc950" d="M24 6c-1 3-3 5-6 6 3-1 5-3 6-6z"></path>
+                  <path fill="#7bc950" d="M24 6c1 3 3 5 6 6-3-1-5-3-6-6z"></path>
+                  <circle fill="#ff82b2" cx="24" cy="22" r="1.5"></circle>
+                  <circle fill="#ff82b2" cx="19" cy="26" r="1.5"></circle>
+                  <circle fill="#ff82b2" cx="29" cy="26" r="1.5"></circle>
+                  <circle fill="#ff82b2" cx="24" cy="30" r="1.5"></circle>
+                  <circle fill="#ff82b2" cx="17" cy="20" r="1"></circle>
+                  <circle fill="#ff82b2" cx="31" cy="20" r="1"></circle>
+                </svg>
               </span>
               <span>୨ৎ Prompt Studio</span>
             </button>
             <button className="app-icon" onClick={() => onOpenApp("apiProxy")}>
-              <span className="app-bubble" style={{
-                backgroundImage: "url('https://i.postimg.cc/RZVZ215j/6811e5166e7ea3f19264946a744997bf.jpg')",
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                border: '2px solid #ff80ab',
-                boxShadow: '0 8px 24px rgba(255,128,171,0.3)',
-                position: 'relative'
-              }}>
-                <div className="absolute inset-0 bg-white/10 opacity-0 hover:opacity-100 transition-opacity rounded-[23px]" />
+              <span className="app-bubble">
+                <svg viewBox="0 0 48 48">
+                  <path d="M13 30c-4 0-7-3-7-7s3-7 7-7h3"></path>
+                  <path d="M35 18c4 0 7 3 7 7s-3 7-7 7h-3"></path>
+                  <path d="M17 24h14"></path>
+                  <path d="M24 11v8M24 29v8"></path>
+                </svg>
               </span>
               <span>୨ৎ Cài Đặt<br />API Proxy</span>
             </button>

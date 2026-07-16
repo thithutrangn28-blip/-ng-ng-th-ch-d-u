@@ -77,17 +77,25 @@ export default function PromptMarkdownSmartContextScreen({ active, onHome }: Pro
   }, [activeStoryId]);
 
   const loadStories = async () => {
-    let all = await dbGetAllStories();
-    if (all.length === 0) {
-      const s = createNewStory("Câu chuyện đầu tiên");
-      await dbPutStory(s);
-      all = [s];
-    }
-    all.sort((a, b) => b.createdAt - a.createdAt);
-    setStories(all);
-    if (!activeStoryId) {
-      const saved = localStorage.getItem("pmsl_active_story");
-      setActiveStoryId(saved || all[0].id);
+    try {
+      let all = await dbGetAllStories();
+      if (all.length === 0) {
+        const s = createNewStory("Câu chuyện đầu tiên");
+        await dbPutStory(s);
+        all = [s];
+      }
+      all.sort((a, b) => b.createdAt - a.createdAt);
+      setStories(all);
+      if (!activeStoryId) {
+        const saved = localStorage.getItem("pmsl_active_story");
+        setActiveStoryId(saved || all[0].id);
+      }
+    } catch (e) {
+      console.error("DEBUG: Failed to load stories from DB:", e);
+      showToast("Lỗi khi tải câu chuyện từ database. Đang tạo câu chuyện tạm thời.");
+      const s = createNewStory("Câu chuyện mặc định (Lỗi DB)");
+      setStories([s]);
+      setActiveStoryId(s.id);
     }
   };
 
@@ -110,7 +118,7 @@ export default function PromptMarkdownSmartContextScreen({ active, onHome }: Pro
     setTimeout(() => setToastMsg(""), 2600);
   };
 
-  const activeStory = stories.find(s => s.id === activeStoryId) || stories[0];
+  const activeStory = stories.find(s => s.id === activeStoryId) || stories[0] || createNewStory("Câu chuyện mặc định");
 
   const handleUpdateStory = async (updated: Story) => {
     updated.updatedAt = Date.now();
@@ -634,7 +642,7 @@ Task: ${requestText}
     strict = "cold-technical", 
     selectedTasksList: any[] = [],
     targetRoomIdx = currentRoom
-  ) => {
+  ): any[] => {
     const catalog = getRoomCatalog(targetRoomIdx);
     const storyTasks = getStoryRoomTasks(story, targetRoomIdx);
     const tasks = (selectedTasksList && selectedTasksList.length > 0) ? selectedTasksList : storyTasks;
@@ -847,11 +855,31 @@ Task: ${requestText}
 7. EXHAUSTIVE DEPTH: Expand every numbered instruction into a rich, thorough, multi-sentence operational guideline (3-6 sentences per item). DO NOT shorten or group them into shallow bullet points!
 `;
 
-    return finalPrompt;
+    // Construct image payload
+    const imageParts: any[] = [];
+    if (story && story.context && story.context.files) {
+        imageParts.push({ type: "text", text: "\n\n[FINAL PROMPT]\n\n" });
+        story.context.files.forEach((f: any) => {
+           if (f.dataUri && f.dataUri.startsWith("data:image")) {
+             let cardId = "general";
+             const nameLower = (f.fileName || f.name || "").toLowerCase();
+             if (nameLower.includes("hair")) cardId = "hair";
+             else if (nameLower.includes("outfit")) cardId = "outfit";
+             else if (nameLower.includes("pose")) cardId = "pose";
+             else if (nameLower.includes("face")) cardId = "face";
+             else if (nameLower.includes("env") || nameLower.includes("setting")) cardId = "environment";
+             
+             imageParts.push({ type: "text", text: `[CARD_ID: ${cardId}]` });
+             imageParts.push({ type: "image_url", image_url: { url: f.dataUri } });
+           }
+        });
+    }
+
+    return [{ type: "text", text: finalPrompt }, ...imageParts];
   };
 
 
-  const createRun = async (scope: string, prompt: string, status: string, content: string) => {
+  const createRun = async (scope: string, prompt: string | any[], status: string, content: string) => {
     const no = runs.length + 1;
     let runTitle = "";
     let runRoomName = "";
@@ -1290,7 +1318,7 @@ Received:
              onPreview={(note, format, strict, selected) => {
                  const prompt = buildFinalContextWindow("preview", "Preview prompt markdown cho phòng hiện tại", activeStory, false, note, format, strict, selected);
                  const el = document.getElementById("roomOutput");
-                 if (el) el.textContent = prompt;
+                 if (el) el.textContent = (Array.isArray(prompt) ? prompt.join("\n") : String(prompt));
                  showToast("Đã dựng prompt phòng hiện tại.");
              }}
              onAbort={() => {

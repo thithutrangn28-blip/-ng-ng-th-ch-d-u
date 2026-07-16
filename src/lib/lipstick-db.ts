@@ -61,28 +61,58 @@ export async function getLipstickState(): Promise<LipstickState | null> {
   return memoryFallback;
 }
 
+let saveTimeout: any = null;
+
 export async function saveLipstickState(state: LipstickState): Promise<void> {
   memoryFallback = state;
 
-  // Try localStorage first (fast and synchronous)
+  if (saveTimeout) clearTimeout(saveTimeout);
+  
+  saveTimeout = setTimeout(() => {
+    const doSave = () => {
+      // Try localStorage (synchronous but we are in a timeout/idle)
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {}
+
+      // Try IndexedDB asynchronously
+      try {
+        getDB().then(db => {
+          if (db) {
+            const tx = db.transaction(STORE_NAME, "readwrite");
+            tx.objectStore(STORE_NAME).put(state, "main");
+          }
+        });
+      } catch (e) {}
+    };
+
+    if (typeof window !== 'undefined' && (window as any).requestIdleCallback) {
+      (window as any).requestIdleCallback(doSave, { timeout: 2000 });
+    } else {
+      doSave();
+    }
+  }, 1000);
+}
+
+export async function saveLipstickStateImmediate(state: LipstickState): Promise<void> {
+  memoryFallback = state;
+
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+    saveTimeout = null;
+  }
+  
+  // Save to localStorage immediately
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
   } catch (e) {}
 
-  // Try IndexedDB asynchronously
+  // Save to IndexedDB immediately
   try {
     const db = await getDB();
     if (db) {
-      await new Promise<void>((resolve) => {
-        try {
-          const tx = db.transaction(STORE_NAME, "readwrite");
-          const req = tx.objectStore(STORE_NAME).put(state, "main");
-          req.onsuccess = () => resolve();
-          req.onerror = () => resolve();
-        } catch (e) {
-          resolve();
-        }
-      });
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).put(state, "main");
     }
   } catch (e) {}
 }

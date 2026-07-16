@@ -844,7 +844,8 @@ Bắt đầu ngay khối đầu tiên với ---TASK---:`;
                   runs.map(r => (
                     <button key={r.id} className="runCard" onClick={() => {
                         const el = document.getElementById("roomOutput");
-                        const text = r.content || r.prompt || "Chưa có nội dung";
+                        const textVal = r.content || r.prompt || "Chưa có nội dung";
+                        const text = Array.isArray(textVal) ? textVal.join("\n") : String(textVal);
                         if (el) el.textContent = text;
                         setRoomOutputText(text);
                         const vault = document.querySelector('.outputVault');

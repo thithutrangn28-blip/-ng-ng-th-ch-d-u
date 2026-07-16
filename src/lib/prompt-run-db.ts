@@ -7,7 +7,7 @@ export type Run = {
   roomIndex?: number;
   roomName: string;
   title: string;
-  prompt: string;
+  prompt: string | any[];
   contextSnapshot: string;
   content: string;
   status: string; // "waiting" | "running" | "streaming" | "done" | "error" | "aborted" | "needs-api" | "empty" | "blank"

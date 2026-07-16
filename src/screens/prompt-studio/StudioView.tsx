@@ -435,7 +435,8 @@ export default function StudioView({
                 ) : (
                   runs.map(r => (
                     <button key={r.id} className="runCard" onClick={() => {
-                      const text = r.content || r.prompt || "Chưa có nội dung";
+                      const textVal = r.content || r.prompt || "Chưa có nội dung";
+                      const text = Array.isArray(textVal) ? textVal.join("\n") : String(textVal);
                       setHomeOutput(text);
                       const el = document.querySelector('.outputVault');
                       if (el) el.scrollIntoView({ behavior: 'smooth' });

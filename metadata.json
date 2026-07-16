@@ -1,6 +1,6 @@
 {
-  "name": "Capuchino Bunny MinMin",
-  "description": "A cute pastel writing and roleplay novel creation app.",
+  "name": "Mimi chichi prompt 𝜗ৎ",
+  "description": "A specialized prompt and AI utility app for Mimi and Chichi.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

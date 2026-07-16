@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, startTransition } from "react";
 import "./lipstick.css";
-import { getLipstickState, saveLipstickState } from "../../lib/lipstick-db";
+import { getLipstickState, saveLipstickState, saveLipstickStateImmediate } from "../../lib/lipstick-db";
 import { LipstickState, LipstickStory, LipstickRoomState, LipstickImageRef } from "../../lib/lipstick-types";
 import { STYLE_GROUPS, PRESET_BACKGROUNDS, rooms as ROOMS_DATA } from "../../lib/lipstick-rooms-data";
 import { callAIText, callAIStream } from "../../lib/api-client";
@@ -41,22 +41,69 @@ function createDefaultState(): LipstickState {
   };
 }
 
-// Biểu tượng trái tim vẽ tay bằng code cho vợ yêu 💖
-const CustomHeartIcon = ({ size = 20, color = "currentColor", filled = false }) => (
-  <svg 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill={filled ? color : "none"} 
-    stroke={color} 
-    strokeWidth="2.5" 
-    strokeLinecap="round" 
-    strokeLinejoin="round"
-    className="transition-transform active:scale-125 touch-feedback"
-  >
-    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.78-8.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-  </svg>
-);
+// --- OPTIMIZED ROOM CARD COMPONENT ---
+const RoomCard = React.memo(({ 
+  r, 
+  idx, 
+  currentStory, 
+  state, 
+  handleEnterRoom, 
+  setShowRoomForm, 
+  handleDeleteRoom,
+}: { 
+  r: any, 
+  idx: number, 
+  currentStory: any, 
+  state: any, 
+  handleEnterRoom: (id: string) => void,
+  setShowRoomForm: (id: string) => void,
+  handleDeleteRoom: (id: string) => void,
+  getRoomState: (id: string) => any
+}) => {
+  // 1. Chỉ lấy metadata nhẹ từ story
+  const rs = currentStory?.rooms?.[r.id];
+  const cover = rs?.cover || rs?.background || PRESET_BACKGROUNDS[idx % PRESET_BACKGROUNDS.length];
+  const avatar = rs?.avatar || currentStory.avatar || state.ui.globalAvatar;
+  const isCustom = !ROOMS_DATA.some(staticRoom => staticRoom.id === r.id);
+
+  return (
+    <article 
+      className="profile-card" 
+      style={{ cursor: 'pointer', contain: 'content', contentVisibility: 'auto', containIntrinsicSize: '1px 320px' }} 
+      onClick={() => handleEnterRoom(r.id)}
+    >
+      <div className="profile-cover">
+        {cover ? <SafeImg src={cover} alt="" style={{opacity: 1}}/> : <div style={{width:'100%',height:'100%',background:'#ffddea'}}></div>}
+        <div className="avatar">{avatar ? <SafeImg src={avatar} alt=""/> : ''}</div>
+      </div>
+      <div className="profile-body">
+        <h3>{r.icon} {r.title}</h3>
+        <span className="muted">{r.subtitle}</span>
+        <div style={{ margin: '8px 0', fontSize: '0.75rem', color: '#880e4f', background: '#fff0f5', padding: '6px 10px', borderRadius: '6px', borderLeft: '3px solid #d23a73' }}>
+          <strong>𝜗𝜚 ── ⊹ ‧₊˚</strong><br/>
+          <b>Story:</b> {currentStory.title || "Chưa đặt tên"}<br/>
+          {currentStory.botCharacters && currentStory.botCharacters.length > 0 && (
+            <span><b>Char:</b> {currentStory.botCharacters.map((c: any) => c.displayName).join(', ')}</span>
+          )}
+        </div>
+        <div className="badges">
+          <span className="badge">{r.cards.length} thẻ</span>
+          <span className="badge">{isCustom ? "Custom Room 💖" : "Mặc định ✨"}</span>
+        </div>
+        <p>Bấm trái tim để vào phòng làm việc.</p>
+        <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+          <button className="btn primary small" style={{ flex: 1, fontWeight: 800 }} onClick={(e) => { e.stopPropagation(); handleEnterRoom(r.id); }}>♥ vào phòng</button>
+          {isCustom && (
+            <>
+              <button className="btn ghost small" style={{ padding: '6px 12px', borderColor: '#d23a73', color: '#d23a73', background: '#fdf2f8', borderRadius: 8, fontWeight: 700 }} title="Sửa bối cảnh phòng" onClick={(e) => { e.stopPropagation(); setShowRoomForm(r.id); }}>✏️ Sửa</button>
+              <button className="btn ghost small" style={{ padding: '6px 12px', borderColor: '#e53935', color: '#e53935', background: '#ffebee', borderRadius: 8, fontWeight: 700 }} title="Xóa phòng này" onClick={(e) => { e.stopPropagation(); handleDeleteRoom(r.id); }}>🗑️ Xóa</button>
+            </>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+});
 
 export default function LipstickAppScreen({ active, onHome }: { active: boolean, onHome: () => void }) {
   const [state, setState] = useState<LipstickState>(() => {
@@ -68,11 +115,29 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
       }
     } catch (e) {}
     const def = createDefaultState();
-    try {
-      localStorage.setItem("lipstickPromptRoomsV6", JSON.stringify(def));
-    } catch (e) {}
     return def;
   });
+
+  // Chồng yêu bổ sung useEffect để load dữ liệu đầy đủ từ IndexedDB (vượt giới hạn 5MB của localStorage)
+  useEffect(() => {
+    const loadFullState = async () => {
+      try {
+        const fullState = await getLipstickState();
+        if (fullState && fullState.stories && fullState.stories.length > 0) {
+          setState(fullState);
+          stateRef.current = fullState;
+          console.log("🌸 [Lipstick] Đã khôi phục dữ liệu đầy đủ từ bộ nhớ bền vững (IndexedDB)");
+        }
+      } catch (err) {
+        console.warn("⚠️ [Lipstick] Không thể load dữ liệu từ IndexedDB:", err);
+      }
+    };
+    loadFullState();
+  }, []);
+
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
   const [currentView, setCurrentView] = useState<"gallery" | "drawer" | "room">("gallery");
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const [showSetup, setShowSetup] = useState(false);
@@ -85,7 +150,11 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
   const [showRoomPreset, setShowRoomPreset] = useState(false);
   const [roomProgress, setRoomProgress] = useState(0);
   const [showPromptGuide, setShowPromptGuide] = useState(false);
+  const [visibleRoomsCount, setVisibleRoomsCount] = useState(12);
+  const [visibleStoriesCount, setVisibleStoriesCount] = useState(12);
   const saveTimeoutRef = useRef<any>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const scrollPositions = useRef<Record<string, number>>({});
 
   useEffect(() => {
     if (currentView !== "room" || currentRoomId === null) {
@@ -96,87 +165,98 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
   const pruneLipstickState = (data: LipstickState): LipstickState => {
     if (!data || !data.stories) return data;
     
-    // Create a shallow copy of the state
+    // Tạo bản copy của data
     const newData = { ...data };
     
-    // Only map stories if they exist
+    // Chỉ giữ lại tối đa 3 story gần nhất nếu quá nhiều (tùy chọn, ở đây ta vẫn giữ cấu trúc)
     newData.stories = newData.stories.map((st: any) => {
-      // Check if story needs pruning (e.g. has history)
-      const hasHistoryToPrune = st.rooms && Object.values(st.rooms).some((r: any) => r.history && r.history.length > 0);
-      if (!hasHistoryToPrune) return st;
+      if (!st.active) {
+        // Với story không active, ta có thể xóa bớt room history để giải phóng ram
+        if (st.rooms) {
+          const prunedRooms = { ...st.rooms };
+          Object.keys(prunedRooms).forEach(rId => {
+            if (prunedRooms[rId].history && prunedRooms[rId].history.length > 1) {
+              prunedRooms[rId].history = prunedRooms[rId].history.slice(0, 1);
+            }
+          });
+          return { ...st, rooms: prunedRooms };
+        }
+        return st;
+      }
 
       const newSt = { ...st };
       if (newSt.rooms) {
         newSt.rooms = { ...newSt.rooms };
         Object.keys(newSt.rooms).forEach((rId) => {
-          const rState = { ...newSt.rooms[rId] };
-          if (rState.history && Array.isArray(rState.history) && rState.history.length > 0) {
-            // Only keep the last 5 history items and remove massive base64 previews
-            // Use a simpler mapping to avoid deep recursion if not needed
-            rState.history = rState.history.slice(-5).map((h: any) => {
-              const newH = { ...h };
-              if (newH.referenceImages && Array.isArray(newH.referenceImages)) {
-                newH.referenceImages = newH.referenceImages.map((img: any) => {
-                  if (img.data && img.data.length > 500) {
-                    return {
-                      ...img,
-                      data: img.data.slice(0, 100) + "...",
-                      previewUrl: img.previewUrl && img.previewUrl.length > 500 ? img.previewUrl.slice(0, 100) + "..." : img.previewUrl,
-                      storageUrl: img.storageUrl && img.storageUrl.length > 500 ? img.storageUrl.slice(0, 100) + "..." : img.storageUrl,
-                    };
-                  }
-                  return img;
-                });
-              }
-              if (newH.cards) {
-                newH.cards = { ...newH.cards };
-                Object.keys(newH.cards).forEach((k: any) => {
-                  if (newH.cards[k].refs) {
-                    newH.cards[k] = { ...newH.cards[k], refs: undefined };
-                  }
-                });
-              }
-              return newH;
+          const rState = newSt.rooms[rId];
+          if (!rState || !rState.history || !Array.isArray(rState.history)) return;
+          
+          // Giới hạn history mỗi phòng chỉ 2 mục gần nhất khi lưu
+          if (rState.history.length > 2) {
+            const newRState = { ...rState };
+            newRState.history = rState.history.slice(0, 2).map((h: any) => {
+              // Xóa mọi previewUrl (base64) trong history
+              if (!h.referenceImages) return h;
+              return {
+                ...h,
+                referenceImages: h.referenceImages.map((img: any) => ({
+                  id: img.id,
+                  name: (img.name || "ref").slice(0, 20),
+                  previewUrl: "" 
+                }))
+              };
             });
+            newSt.rooms[rId] = newRState;
           }
-          newSt.rooms[rId] = rState;
         });
       }
       return newSt;
     });
+
     return newData;
   };
 
-  useEffect(() => {
-    async function load() {
-      try {
-        let data = await getLipstickState();
-        if (data && data.stories && data.stories.length > 0) {
-          data = pruneLipstickState(data);
-          setState(data);
-        } else {
-          await saveLipstickState(state);
-        }
-      } catch (e) {}
-    }
-    load();
-  }, []);
-
-  const save = async (newState: LipstickState) => {
-    setState({ ...newState });
+  const flushSave = async () => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
     }
-    saveTimeoutRef.current = setTimeout(async () => {
+    const pruned = pruneLipstickState(stateRef.current);
+    try {
+      await saveLipstickStateImmediate(pruned);
+    } catch (e) {
+      console.warn("Flush save failed:", e);
+    }
+  };
+
+  const save = async (newState: LipstickState, immediate = false) => {
+    // UI update is immediate
+    setState(newState);
+    stateRef.current = newState;
+    
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    
+    const pruned = pruneLipstickState(newState);
+    if (immediate) {
       try {
-        const pruned = pruneLipstickState(newState);
-        // localStorage is too slow for large AI context data and blocks main thread. 
-        // We rely on IndexedDB (saveLipstickState) for primary persistence.
-        await saveLipstickState(pruned);
+        await saveLipstickStateImmediate(pruned);
       } catch (e) {
-        console.warn("Save failed:", e);
+        console.warn("Immediate save failed:", e);
       }
-    }, 1200); // Increased debounce to 1200ms to reduce main thread blocking
+    } else {
+      saveTimeoutRef.current = setTimeout(async () => {
+        // Background save - Thêm nhịp nghỉ để đảm bảo UI mượt
+        await new Promise(r => setTimeout(r, 500));
+        try {
+          await saveLipstickState(pruned);
+        } catch (e) {
+          console.warn("Save failed:", e);
+        }
+      }, 2500); 
+    }
   };
 
   const toast = (msg: string) => {
@@ -197,20 +277,61 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
     return currentRoomId ? allRooms.find(r => r.id === currentRoomId) : null;
   }, [currentRoomId, allRooms]);
 
-  // Pre-calculate room states to avoid repeated normalization in render loops
-  const memoizedRoomStates = React.useMemo(() => {
-    if (!currentStory || !allRooms) return {};
-    const states: Record<string, LipstickRoomState> = {};
-    allRooms.forEach(r => {
-      states[r.id] = getRoomState(r.id);
-    });
-    return states;
-  }, [currentStory, allRooms, state.stories]);
-
   const currentRoomState = React.useMemo(() => {
     if (!currentStory || !roomDef) return null;
-    return memoizedRoomStates[roomDef.id] || getRoomState(roomDef.id);
-  }, [currentStory, roomDef, memoizedRoomStates]);
+    return getRoomState(roomDef.id);
+  }, [currentStory, roomDef, state.stories]);
+
+  // Listen to scrolls and save them for the current view
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!rootRef.current) return;
+      const scrollY = rootRef.current.scrollTop;
+      
+      const storyId = currentStory?.id || "";
+      if (currentView === "gallery") {
+        scrollPositions.current["gallery"] = scrollY;
+      } else if (currentView === "drawer" && storyId) {
+        scrollPositions.current["drawer_" + storyId] = scrollY;
+      } else if (currentView === "room" && storyId && currentRoomId) {
+        scrollPositions.current["room_" + storyId + "_" + currentRoomId] = scrollY;
+      }
+    };
+
+    const el = rootRef.current;
+    if (el) {
+      el.addEventListener("scroll", handleScroll, { passive: true });
+    }
+    return () => {
+      if (el) {
+        el.removeEventListener("scroll", handleScroll);
+      }
+    };
+  }, [currentView, currentStory?.id, currentRoomId]);
+
+  // Restore scroll on view change
+  useEffect(() => {
+    const storyId = currentStory?.id || "";
+    let viewKey = "";
+    if (currentView === "gallery") {
+      viewKey = "gallery";
+    } else if (currentView === "drawer" && storyId) {
+      viewKey = "drawer_" + storyId;
+    } else if (currentView === "room" && storyId && currentRoomId) {
+      viewKey = "room_" + storyId + "_" + currentRoomId;
+    }
+
+    if (viewKey) {
+      const pos = scrollPositions.current[viewKey] || 0;
+      if (pos > 0) {
+        requestAnimationFrame(() => {
+          if (rootRef.current) {
+            rootRef.current.scrollTo({ top: pos, behavior: 'instant' as any });
+          }
+        });
+      }
+    }
+  }, [currentView, currentStory?.id, currentRoomId]);
 
   function initRoomState(rDef: any): LipstickRoomState {
     const rs: LipstickRoomState = {
@@ -232,21 +353,16 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
   }
 
   function getRoomState(rId: string): LipstickRoomState {
-    if (!currentStory) {
-      const rDef = allRooms.find(x => x.id === rId);
-      return initRoomState(rDef);
-    }
+    const rDef = allRooms.find(x => x.id === rId);
+    if (!currentStory) return initRoomState(rDef);
     
     const rs = (currentStory.rooms && currentStory.rooms[rId]) ? currentStory.rooms[rId] : null;
     
     if (rs) {
       // Check if it's already normalized to avoid unnecessary object creation
-      // Optimization: Only normalize if we are strictly missing cards or mandatory sections
-      if (rs.cards && rs.styleAnalyzer && rs.history) {
-        return rs;
-      }
+      const needsNormalization = !rs.cards || !rs.styleAnalyzer || !rs.history || (rDef && rDef.cards && rDef.cards.some((c: any) => !rs.cards[c.id]));
+      if (!needsNormalization) return rs;
 
-      const rDef = allRooms.find(x => x.id === rId);
       const normalized = { ...rs };
       if (!normalized.cards) normalized.cards = {};
       if (rDef && Array.isArray(rDef.cards)) {
@@ -263,7 +379,6 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
       return normalized;
     }
     
-    const rDef = allRooms.find(x => x.id === rId);
     return initRoomState(rDef);
   }
 
@@ -287,10 +402,7 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
     }
     
     // 2. Set navigation state
-    setCurrentRoomId(rId);
-    setCurrentView("room");
-    setShowDrawer(false);
-    scrollToTop();
+    startTransition(() => { setCurrentRoomId(rId); setCurrentView("room"); setShowDrawer(false); });
   };
 
   const handleDeleteRoom = (roomId: string) => {
@@ -343,31 +455,6 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
     reader.onerror = error => reject(error);
   });
 
-  const scrollToTop = () => {
-    const lockScroll = () => {
-      try {
-        window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
-        const rootEl = document.querySelector('.lipstick-root');
-        if (rootEl) {
-          rootEl.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
-          rootEl.scrollTop = 0;
-        }
-        const appEl = document.querySelector('.app-container');
-        if (appEl) {
-          appEl.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
-          appEl.scrollTop = 0;
-        }
-      } catch (e) {}
-    };
-    lockScroll();
-    setTimeout(lockScroll, 10);
-    setTimeout(lockScroll, 50);
-    setTimeout(lockScroll, 120);
-    setTimeout(lockScroll, 250);
-    setTimeout(lockScroll, 500);
-  };
 
   const enterStory = (id: string) => {
     const updatedStories = state.stories.map(s => ({
@@ -380,25 +467,22 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
     };
     setState(newState);
     save(newState);
-    setCurrentView("drawer");
-    scrollToTop();
+    startTransition(() => { setCurrentView("drawer"); });
   };
 
   const renderHome = () => {
-    setCurrentView("gallery");
-    setCurrentRoomId(null);
-    scrollToTop();
+    startTransition(() => { setCurrentView("gallery"); setCurrentRoomId(null); });
   };
 
   if (!active) return null;
 
   return (
-    <div className={`lipstick-root ${active ? 'active' : ''}`}>
+    <div className={`lipstick-root ${active ? 'active' : ''}`} ref={rootRef}>
       {state.ui.globalBg && (
         <div 
           className="gpu-fixed-background"
           style={{
-            backgroundImage: `linear-gradient(180deg,rgba(255,248,251,0.01),rgba(255,255,255,0.01)), url('${state.ui.globalBg}')`
+            backgroundImage: `linear-gradient(180deg,rgba(255,248,251,.12),rgba(255,255,255,.15)), url('${state.ui.globalBg}')`
           }}
         />
       )}
@@ -415,12 +499,10 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
                 style={{background: 'linear-gradient(135deg, #8c526b, #5a3d4a)', color: '#fff', boxShadow: '0 4px 12px rgba(140,82,107,0.3)', fontWeight: 800}}
                 onClick={() => {
                   if (currentView === "room") {
-                    setCurrentView("drawer");
-                    setCurrentRoomId(null);
+                    startTransition(() => { setCurrentView("drawer"); setCurrentRoomId(null); });
                   } else {
-                    renderHome();
-                  }
-                  scrollToTop();
+                    startTransition(() => { renderHome(); }); }
+                  
                 }}
                 title="Trở lại màn hình trước"
               >
@@ -461,41 +543,48 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
                 </div>
               </div>
             </section>
-            <section className="glass-panel">
+            <section className="glass-panel" style={{ minHeight: '600px' }}>
               <div className="section-head">
                 <div>
-                  <p className="eyebrow">Profile cards</p>
-                  <h2>Thẻ câu chuyện</h2>
+                  <p className="eyebrow">Dự án</p>
+                  <h2>Danh sách Story</h2>
                 </div>
               </div>
-              <div className="story-grid">
-                {state.stories.map((s, idx) => {
-                  const hist = Object.values(s.rooms || {}).reduce((n, r: any) => n + (r.history?.length || 0) + (r.styleAnalyzer?.history?.length || 0), 0);
+              <div className="room-grid">
+                {state.stories.slice(0, visibleStoriesCount).map((s, idx) => {
+                  const hist = Object.values(s.rooms || {}).reduce((sum, r) => sum + (r.history?.length || 0), 0);
+                  const cover = s.cover || PRESET_BACKGROUNDS[idx % PRESET_BACKGROUNDS.length];
                   return (
-                    <article className="profile-card" key={`story_${s.id}_${idx}`} style={{ cursor: 'pointer' }} onClick={() => enterStory(s.id)}>
+                    <article 
+                      className="profile-card" 
+                      key={"story_" + s.id} 
+                      style={{ 
+                        cursor: 'pointer', 
+                        contain: 'content', 
+                        contentVisibility: 'auto', 
+                        containIntrinsicSize: '1px 320px' 
+                      }} 
+                      onClick={() => enterStory(s.id)}
+                    >
                       <div className="profile-cover">
-                        {s.cover ? <SafeImg src={s.cover} alt="" /> : <div style={{width:'100%',height:'100%',background:'linear-gradient(135deg, #ffddea, #eef8ff 55%, #ffe9f1)'}}></div>}
-                        <div className="avatar">{s.avatar ? <SafeImg src={s.avatar} alt=""/> : (state.ui.globalAvatar ? <SafeImg src={state.ui.globalAvatar} alt=""/> : '')}</div>
+                        {cover ? <SafeImg src={cover} alt="" style={{opacity: 1}}/> : <div style={{width:'100%',height:'100%',background:'#ffddea'}}></div>}
+                        <div className="avatar">{s.avatar ? <SafeImg src={s.avatar} alt=""/> : ''}</div>
                       </div>
                       <div className="profile-body">
-                        <h3>{s.title}</h3>
-                        <span className="muted">{s.subtitle || "story workspace"}</span>
+                        <h3>{s.title || "Story Mới"}</h3>
+                        <span className="muted">{s.botProfiles ? "Đã nhập Bot Profile" : "Chưa nhập Bot Profile"}</span>
                         {s.botCharacters && s.botCharacters.length > 0 && (
                           <div style={{ margin: '8px 0', fontSize: '0.75rem', color: '#555', background: '#fff0f5', padding: '4px', borderRadius: '4px' }}>
                              <strong>Chars:</strong> {s.botCharacters.map(c => c.displayName).join(', ')}
                           </div>
                         )}
                         <div className="badges">
-                          <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <CustomHeartIcon size={10} filled={true} /> {hist} đợt
-                          </span>
+                          <span className="badge">♥ {hist} đợt</span>
                           <span className="badge">✦ {Object.keys(s.rooms || {}).length} phòng</span>
                         </div>
-                        <p>{s.story || "Chưa có cốt truyện."}</p>
+                        <p style={{ maxHeight: '3.6em', overflow: 'hidden' }}>{s.story || "Chưa có cốt truyện."}</p>
                         <div className="actions">
-                          <button className="btn primary small" onClick={(e) => { e.stopPropagation(); enterStory(s.id); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <CustomHeartIcon size={14} filled={true} /> vào story
-                          </button>
+                          <button className="btn primary small" onClick={(e) => { e.stopPropagation(); enterStory(s.id); }}>♥ vào story</button>
                           <button className="btn ghost small" onClick={(e) => { e.stopPropagation(); setShowStoryForm(s.id); }}>sửa</button>
                           <button className="btn danger small" onClick={(e) => {
                             e.stopPropagation();
@@ -510,10 +599,14 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
                   );
                 })}
               </div>
+              {state.stories.length > visibleStoriesCount && (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <button className="btn primary" onClick={() => setVisibleStoriesCount(prev => prev + 12)}>Xem thêm Story (+12)</button>
+                </div>
+              )}
             </section>
           </>
         )}
-
         {currentView === "drawer" && currentStory && (
           <>
             <section className="hero">
@@ -536,47 +629,19 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
                 </div>
               </div>
               <div className="room-grid">
-                {allRooms.map((r, idx) => {
-                  const rs = getRoomState(r.id);
-                  const cover = rs.cover || rs.background || PRESET_BACKGROUNDS[idx % PRESET_BACKGROUNDS.length];
-                  const avatar = rs.avatar || currentStory.avatar || state.ui.globalAvatar;
-                  const isCustom = !ROOMS_DATA.some(staticRoom => staticRoom.id === r.id);
-                  return (
-                    <article className="profile-card" key={`main_room_${r.id}_${idx}`} style={{ cursor: 'pointer' }} onClick={() => handleEnterRoom(r.id)}>
-                      <div className="profile-cover">
-                        {cover ? <SafeImg src={cover} alt="" style={{opacity: 1}}/> : <div style={{width:'100%',height:'100%',background:'#ffddea'}}></div>}
-                        <div className="avatar">{avatar ? <SafeImg src={avatar} alt=""/> : ''}</div>
-                      </div>
-                      <div className="profile-body">
-                        <h3>{r.icon} {r.title}</h3>
-                        <span className="muted">{r.subtitle}</span>
-                        <div style={{ margin: '8px 0', fontSize: '0.75rem', color: '#880e4f', background: '#fff0f5', padding: '6px 10px', borderRadius: '6px', borderLeft: '3px solid #d23a73' }}>
-                          <strong>𝜗𝜚 ── ⊹ ‧₊˚</strong><br/>
-                          <b>Story:</b> {currentStory.title || "Chưa đặt tên"}<br/>
-                          {currentStory.botCharacters && currentStory.botCharacters.length > 0 && (
-                            <span><b>Char:</b> {currentStory.botCharacters.map((c: any) => c.displayName).join(', ')}</span>
-                          )}
-                        </div>
-                        <div className="badges">
-                          <span className="badge">{r.cards.length} thẻ</span>
-                          <span className="badge">{isCustom ? "Custom Room 💖" : "Mặc định ✨"}</span>
-                        </div>
-                        <p>Bấm trái tim để vào phòng làm việc.</p>
-                        <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
-                          <button className="btn primary small" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} onClick={(e) => { e.stopPropagation(); handleEnterRoom(r.id); }}>
-                            <CustomHeartIcon size={14} filled={true} /> vào phòng
-                          </button>
-                          {isCustom && (
-                            <>
-                              <button className="btn ghost small" style={{ padding: '6px 12px', borderColor: '#d23a73', color: '#d23a73', background: '#fdf2f8', borderRadius: 8, fontWeight: 700 }} title="Sửa bối cảnh phòng" onClick={(e) => { e.stopPropagation(); setShowRoomForm(r.id); }}>✏️ Sửa</button>
-                              <button className="btn ghost small" style={{ padding: '6px 12px', borderColor: '#e53935', color: '#e53935', background: '#ffebee', borderRadius: 8, fontWeight: 700 }} title="Xóa phòng này" onClick={(e) => { e.stopPropagation(); handleDeleteRoom(r.id); }}>🗑️ Xóa</button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
+                {allRooms.slice(0, visibleRoomsCount).map((r, idx) => (
+                  <RoomCard 
+                    key={`main_room_${r.id}_${idx}`}
+                    r={r}
+                    idx={idx}
+                    currentStory={currentStory}
+                    state={state}
+                    handleEnterRoom={handleEnterRoom}
+                    setShowRoomForm={setShowRoomForm}
+                    handleDeleteRoom={handleDeleteRoom}
+                    getRoomState={getRoomState}
+                  />
+                ))}
                 
                 {/* Nút thêm phòng làm việc mới cho vợ */}
                 <article 
@@ -604,21 +669,25 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
                   <button className="btn primary small" style={{ background: '#d23a73', border: 'none', padding: '10px 20px', borderRadius: 12, fontWeight: 800 }}>Thêm phòng mới 🌸</button>
                 </article>
               </div>
+              {allRooms.length > visibleRoomsCount && (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <button className="btn primary" onClick={() => setVisibleRoomsCount(prev => prev + 12)}>Xem thêm phòng (+12)</button>
+                </div>
+              )}
             </section>
           </>
         )}
-
         {currentView === "room" && currentRoomId && roomDef && currentRoomState && (
           <RoomView 
-            key={`${currentStory.id}_${currentRoomId}`}
+            key={`${currentStory.id}_${roomDef.id}`}
             roomDef={roomDef} 
             roomState={currentRoomState} 
             currentStory={currentStory} 
             state={state}
             save={save}
             toast={toast}
-            onBack={() => { setRoomProgress(0); setCurrentView("drawer"); setCurrentRoomId(null); scrollToTop(); }}
-            onHome={() => { setRoomProgress(0); onHome(); }}
+            onBack={() => { flushSave(); startTransition(() => { setRoomProgress(0); startTransition(() => { setCurrentView("drawer"); setCurrentRoomId(null); }); }); }}
+            onHome={() => { flushSave(); startTransition(() => { setRoomProgress(0); onHome(); }); }}
             onOpenDrawer={() => setShowDrawer(true)}
             progress={roomProgress}
             setProgress={setRoomProgress}
@@ -643,7 +712,7 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
         </div>
         <div className="room-grid" style={{display: 'grid', gap: 14, gridTemplateColumns: '1fr'}}>
           {allRooms.map((r, idx) => {
-            const rs = memoizedRoomStates[r.id] || getRoomState(r.id);
+            const rs = getRoomState(r.id);
             const cover = rs.cover || rs.background || PRESET_BACKGROUNDS[idx % PRESET_BACKGROUNDS.length];
             const avatar = rs.avatar || currentStory.avatar || state.ui.globalAvatar;
             const isCustom = !ROOMS_DATA.some(staticRoom => staticRoom.id === r.id);
@@ -669,9 +738,7 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
                   </div>
                   <p style={{fontSize: 12, margin: '8px 0'}}>Bấm trái tim để vào phòng làm việc.</p>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn primary small" style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} onClick={(e) => { e.stopPropagation(); handleEnterRoom(r.id); }}>
-                      <CustomHeartIcon size={14} filled={true} /> vào phòng
-                    </button>
+                    <button className="btn primary small" style={{width: '100%', flex: 1}} onClick={(e) => { e.stopPropagation(); handleEnterRoom(r.id); }}>♥ vào phòng</button>
                     {isCustom && (
                       <>
                         <button className="btn ghost small" style={{ padding: '4px 8px', borderColor: '#d23a73', color: '#d23a73' }} title="Sửa" onClick={(e) => { e.stopPropagation(); setShowRoomForm(r.id); }}>✏️</button>
@@ -917,7 +984,7 @@ function StoryFormModal({ storyId, state, save, onClose, toBase64 }: any) {
   };
 
   return (
-    <div className="modal show" style={{ zIndex: 5000, background: 'rgba(255, 240, 245, 0.1)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="modal show" style={{ zIndex: 5000, background: 'rgba(10,5,15,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="modal-card" style={{ maxWidth: 850, zIndex: 5001, pointerEvents: 'auto', position: 'relative' }}>
         <div className="modal-head">
           <div><p className="eyebrow">Story Workspace</p><h2>{isNew ? "Tạo" : "Sửa"} thẻ câu chuyện & Dữ liệu Context</h2></div>
@@ -1204,7 +1271,7 @@ function StoryFormModal({ storyId, state, save, onClose, toBase64 }: any) {
 
         {/* Panel File Detail / File Preview */}
         {selectedFileDetail && (
-          <div className="modal show" style={{ zIndex: 2200, background: 'rgba(255, 240, 245, 0.1)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
+          <div className="modal show" style={{ zIndex: 2200, background: 'rgba(0,0,0,0.85)' }}>
             <div className="modal-card" style={{ maxWidth: 700, maxHeight: '85vh', display: 'flex', flexDirection: 'column', zIndex: 2201, pointerEvents: 'auto' }}>
               <div className="modal-head">
                 <div>
@@ -1378,7 +1445,7 @@ function RoomFormModal({ roomId, currentStory, state, save, onClose, toast }: Ro
   };
 
   return (
-    <div className="modal show" style={{ display: 'flex', zIndex: 6000, background: 'rgba(255, 240, 245, 0.1)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="modal show" style={{ display: 'flex', zIndex: 6000, background: 'rgba(0,0,0,0.82)', alignItems: 'center', justifyContent: 'center' }}>
       <div className="modal-card" style={{ maxWidth: 750, maxHeight: '90vh', display: 'flex', flexDirection: 'column', zIndex: 6001, pointerEvents: 'auto', position: 'relative' }}>
         <div className="modal-head">
           <div>
