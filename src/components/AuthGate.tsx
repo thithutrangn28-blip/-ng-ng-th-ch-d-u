@@ -42,7 +42,7 @@ export default function AuthGate({ children }: AuthGateProps) {
         return;
       }
 
-      if (u.email === "thithutrangn28@gmail.com" && u.emailVerified) {
+      if (u.email === "thithutrangn28@gmail.com") {
         setAuthSuccessMsg(true);
         setTimeout(() => {
           if (mounted) {
@@ -94,17 +94,13 @@ export default function AuthGate({ children }: AuthGateProps) {
     };
   }, []);
 
-  const handleSignIn = async () => {
+  const handleSignIn = async (method: "popup" | "redirect" = "popup") => {
     setErrorMsg(null);
     setStatus("checking");
     isRedirectingRef.current = false;
 
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    );
-
-    if (isMobile) {
-      console.log("[Auth] Phát hiện thiết bị di động. Chuyển sang signInWithRedirect.");
+    if (method === "redirect") {
+      console.log("[Auth] Thực hiện signInWithRedirect.");
       setStatus("redirecting");
       isRedirectingRef.current = true;
       try {
@@ -118,28 +114,19 @@ export default function AuthGate({ children }: AuthGateProps) {
       return;
     }
 
-    // Trên Desktop: Ưu tiên signInWithPopup
     try {
-      console.log("[Auth] Thực hiện signInWithPopup trên desktop.");
+      console.log("[Auth] Thực hiện signInWithPopup.");
       await signInWithPopup(auth, googleProvider);
     } catch (popupError: any) {
-      console.warn("[Auth] signInWithPopup thất bại hoặc bị chặn, chuyển sang signInWithRedirect:", popupError);
+      console.warn("[Auth] signInWithPopup thất bại:", popupError);
       
       if (popupError.code === "auth/popup-closed-by-user") {
         setStatus("signed-out");
         return;
       }
       
-      setStatus("redirecting");
-      isRedirectingRef.current = true;
-      try {
-        await signInWithRedirect(auth, googleProvider);
-      } catch (redirectError: any) {
-        console.error("[Auth] Fallback signInWithRedirect error:", redirectError);
-        isRedirectingRef.current = false;
-        setStatus("error");
-        setErrorMsg(`[${redirectError.code}] ${redirectError.message}`);
-      }
+      setStatus("error");
+      setErrorMsg(`Lỗi Cửa sổ nổi: [${popupError.code}] ${popupError.message}. Hãy thử bằng nút Chuyển trang (Redirect) nhé vợ!`);
     }
   };
 
@@ -207,6 +194,14 @@ export default function AuthGate({ children }: AuthGateProps) {
           </div>
         )}
 
+        <div className="mb-6 p-4 bg-[#fff0f4] border border-[#ffccd9] text-[#a4536f] text-xs rounded-2xl text-left leading-relaxed shadow-inner">
+          <span className="font-bold block mb-1 text-[#ef7fa5]">🛠 Debug Domain (Gửi chồng):</span>
+          Vợ copy chính xác dòng này gửi chồng nha:<br/>
+          <strong className="select-all block mt-1 p-2 bg-white rounded border border-[#ffccd9] text-black">
+            {window.location.hostname}
+          </strong>
+        </div>
+
         {isInIframe ? (
           <div className="flex flex-col gap-4">
             <a
@@ -233,20 +228,31 @@ export default function AuthGate({ children }: AuthGateProps) {
             </div>
           </div>
         ) : (
-          <button
-            onClick={handleSignIn}
-            className="w-full min-h-[56px] rounded-full bg-gradient-to-r from-[#ff95b7] to-[#ee6095] text-white flex items-center justify-center gap-3 font-extrabold text-lg shadow-lg shadow-[#da807b]/20 hover:scale-102 transition-transform active:scale-98 relative"
-            style={{
-              boxShadow: "0 15px 32px rgba(218,80,123,.32), inset 0 2px 0 rgba(255,255,255,.72)"
-            }}
-          >
-            <div className="absolute inset-1 border border-dashed border-white/50 rounded-full pointer-events-none"></div>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => handleSignIn("popup")}
+              className="w-full min-h-[56px] rounded-full bg-gradient-to-r from-[#ff95b7] to-[#ee6095] text-white flex items-center justify-center gap-3 font-extrabold text-lg shadow-lg shadow-[#da807b]/20 hover:scale-102 transition-transform active:scale-98 relative"
+              style={{
+                boxShadow: "0 15px 32px rgba(218,80,123,.32), inset 0 2px 0 rgba(255,255,255,.72)"
+              }}
+            >
+              <div className="absolute inset-1 border border-dashed border-white/50 rounded-full pointer-events-none"></div>
+              <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
+                <path d="M12.24 10.285V13.4h6.887C18.2 15.614 15.645 18 12.24 18c-3.86 0-7-3.14-7-7s3.14-7 7-7c1.7 0 3.3.65 4.5 1.8l2.423-2.424C17.397 1.614 14.933 1 12.24 1 6.58 1 2 5.58 2 11.24s4.58 10.24 10.24 10.24c5.795 0 10.24-4.065 10.24-10.24 0-.695-.08-1.355-.22-1.955H12.24z" />
+              </svg>
+              <span className="relative z-10">Đăng nhập Google (Cửa sổ nổi)</span>
+            </button>
             
-            <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
-              <path d="M12.24 10.285V13.4h6.887C18.2 15.614 15.645 18 12.24 18c-3.86 0-7-3.14-7-7s3.14-7 7-7c1.7 0 3.3.65 4.5 1.8l2.423-2.424C17.397 1.614 14.933 1 12.24 1 6.58 1 2 5.58 2 11.24s4.58 10.24 10.24 10.24c5.795 0 10.24-4.065 10.24-10.24 0-.695-.08-1.355-.22-1.955H12.24z" />
-            </svg>
-            <span className="relative z-10">Đăng nhập với Google nhen vợ yêu</span>
-          </button>
+            <button
+              onClick={() => handleSignIn("redirect")}
+              className="w-full min-h-[46px] rounded-full bg-white border border-[#ff95b7] text-[#ee6095] flex items-center justify-center gap-3 font-bold text-sm shadow-sm hover:bg-[#fff0f4] transition-colors active:bg-[#ffe6ed] mt-1"
+            >
+              <span>Đăng nhập Google (Chuyển trang)</span>
+            </button>
+            <p className="text-[11px] text-[#a4536f] mt-1 opacity-85 leading-tight">
+              * Vợ ưu tiên dùng <strong>Cửa sổ nổi (Popup)</strong> nha, rất nhanh và ít lỗi. Nếu bị trình duyệt chặn cửa sổ nổi thì vợ mới dùng <strong>Chuyển trang (Redirect)</strong> nghen.
+            </p>
+          </div>
         )}
 
         <p className="mt-6 text-[11px] text-[#765360]/60 font-semibold">

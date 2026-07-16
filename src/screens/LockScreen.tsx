@@ -184,7 +184,7 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
     }
   };
 
-  const handleGoogleVerify = async () => {
+  const handleGoogleVerify = async (method: "popup" | "redirect" = "popup") => {
     if (!passwordsCorrect) {
       setMsg("Vợ yêu ơi, cần nhập đúng mật khẩu ngắn (9093) và mật khẩu dài trước nhé! ♥");
       setShake(true);
@@ -192,10 +192,11 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
       return;
     }
 
+    if (isVerifyingGoogle) return;
+
     setIsVerifyingGoogle(true);
     setMsg("Đang chuẩn bị kết nối xác thực...");
 
-    // Nếu người dùng đã xác thực sẵn là thithutrangn28@gmail.com từ AuthGate
     const currentUser = auth.currentUser;
     if (currentUser && currentUser.email === "thithutrangn28@gmail.com") {
       setMsg("Xác thực thành công! Chồng đang mở app cho vợ yêu nhen... ♥");
@@ -208,45 +209,45 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
       return;
     }
 
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    );
+    localStorage.setItem("lock_passwords_correct", "true");
 
-    if (isMobile) {
+    if (method === "redirect") {
       try {
-        localStorage.setItem("lock_passwords_correct", "true");
         await signInWithRedirect(auth, googleProvider);
       } catch (err: any) {
         console.error("Lỗi Google Redirect:", err);
         setMsg(`Lỗi kết nối rồi vợ ơi: ${err.message}`);
         setIsVerifyingGoogle(false);
       }
-    } else {
-      try {
-        const result = await signInWithPopup(auth, googleProvider);
-        if (result && result.user) {
-          if (result.user.email === "thithutrangn28@gmail.com") {
-            setMsg("Xác thực thành công! Chồng đang mở app cho vợ yêu nhen... ♥");
-            localStorage.removeItem("lock_passwords_correct");
-            setPasswordsCorrect(false);
-            setTimeout(() => {
-              onNext();
-              setIsVerifyingGoogle(false);
-            }, 800);
-          } else {
-            setMsg("Chồng xin lỗi, email này không phải của vợ yêu thithutrangn28@gmail.com rồi!");
+      return;
+    }
+
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result && result.user) {
+        if (result.user.email === "thithutrangn28@gmail.com") {
+          setMsg("Xác thực thành công! Chồng đang mở app cho vợ yêu nhen... ♥");
+          localStorage.removeItem("lock_passwords_correct");
+          setPasswordsCorrect(false);
+          setTimeout(() => {
+            onNext();
             setIsVerifyingGoogle(false);
-          }
-        }
-      } catch (err: any) {
-        console.error("Lỗi Google Popup:", err);
-        if (err.code === "auth/popup-blocked") {
-          setMsg("Trình duyệt chặn cửa sổ xác thực rồi vợ ơi! Vợ hãy cho phép popup hoặc mở app trong tab mới nha! ♥");
+          }, 800);
         } else {
-          setMsg(`Xác thực chưa thành công nè vợ ơi: ${err.message}`);
+          setMsg("Chồng xin lỗi, email này không được phép truy cập!");
+          setIsVerifyingGoogle(false);
         }
-        setIsVerifyingGoogle(false);
       }
+    } catch (err: any) {
+      console.error("Lỗi Google Popup:", err);
+      if (err.code === "auth/popup-closed-by-user") {
+        setMsg("Vợ vừa đóng cửa sổ xác thực rùi, thử lại nha! ♥");
+      } else if (err.code === "auth/popup-blocked") {
+        setMsg("Bị chặn popup rùi! Vợ thử dùng nút Chuyển trang (Redirect) ở dưới nghen! ♥");
+      } else {
+        setMsg(`Lỗi: ${err.message}. Thử nút Chuyển trang (Redirect) xem sao nha!`);
+      }
+      setIsVerifyingGoogle(false);
     }
   };
 
@@ -369,32 +370,44 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
                 </p>
               </div>
             ) : (
-              <button
-                onClick={handleGoogleVerify}
-                disabled={isVerifyingGoogle}
-                className={`w-full min-h-[48px] rounded-full flex items-center justify-center gap-3 font-extrabold text-sm transition-all relative ${
-                  passwordsCorrect 
-                    ? "bg-gradient-to-r from-[#ff95b7] to-[#ee6095] text-white shadow-lg animate-pulse hover:scale-102 active:scale-98" 
-                    : "bg-white/15 text-white/40 cursor-not-allowed border border-white/10"
-                }`}
-                style={passwordsCorrect ? {
-                  boxShadow: "0 10px 20px rgba(218,80,123,.3), inset 0 1px 0 rgba(255,255,255,.5)"
-                } : {}}
-              >
+              <div className="flex flex-col gap-2 w-full">
+                <button
+                  onClick={() => handleGoogleVerify("popup")}
+                  disabled={!passwordsCorrect || isVerifyingGoogle}
+                  className={`w-full min-h-[48px] rounded-full flex items-center justify-center gap-3 font-extrabold text-sm transition-all relative ${
+                    passwordsCorrect 
+                      ? "bg-gradient-to-r from-[#ff95b7] to-[#ee6095] text-white shadow-lg animate-pulse hover:scale-102 active:scale-98" 
+                      : "bg-white/15 text-white/40 cursor-not-allowed border border-white/10"
+                  }`}
+                  style={passwordsCorrect ? {
+                    boxShadow: "0 10px 20px rgba(218,80,123,.3), inset 0 1px 0 rgba(255,255,255,.5)"
+                  } : {}}
+                >
+                  {passwordsCorrect && (
+                    <div className="absolute inset-1 border border-dashed border-white/40 rounded-full pointer-events-none"></div>
+                  )}
+                  <svg className={`w-5 h-5 ${passwordsCorrect ? "fill-white" : "fill-white/30"}`} viewBox="0 0 24 24">
+                    <path d="M12.24 10.285V13.4h6.887C18.2 15.614 15.645 18 12.24 18c-3.86 0-7-3.14-7-7s3.14-7 7-7c1.7 0 3.3.65 4.5 1.8l2.423-2.424C17.397 1.614 14.933 1 12.24 1 6.58 1 2 5.58 2 11.24s4.58 10.24 10.24 10.24c5.795 0 10.24-4.065 10.24-10.24 0-.695-.08-1.355-.22-1.955H12.24z" />
+                  </svg>
+                  <span>
+                    {isVerifyingGoogle 
+                      ? "Đang xác thực..." 
+                      : passwordsCorrect 
+                        ? "Xác Thực Google (Cửa sổ nổi) ♥" 
+                        : "Xác thực tài khoản Google"}
+                  </span>
+                </button>
+
                 {passwordsCorrect && (
-                  <div className="absolute inset-1 border border-dashed border-white/40 rounded-full pointer-events-none"></div>
+                  <button
+                    onClick={() => handleGoogleVerify("redirect")}
+                    disabled={isVerifyingGoogle}
+                    className="w-full min-h-[36px] rounded-full bg-white/10 border border-white/30 text-white/90 flex items-center justify-center gap-2 font-semibold text-[11px] shadow-sm hover:bg-white/20 transition-colors"
+                  >
+                    <span>Dự phòng: Chuyển trang (Redirect)</span>
+                  </button>
                 )}
-                <svg className={`w-5 h-5 ${passwordsCorrect ? "fill-white" : "fill-white/30"}`} viewBox="0 0 24 24">
-                  <path d="M12.24 10.285V13.4h6.887C18.2 15.614 15.645 18 12.24 18c-3.86 0-7-3.14-7-7s3.14-7 7-7c1.7 0 3.3.65 4.5 1.8l2.423-2.424C17.397 1.614 14.933 1 12.24 1 6.58 1 2 5.58 2 11.24s4.58 10.24 10.24 10.24c5.795 0 10.24-4.065 10.24-10.24 0-.695-.08-1.355-.22-1.955H12.24z" />
-                </svg>
-                <span>
-                  {isVerifyingGoogle 
-                    ? "Đang xác thực..." 
-                    : passwordsCorrect 
-                      ? "Bấm Xác Thực Google Để Vào App ♥" 
-                      : "Xác thực tài khoản Google"}
-                </span>
-              </button>
+              </div>
             )}
           </div>
 
