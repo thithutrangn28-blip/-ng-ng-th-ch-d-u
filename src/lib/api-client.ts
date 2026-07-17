@@ -85,19 +85,18 @@ export async function callAIStream(options: AiStreamOptions): Promise<void> {
  * Kéo danh sách Model: Bắt buộc qua Proxy
  */
 export async function pullModels(profile: ApiProfile): Promise<string[]> {
-  const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : "";
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (idToken) {
-    headers["Authorization"] = `Bearer ${idToken}`;
-  }
 
-  const res = await fetch("/api/models", {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+  const res = await fetch(`${baseUrl}/api/models`, {
     method: "POST",
     headers,
     body: JSON.stringify({ profile }),
   });
 
   const text = await res.text();
+  console.log("[DEBUG] pullModels: response status:", res.status, "text:", text.substring(0, 200));
+
   let data;
   try {
     data = JSON.parse(text);

@@ -7,10 +7,8 @@ import { getAuth } from "firebase-admin/auth";
 
 // Initialize Firebase Admin SDK
 try {
-  admin.initializeApp({
-    projectId: "gen-lang-client-0923926530",
-  });
-  console.log("[Firebase Admin] Initialized successfully with projectId: gen-lang-client-0923926530");
+  admin.initializeApp();
+  console.log("[Firebase Admin] Initialized successfully with default project settings");
 } catch (error: any) {
   console.error("[Firebase Admin] Initialization error:", error);
 }
@@ -223,7 +221,7 @@ async function startServer() {
   });
 
   // /api/models
-  app.post("/api/models", authenticateUser, async (req, res) => {
+  app.post("/api/models", async (req, res) => {
     try {
       const { profile } = req.body;
       if (!profile || !profile.endpoint || !profile.key) {
@@ -244,7 +242,7 @@ async function startServer() {
       }
 
       let testUrl = url;
-      if (profile.format === "openai" && !testUrl.endsWith("/models")) {
+      if (!testUrl.endsWith("/models")) {
         testUrl = testUrl + "/models";
       }
 
@@ -262,8 +260,7 @@ async function startServer() {
         });
         
         if (!response.ok) {
-           const errText = await response.text();
-           return res.status(response.status).json({ ok: false, error: `Upstream error: ${response.status} ${response.statusText}\n${errText}` });
+           return res.status(response.status).json({ ok: false, error: `Upstream error: ${response.status} ${response.statusText}\n${await response.text()}` });
         }
 
         const data = await response.json();
