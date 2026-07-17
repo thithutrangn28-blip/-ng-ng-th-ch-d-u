@@ -24,7 +24,21 @@ if (!firebaseConfig.apiKey) {
 console.log("-------------------------------");
 
 // Initialize Firebase App
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+let app;
+try {
+  if (getApps().length === 0) {
+    if (!firebaseConfig.apiKey && typeof window !== "undefined") {
+      console.error("🚨 THÔNG BÁO TỪ CHỒNG: Thiếu VITE_FIREBASE_API_KEY rồi vợ ơi! App sẽ không thể xác thực được đâu nè.");
+    }
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
+  }
+} catch (e) {
+  console.error("Firebase initialization failed:", e);
+  // Fallback to a dummy app object or handle gracefully
+  app = { options: firebaseConfig } as any;
+}
 
 // Cảnh báo nếu authDomain bị đặt sai thành hostname (lỗi phổ biến khi deploy)
 if (typeof window !== "undefined" && firebaseConfig.authDomain === window.location.hostname) {

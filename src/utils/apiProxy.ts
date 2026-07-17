@@ -102,12 +102,16 @@ export function setApiProxySettings(settings: ApiProxySettings): void {
 
 /**
  * Hàm phân giải endpoint cuối cùng: Luôn đi qua Local Proxy server của app.
+ * Hỗ trợ VITE_API_URL cho các môi trường deploy tĩnh như Vercel/Cloudflare.
  */
 export function resolveEndpointUrl(profile: ApiProfile, type: "chat" | "models" | "test" | "text"): string {
-  if (type === "chat") return "/api/ai-stream";
-  if (type === "models") return "/api/models";
-  if (type === "text") return "/api/ai-text";
-  return "/api/test-proxy";
+  const baseUrl = (import.meta as any).env.VITE_API_URL || "";
+  const cleanBase = baseUrl.replace(/\/$/, "");
+  
+  if (type === "chat") return `${cleanBase}/api/ai-stream`;
+  if (type === "models") return `${cleanBase}/api/models`;
+  if (type === "text") return `${cleanBase}/api/ai-text`;
+  return `${cleanBase}/api/test-proxy`;
 }
 
 export type ProxyStreamOptions = {
