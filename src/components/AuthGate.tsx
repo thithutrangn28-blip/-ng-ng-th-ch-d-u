@@ -24,6 +24,7 @@ export default function AuthGate({ children }: AuthGateProps) {
     
     // In thông tin domain hiện tại để debug
     console.log("Current hostname:", window.location.hostname);
+    console.log("Firebase config object:", auth.app.options);
     if (auth.app.options) {
       console.log("Firebase project:", auth.app.options.projectId);
       console.log("Firebase authDomain:", auth.app.options.authDomain);
