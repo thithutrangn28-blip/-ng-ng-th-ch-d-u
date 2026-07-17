@@ -200,15 +200,15 @@ export default function AuthGate({ children }: AuthGateProps) {
             <div className="mb-2">{errorMsg}</div>
             
             {errorMsg.toLowerCase().includes("unauthorized-domain") && (
-              <div className="mt-3 p-3 bg-white border border-red-100 rounded-xl text-black space-y-3 shadow-inner">
+              <div className="mt-3 p-3 bg-white border border-red-100 rounded-xl text-black space-y-4 shadow-inner">
                 <div className="flex flex-col gap-1">
-                  <span className="text-[10px] text-pink-500 font-bold uppercase tracking-wider">Hostname thực tế (Vợ Copy cái này):</span>
+                  <span className="text-[10px] text-pink-500 font-bold uppercase tracking-wider">Hostname thực tế (Vợ copy cái này):</span>
                   <div className="flex items-center gap-2">
                     <code className="text-[11px] bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-100 flex-1 truncate font-mono">{window.location.hostname}</code>
                     <button 
                       onClick={() => {
                         navigator.clipboard.writeText(window.location.hostname);
-                        alert("Đã sao chép hostname rồi vợ nhé! Vợ dán vào 'Authorized domains' trong Firebase nhen! ♥");
+                        alert("Đã sao chép hostname rồi vợ nhé! Vợ dán vào 'Authorized domains' nhen! ♥");
                       }}
                       className="px-3 py-1.5 bg-[#ef7fa5] text-white text-[10px] rounded-lg font-bold shadow-sm active:scale-95 transition-transform"
                     >
@@ -217,19 +217,39 @@ export default function AuthGate({ children }: AuthGateProps) {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-50">
-                  <div className="flex flex-col">
-                    <span className="text-[9px] text-gray-400 font-bold uppercase">Project ID:</span>
-                    <code className="text-[10px] font-mono text-gray-700">{auth.app.options.projectId}</code>
+                <div className="grid grid-cols-1 gap-3 pt-2 border-t border-gray-50">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] text-gray-400 font-bold uppercase">Project ID Đang Dùng:</span>
+                    <div className="flex items-center gap-2">
+                      <code className="text-[11px] font-mono text-gray-700 bg-gray-50 px-2 py-1 rounded flex-1">{auth.app.options.projectId}</code>
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(auth.app.options.projectId || "");
+                          alert("Đã sao chép Project ID rồi vợ nhé! ♥");
+                        }}
+                        className="px-2 py-1 bg-gray-200 text-gray-600 text-[9px] rounded-md font-bold"
+                      >
+                        Copy ID
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-[9px] text-gray-400 font-bold uppercase">Auth Domain:</span>
-                    <code className="text-[10px] font-mono text-gray-700 truncate">{auth.app.options.authDomain}</code>
+                  
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] text-gray-400 font-bold uppercase">Auth Domain (Cấu hình):</span>
+                    <code className="text-[10px] font-mono text-gray-600 bg-gray-50 px-2 py-1 rounded truncate">{auth.app.options.authDomain}</code>
                   </div>
                 </div>
+
+                {/* Cảnh báo đặc biệt về Auth Domain */}
+                {auth.app.options.authDomain && auth.app.options.authDomain === window.location.hostname && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[10px] text-amber-900 leading-relaxed text-left">
+                    <span className="font-bold block text-amber-600 mb-1">⚠️ Vợ ơi chồng phát hiện lỗi rồi!</span>
+                    Auth Domain đang bị đặt trùng với Hostname. Vợ hãy kiểm tra biến môi trường <b>VITE_FIREBASE_AUTH_DOMAIN</b> nhen! Nó phải là tên miền của Firebase (thường kết thúc bằng <code>.firebaseapp.com</code>) chứ không phải tên miền trang web của mình đâu vợ yêu. ♥
+                  </div>
+                )}
                 
                 <p className="text-[10px] text-[#795163] italic mt-1 leading-tight bg-pink-50/50 p-2 rounded-lg border border-pink-100/50">
-                  * Vợ yêu ơi, vợ kiểm tra xem **Hostname** ở trên đã có trong danh sách **Authorized domains** của Project **{auth.app.options.projectId}** chưa nhé! Nếu chưa có thì Google sẽ không cho mình vào đâu nè. ♥
+                  * Vợ yêu ơi, vợ kiểm tra xem <b>Hostname</b> ở trên đã có trong danh sách <b>Authorized domains</b> của Project <b>{auth.app.options.projectId}</b> chưa nhé! Chỉ cần thêm vào đó là mình sẽ được chọn tài khoản ngay thôi nè. ♥
                 </p>
               </div>
             )}

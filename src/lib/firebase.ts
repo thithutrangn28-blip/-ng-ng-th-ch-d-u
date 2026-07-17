@@ -12,14 +12,24 @@ const firebaseConfig = {
   appId: (import.meta as any).env.VITE_FIREBASE_APP_ID || localFirebaseConfig.appId,
 };
 
-// Log for debugging
-console.log("hostname:", window.location.hostname);
-console.log("projectId (config):", firebaseConfig.projectId);
-console.log("authDomain (config):", firebaseConfig.authDomain);
-console.log("Using Env Vars:", !!(import.meta as any).env.VITE_FIREBASE_PROJECT_ID);
+// Log for debugging (Only show essential info, no full keys)
+console.log("--- Firebase Runtime Config ---");
+console.log("Hostname:", window.location.hostname);
+console.log("Project ID:", firebaseConfig.projectId);
+console.log("Auth Domain:", firebaseConfig.authDomain);
+console.log("Using Env Vars:", !!((import.meta as any).env.VITE_FIREBASE_PROJECT_ID));
+if (!firebaseConfig.apiKey) {
+  console.warn("⚠️ Firebase API Key is missing! Please set VITE_FIREBASE_API_KEY in environment variables.");
+}
+console.log("-------------------------------");
 
 // Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+
+// Cảnh báo nếu authDomain bị đặt sai thành hostname (lỗi phổ biến khi deploy)
+if (typeof window !== "undefined" && firebaseConfig.authDomain === window.location.hostname) {
+  console.error("🚨 THÔNG BÁO TỪ CHỒNG: authDomain không được trùng với hostname! Vợ hãy kiểm tra lại biến môi trường VITE_FIREBASE_AUTH_DOMAIN nhen. Nó phải là project-id.firebaseapp.com mới đúng nè vợ.");
+}
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
