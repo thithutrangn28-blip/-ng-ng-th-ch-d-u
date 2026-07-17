@@ -79,7 +79,7 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
         <section className="home-widget">
           <img src="https://i.postimg.cc/1XZTm5bb/7c17cbf6c8bdfcd7112c2f8cd1900463.jpg" alt="" />
           <div className="widget-copy">
-            <small>Widgetsmith · MinMin</small>
+            <small>Widgetsmith · Bánh Bao dâu</small>
             <h2>Sweet writer dashboard</h2>
             <p>Màn hình chính chỉ hiện những app con đã được tạo thật.</p>
           </div>

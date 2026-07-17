@@ -38,7 +38,7 @@ export default function WelcomeScreen({ active, onNext, time, batteryLevel }: Pr
         <div className="cloud-title">Project Neutral Cloud</div>
         <div className="barcode"></div>
         <section className="card">
-          <p className="label">Capuchino Bunny MinMin</p>
+          <p className="label">Bánh Bao dâu 𝜗ৎ</p>
           <h1>Honey Dearest<br />Sweet Story Lab</h1>
           <p>Viết nên những câu chuyện dịu ngọt, lưu giữ nhân vật yêu thích và mở một thế giới nhỏ của riêng bạn.</p>
           <button className="primary" onClick={onNext}>

@@ -1,6 +1,6 @@
 {
-  "name": "Mimi chichi prompt 𝜗ৎ",
-  "description": "A specialized prompt and AI utility app for Mimi and Chichi.",
+  "name": "Bánh Bao dâu",
+  "description": "Ứng dụng Bánh Bao dâu - PWA xịn sò dành cho vợ yêu.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
