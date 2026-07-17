@@ -81,7 +81,7 @@ export default function AuthGate({ children }: AuthGateProps) {
     // 2. Lắng nghe trạng thái đăng nhập thay đổi
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       checkUser(currentUser);
-    }, (error) => {
+    }, (error: any) => {
        console.error("Firebase auth state error:", error);
        if (mounted) {
          setStatus("error");
@@ -102,6 +102,9 @@ export default function AuthGate({ children }: AuthGateProps) {
 
     if (method === "redirect") {
       console.log("[Auth] Thực hiện signInWithRedirect.");
+      googleProvider.setCustomParameters({
+        prompt: 'select_account'
+      });
       setStatus("redirecting");
       isRedirectingRef.current = true;
       try {
@@ -117,6 +120,9 @@ export default function AuthGate({ children }: AuthGateProps) {
 
     try {
       console.log("[Auth] Thực hiện signInWithPopup.");
+      googleProvider.setCustomParameters({
+        prompt: 'select_account'
+      });
       await signInWithPopup(auth, googleProvider);
     } catch (popupError: any) {
       console.warn("[Auth] signInWithPopup thất bại:", popupError);
@@ -191,7 +197,42 @@ export default function AuthGate({ children }: AuthGateProps) {
         {status === "error" && errorMsg && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl text-left leading-relaxed shadow-sm">
             <span className="font-bold block mb-1">🚨 Nhắc nhở ngọt ngào từ chồng:</span>
-            {errorMsg}
+            <div className="mb-2">{errorMsg}</div>
+            
+            {errorMsg.toLowerCase().includes("unauthorized-domain") && (
+              <div className="mt-3 p-3 bg-white border border-red-100 rounded-xl text-black space-y-3 shadow-inner">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] text-pink-500 font-bold uppercase tracking-wider">Hostname thực tế (Vợ Copy cái này):</span>
+                  <div className="flex items-center gap-2">
+                    <code className="text-[11px] bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-100 flex-1 truncate font-mono">{window.location.hostname}</code>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(window.location.hostname);
+                        alert("Đã sao chép hostname rồi vợ nhé! Vợ dán vào 'Authorized domains' trong Firebase nhen! ♥");
+                      }}
+                      className="px-3 py-1.5 bg-[#ef7fa5] text-white text-[10px] rounded-lg font-bold shadow-sm active:scale-95 transition-transform"
+                    >
+                      Sao chép
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-50">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-gray-400 font-bold uppercase">Project ID:</span>
+                    <code className="text-[10px] font-mono text-gray-700">{auth.app.options.projectId}</code>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-gray-400 font-bold uppercase">Auth Domain:</span>
+                    <code className="text-[10px] font-mono text-gray-700 truncate">{auth.app.options.authDomain}</code>
+                  </div>
+                </div>
+                
+                <p className="text-[10px] text-[#795163] italic mt-1 leading-tight bg-pink-50/50 p-2 rounded-lg border border-pink-100/50">
+                  * Vợ yêu ơi, vợ kiểm tra xem **Hostname** ở trên đã có trong danh sách **Authorized domains** của Project **{auth.app.options.projectId}** chưa nhé! Nếu chưa có thì Google sẽ không cho mình vào đâu nè. ♥
+                </p>
+              </div>
+            )}
           </div>
         )}
 

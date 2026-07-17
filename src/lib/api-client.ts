@@ -87,7 +87,7 @@ export async function callAIStream(options: AiStreamOptions): Promise<void> {
 export async function pullModels(profile: ApiProfile): Promise<string[]> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
 
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+  const baseUrl = (import.meta as any).env.VITE_API_BASE_URL || window.location.origin;
   const res = await fetch(`${baseUrl}/api/models`, {
     method: "POST",
     headers,
