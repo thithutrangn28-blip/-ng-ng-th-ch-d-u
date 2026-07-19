@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { getLockWallpaper, setLockWallpaper } from "../lib/storage";
 import { motion, AnimatePresence } from "motion/react";
 import { compressImageFile } from "../utils/imageCompressor";
-import { auth, googleProvider } from "../lib/firebase";
-import { signOut, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
+import { useAuth } from "../components/AuthProvider";
+import { loginWithGoogle } from "../lib/firebase";
+import FirebaseDomainHelper from "../components/FirebaseDomainHelper";
 
 type Props = {
   active: boolean;
@@ -15,38 +16,16 @@ type Props = {
 };
 
 export default function LockScreen({ active, onNext, onBack, time, date, batteryLevel }: Props) {
+  const { user, error: authError } = useAuth();
   const [wallpaper, setWallpaper] = useState<string>("https://i.postimg.cc/nzdFgNvs/215b99c879bdd6e6511287efda1b90ee.jpg");
   const [pass, setPass] = useState("");
   const [longPass, setLongPass] = useState("");
-  const [passwordsCorrect, setPasswordsCorrect] = useState(() => {
-    return localStorage.getItem("lock_passwords_correct") === "true";
-  });
-  const [isVerifyingGoogle, setIsVerifyingGoogle] = useState(false);
-  const [isInIframe, setIsInIframe] = useState(false);
-  const [msg, setMsg] = useState(() => {
-    const wasCorrect = localStorage.getItem("lock_passwords_correct") === "true";
-    return wasCorrect 
-      ? "Cả hai mật khẩu đều đúng rồi! Vợ yêu hãy nhấn nút Xác thực Google bên dưới nha! ♥" 
-      : "Chọn hình nền hoặc nhập mật khẩu để mở khóa.";
-  });
+  const [msg, setMsg] = useState("Chọn hình nền hoặc nhập mật khẩu để mở khóa.");
   const [shake, setShake] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
   const secret = "9093";
   const longSecret = "trangthichanbanhvakeoquydautay0903";
   const passContainerRef = useRef<HTMLDivElement>(null);
-
-  // Kiểm tra iframe
-  useEffect(() => {
-    try {
-      setIsInIframe(window.self !== window.top);
-    } catch (e) {
-      setIsInIframe(true);
-    }
-  }, []);
-
-  // Tự động kiểm tra và mở khóa khi đã xác thực đúng tài khoản
-  useEffect(() => {
-    // Không cần xử lý Google Auth ở LockScreen nữa, AuthGate sẽ lo
-  }, [onNext]);
 
   useEffect(() => {
     const saved = getLockWallpaper();
@@ -62,6 +41,27 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
       setLockWallpaper(res);
       setMsg("Hình nền đã lưu trong trình duyệt rồi nha.");
     } catch (err) {}
+  };
+
+  const handleGoogleLogin = async () => {
+    if (loginLoading) return;
+    setLoginLoading(true);
+    setMsg("Đang mở cửa sổ đăng nhập Google...");
+    try {
+      await loginWithGoogle();
+      setMsg("Đăng nhập thành công!");
+    } catch (error: any) {
+      console.error("Login error:", error);
+      if (error.code === 'auth/popup-blocked') {
+        setMsg("Vợ ơi, trình duyệt chặn cửa sổ rồi, vợ cho phép hiện popup nhé!");
+      } else if (error.code === 'auth/unauthorized-domain') {
+        setMsg("Tên miền này chưa được cấp phép. Vợ copy tên miền phía dưới thêm vào nha!");
+      } else {
+        setMsg("Lỗi rồi vợ ơi, thử lại giúp chồng nhé!");
+      }
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
   const handleKey = (key: string) => {
@@ -80,83 +80,61 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
     setPass(newPass);
     
     if (newPass.length === 4) {
-      if (newPass === secret && longPass === longSecret) {
-        setPasswordsCorrect(true);
-        localStorage.setItem("lock_passwords_correct", "true");
-        setMsg("Cả hai mật khẩu đều đúng rồi! Đang mở app nhen vợ yêu... ♥");
-        setTimeout(() => {
-          onNext();
-        }, 800);
-      } else if (newPass !== secret) {
+      if (newPass === secret) {
+        if (user && user.email === "thithutrangn28@gmail.com") {
+          setMsg("Đã mở khóa. Yêu vợ!");
+          setTimeout(() => {
+            onNext();
+          }, 260);
+        } else if (user) {
+          setMsg("Tài khoản này không có quyền vào app nha vợ!");
+          setShake(true);
+          setTimeout(() => setShake(false), 300);
+          setTimeout(() => setPass(""), 520);
+        } else {
+          setMsg("Vợ yêu bấm trái tim để đăng nhập trước đã nhé!");
+          setShake(true);
+          setTimeout(() => setShake(false), 300);
+          setTimeout(() => setPass(""), 520);
+        }
+      } else {
         setMsg("Mật khẩu chưa đúng, thử lại nha.");
         setShake(true);
         setTimeout(() => setShake(false), 300);
         setTimeout(() => setPass(""), 520);
-      } else {
-        setMsg("Hãy nhập thêm mật khẩu dài nữa nha.");
       }
-    }
-  };
-
-  const handleLongPassChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setLongPass(val);
-    if (val === longSecret && pass === secret) {
-      setPasswordsCorrect(true);
-      localStorage.setItem("lock_passwords_correct", "true");
-      setMsg("Cả hai mật khẩu đều đúng rồi! Đang mở app nhen vợ yêu... ♥");
-      setTimeout(() => {
-        onNext();
-      }, 800);
-    } else if (val === longSecret && pass !== secret) {
-      setMsg("Hãy nhập thêm mật khẩu ngắn nữa nha.");
     }
   };
 
   const handleLongPassSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (longPass === longSecret && pass === secret) {
-      setPasswordsCorrect(true);
-      localStorage.setItem("lock_passwords_correct", "true");
-      setMsg("Cả hai mật khẩu đều đúng rồi! Đang mở app nhen vợ yêu... ♥");
-      setTimeout(() => {
-        onNext();
-      }, 800);
+      if (user) {
+        setMsg("Đã mở khóa.");
+        setTimeout(() => {
+          onNext();
+        }, 260);
+      } else {
+        setMsg("Vợ ơi, đăng nhập bằng trái tim trước đã nhé!");
+        setShake(true);
+        setTimeout(() => setShake(false), 300);
+      }
     } else {
       setMsg("Mật khẩu chưa đúng hoặc chưa đủ, thử lại nha.");
       setShake(true);
       setTimeout(() => setShake(false), 300);
-      if (longPass !== longSecret) {
-        setTimeout(() => setLongPass(""), 520);
-      }
-      if (pass !== secret && pass.length === 4) {
-        setTimeout(() => setPass(""), 520);
-      }
-    }
-  };
-
-  const handleSignOut = async () => {
-    const confirmLogout = window.confirm(
-      "Vợ yêu có chắc muốn đăng xuất khỏi tài khoản Google không nè? Đăng xuất xong vợ có thể đăng nhập lại bất kỳ lúc nào nha! ♥"
-    );
-    if (confirmLogout) {
-      try {
-        localStorage.removeItem("lock_passwords_correct");
-        await signOut(auth);
-      } catch (err) {
-        console.error("Lỗi đăng xuất:", err);
-      }
     }
   };
 
   return (
-    <section className={`screen ${active ? "active" : ""}`} id="lock">
+    <section className={`screen ${active ? "active" : ""}`} id="lock" style={{ overflowY: 'auto' }}>
       <img className="bg" src={wallpaper} alt="" />
       <div className="fade"></div>
       <button className="back-btn" onClick={onBack}>
         <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"></path></svg>
       </button>
-      <section className="lock-page">
+      
+      <section className="lock-page" style={{ paddingBottom: '120px', zIndex: 2, position: 'relative' }}>
         <header className="lock-head">
           <div>
             <span className="lock-label">Sweet lock</span>
@@ -168,6 +146,7 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
             <b>{batteryLevel}%</b>
           </div>
         </header>
+
         <section className="music">
           <img src="https://i.postimg.cc/sXGdtTvw/87e599c75ca5ff69e209bba965dfce7a.jpg" alt="" />
           <div style={{ minWidth: 0, flex: 1 }}>
@@ -183,8 +162,63 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
           </div>
         </section>
         
+        <div className="relative z-[999] flex flex-col items-center gap-5 w-full max-w-[300px] mx-auto my-10 bg-white/5 p-6 rounded-[40px] backdrop-blur-xl border border-white/20 shadow-2xl">
+          <div className="text-center">
+            <h3 className="text-pink-200 font-bold text-lg mb-1">Xác nhận danh tính</h3>
+            <p className="text-white/70 text-[11px]">Chỉ dành riêng cho thithutrangn28@gmail.com</p>
+          </div>
+
+          <motion.button
+            whileTap={{ scale: 0.85 }}
+            whileHover={{ scale: 1.05 }}
+            onClick={handleGoogleLogin}
+            disabled={loginLoading}
+            className={`group relative w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500 ${
+              user 
+              ? 'bg-gradient-to-br from-pink-400 to-rose-600 shadow-[0_0_40px_rgba(244,63,94,0.6)]' 
+              : 'bg-white/10 hover:bg-white/20 border-2 border-white/30 shadow-xl pointer-events-auto'
+            }`}
+          >
+            {user && (
+              <div className="absolute inset-0 rounded-full animate-ping bg-pink-500/30"></div>
+            )}
+            
+            {loginLoading ? (
+              <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
+            ) : (
+              <svg 
+                viewBox="0 0 24 24" 
+                className={`w-12 h-12 transition-transform duration-500 ${user ? 'text-white scale-110' : 'text-pink-300 group-hover:scale-110'}`} 
+                fill="currentColor"
+              >
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+              </svg>
+            )}
+          </motion.button>
+
+          <div className="space-y-2 text-center">
+            {user ? (
+              <div className="bg-green-500/20 px-4 py-2 rounded-2xl border border-green-500/30">
+                <p className="text-green-300 text-xs font-semibold">Đã xác thực vợ yêu</p>
+                <p className="text-white/60 text-[10px] truncate max-w-[200px]">{user.email}</p>
+              </div>
+            ) : (
+              <div className="bg-white/5 px-4 py-2 rounded-2xl border border-white/10 animate-pulse">
+                <p className="text-white/80 text-[11px] font-medium">Chạm trái tim để đăng nhập</p>
+              </div>
+            )}
+            
+            {authError && (
+              <div className="bg-red-500/20 p-2 rounded-xl border border-red-500/30">
+                <p className="text-red-300 text-[10px] leading-tight">{authError}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         <motion.section 
           className="pass" 
+          style={{ position: 'relative', bottom: 'auto', marginTop: '20px', zIndex: 10 }}
           animate={shake ? { x: [-8, 8, -8, 8, 0] } : {}}
           transition={{ duration: 0.3 }}
           ref={passContainerRef}
@@ -210,27 +244,6 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
           </div>
           <p className="msg">{msg}</p>
           
-          <form onSubmit={handleLongPassSubmit} className="long-pass-form" style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <input 
-              type="password" 
-              value={longPass} 
-              onChange={handleLongPassChange} 
-              placeholder="Hoặc nhập mật khẩu dài..."
-              className="long-pass-input"
-              style={{
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: '20px',
-                padding: '10px 16px',
-                color: 'white',
-                outline: 'none',
-                textAlign: 'center',
-                backdropFilter: 'blur(10px)',
-                width: '100%'
-              }}
-            />
-          </form>
-
           <div className="keys">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
               <button key={n} onClick={() => handleKey(n.toString())}>{n}</button>
@@ -239,15 +252,11 @@ export default function LockScreen({ active, onNext, onBack, time, date, battery
             <button onClick={() => handleKey("0")}>0</button>
             <button onClick={() => handleKey("back")}>⌫</button>
           </div>
-
-          <button 
-            onClick={handleSignOut}
-            className="text-xs text-white/50 hover:text-white/80 transition-colors mt-4 mx-auto block"
-            style={{ textDecoration: 'underline', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
-          >
-            Đăng xuất tài khoản Google ➔
-          </button>
         </motion.section>
+
+        <div className="w-full max-w-[320px] mx-auto mt-10 mb-20 relative z-10">
+          <FirebaseDomainHelper />
+        </div>
       </section>
     </section>
   );

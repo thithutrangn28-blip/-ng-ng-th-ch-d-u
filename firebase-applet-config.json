@@ -1,12 +1,12 @@
 {
   "projectId": "true-river-479310-n9",
-  "appId": "",
-  "apiKey": "",
+  "appId": "1:190099812356:web:c9ee71e1113ac6939b4551",
+  "apiKey": "AIzaSyAZEMCb050obuhj3_rFJSPFR9e5zvV3Tw0",
   "authDomain": "true-river-479310-n9.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-capuchinobunnymi-14593441-2eee-4ebb-974a-1dc6e2c9ce74",
   "storageBucket": "true-river-479310-n9.firebasestorage.app",
-  "messagingSenderId": "",
+  "messagingSenderId": "190099812356",
   "measurementId": "",
-  "oAuthClientId": "",
+  "oAuthClientId": "190099812356-438r31vc25ejb4o3dqcsjr9irmc2qtmc.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

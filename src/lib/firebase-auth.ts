@@ -1,8 +1,11 @@
-import { auth, googleProvider as provider } from './firebase';
-import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
+import firebaseConfig from '../../firebase-applet-config.json';
 
-// provider already has select_account in firebase.ts
-// But if we need specific scopes for Drive:
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+
+const provider = new GoogleAuthProvider();
 provider.addScope('https://www.googleapis.com/auth/drive.file'); 
 
 let isSigningIn = false;
@@ -31,7 +34,7 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
   try {
     isSigningIn = true;
     provider.setCustomParameters({
-      prompt: 'select_account'
+      prompt: 'consent'
     });
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);

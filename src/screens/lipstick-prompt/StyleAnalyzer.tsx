@@ -175,61 +175,59 @@ export default function StyleAnalyzer({ roomState, currentStory, roomDef, state,
         }, true);
 
         try {
-          const sysPrompt = `You are the professional vision analysis module inside Lipstick Prompt Rooms.
-You MUST analyze and extract the visual traits from this reference image to support downstream AI image generation under the core rule: "SUPREME MANDATE: Story Fidelity & Character Soul (Cốt truyện và Nhân vật là linh hồn - Ảnh tham chiếu là tư liệu)":
+          const sysPrompt = `You are the world-class, ultra-premium Visual DNA Extraction Engine for Lipstick Prompt Rooms.
+Your task is to perform an EXHAUSTIVE, high-fidelity artistic deconstruction of the attached reference image. You are NOT just identifying objects; you are extracting the "Engineering Blueprint" of the art style, technical execution, and visual intelligence.
 
-CRITICAL RULE: The core goal of this app is to draw the characters from the user's specific story plot. The attached images serve ONLY as visual DNA references to learn the artistic language (art style, rendering, mood, line quality, lighting, color palette, outfit spirit, composition rhythm). YOU ARE STRICTLY FORBIDDEN FROM FOCUSING ON THE FACE/IDENTITY/GENDER OF THE PERSON IN THE REFERENCE. Instead, you must extract the aesthetic DNA and analyze how it can be TRANSFORMATIVELY ADAPTED to perfectly represent the user's original character in their story!
+### 👑 SUPREME DIRECTIVE: TRANSFORMATIVE AESTHETIC STUDY
+- **Purpose**: Extract the artistic "How" (techniques, logic, rules) to apply it to the user's "What" (original story characters).
+- **Strict Prohibition**: DO NOT copy the character's identity, gender, face, or literal props if they conflict with the user's story. Instead, focus on the "Aesthetic DNA" (brushwork, color theory, light physics, composition math).
 
-You MUST analyze and extract these mandatory layers:
-1. Nhận diện Aesthetic DNA tổng thể (khí chất thẩm mỹ, độ mềm/sắc/lạnh/ngọt/sang, vibe nghệ thuật)
-2. Phong cách vẽ & Chất cọ / texture / rendering (watercolor, manhua fantasy, soft ink-wash, digital anime..., độ mềm của line, độ loang màu, độ trong mờ)
-3. Bảng màu chính & Ánh sáng (nhiệt độ màu, độ bão hòa, độ tương phản, ánh sáng, pastel / dark / ethereal / warm)
-4. Mood / Khí chất / Không khí thị giác (ethereal, poetic, dreamy, quiet, floral, regal, retro, dark...)
-5. Phân tích Khả năng Tự sự / Visual Storytelling Potential: Phân tích xem các yếu tố trong ảnh tham chiếu (ánh sáng, vật thể, bố cục) có thể giúp kể câu chuyện của người dùng như thế nào.
-6. Motif hình ảnh (hoa, sen, nước, ruy băng, khung trang trí, thiên nhiên, gió, khói...)
-6. Trang phục / Outfit Fidelity (tinh thần trang phục, form dáng silhouette, độ rủ, lớp layer, mật độ chi tiết, cảm giác chất liệu, trim/lace/ribbon/embroidery tendencies, elegance/fantasy level)
-7. Bố cục thị giác / Composition Fidelity (visual hierarchy, focal structure, eye-flow/visual path, subject placement logic, negative space rhythm, directional movement of hair/fabric/props/light).
-8. Đặc tả Tóc / Hair Design (Học hỏi cấu trúc lọn tóc, độ tơi, vật lý và rendering từ ảnh tham chiếu để áp dụng cho nhân vật trong truyện).
-9. Đặc tả Mắt (Eye Rendering): Cấu trúc đồng tử, độ sâu, ánh sáng phản chiếu, kỹ thuật vẽ mắt.
-10. Transformation Guidance: Chỉ rõ những chi tiết thẩm mỹ (nét vẽ, màu sắc, bố cục) bắt buộc giữ lại, và những yếu tố (nhân dạng, pose, bối cảnh) cần biến đổi hoàn toàn để khớp với hồ sơ nhân vật gốc của vợ yêu.
+### 🔍 MANDATORY ANALYSIS LAYERS (PHẠM VI PHÂN TÍCH BẮT BUỘC):
+1. **Line Art (Kỹ thuật đi nét)**: Phân tích độ dày/mỏng (line weight), độ sắc nét (sharpness), màu sắc của nét line (colored lineart), và cách xử lý các điểm giao (intersections).
+2. **Facial & Character Rendering (Render khuôn mặt & Nhân vật)**: Phân tích cấu trúc xương, cách đánh khối (shading) vùng mặt, độ trong của da (Subsurface Scattering), và phong cách render (soft-blending, cell-shading, hay semi-realism).
+3. **Eye Rendering (Render mắt - Mắt biếc)**: Đặc tả chiều sâu mống mắt (iris depth), các chấm sáng phản chiếu (catchlights), độ bóng của giác mạc, và cách vẽ lông mi (feathery, clumped).
+4. **Hair Physics & Rendering (Render tóc - Kiến trúc tóc)**: Phân tích khối tóc (volume), nhịp điệu lọn tóc (strand rhythm), vòng sáng trên tóc (angel rings), độ tơi (airy quality), và cách ánh sáng xuyên thấu qua các sợi tóc (translucency).
+5. **Color Rendering & Material Physics (Render màu sắc & Vật lý vật liệu)**: Phân tích cách màu sắc tương tác với bề mặt chất liệu (vải, da, kim loại, nước). Độ phản xạ (reflectivity) và độ nhám (roughness).
+6. **Composition & Visual Path (Bố cục & Đường dẫn thị giác)**: Phân tích các đường dẫn thị giác (leading lines), bố cục hình học (Triangle, Spiral, Golden Ratio), và cách sắp xếp tiền cảnh/hậu cảnh để tạo chiều sâu.
+7. **Proportions & Anatomy (Tỉ lệ & Giải phẫu)**: Phân tích tỷ lệ đầu/thân, độ rộng vai, chiều dài tay chân, và các đặc điểm giải phẫu học đặc trưng của phong cách nghệ thuật này.
+8. **Typography & Graphic Design (Chữ & Đồ họa)**: Phân tích layout, font style, cách sắp đặt các yếu tố đồ họa bổ trợ (nếu có).
+9. **Color Palette & Light Physics (Bảng màu & Vật lý ánh sáng)**: Phân tích nguồn sáng chính/phụ (Key/Fill light), hướng sáng, nhiệt độ màu, và độ bão hòa (saturation map).
+10. **Texture & Surface Details (Texture & Chi tiết bề mặt)**: Phân tích độ hạt (grain), texture vải, bề mặt giấy, hoặc các hiệu ứng nhiễu (noise/chromatic aberration) đặc trưng.
 
-Return ONLY valid JSON with this exact schema:
+### 📜 OUTPUT FORMAT:
+Return ONLY valid JSON with this schema:
 {
   "imageId": "${updatedRefs[i].imageId || updatedRefs[i].id}",
-  "storyId": "${currentStory.id}",
-  "roomId": "${roomDef.id}",
-  "cardId": "style_analyzer",
-  "imageType": "style_analyzer_reference",
-  "analysisStatus": "analyzed",
-  "summary": "Tóm tắt Aesthetic/Style DNA theo quy tắc High Aesthetic Fidelity, Transformative Adaptation bằng tiếng Việt",
-  "visualStyleExtracted": "Chi tiết phong cách vẽ, medium texture, chất cọ, độ loang, cổ phong/manhua/anime/semi-realistic...",
-  "colorPaletteExtracted": "Bảng màu chính, màu điểm nhấn, độ trong/mờ, nhiệt độ màu, ánh sáng",
-  "lineAndRenderExtracted": "Độ mềm/clean của nét line, kỹ thuật shading, độ bóng, translucent washes...",
-  "moodExtracted": "Không khí thị giác tổng thể, vibe cảm xúc (ethereal, poetic, dreamy, regal...)",
-  "compositionExtracted": "Nhịp bố cục, visual hierarchy, eye-flow, negative space rhythm, directional movement của tóc/vải/light",
-  "outfitExtracted": "Hướng trang phục, silhouette, layering logic, cảm giác chất liệu, mật độ trang trí, elegance/fantasy level",
-  "detailsToPreserve": "Danh sách chi tiết thẩm mỹ bắt buộc giữ lại (color atmosphere, watery softness, floral mood, flowing composition, outfit direction...)",
-  "detailsToAdapt": "Danh sách chi tiết cho phép biến đổi 15%-30% theo cốt truyện (pose, bối cảnh phụ, đạo cụ, khuôn mặt mới)",
-  "originalityElements": "Danh sách yếu tố được biến đổi linh hoạt (transformative adaptation để tạo dấu ấn nguyên bản độc quyền cho nhân vật trong câu chuyện)",
-  "layer1_overall": { "genderPresentation": "", "ageVibe": "", "auraVibe": "", "softnessSharpness": "" },
-  "layer2_face": { "faceShape": "", "eyes": "", "nose": "", "mouth": "", "eyelashes": "", "makeupLevel": "", "maturity": "" },
-  "layer3_hair": { "color": "", "length": "", "thickness": "", "texture": "", "bangs": "", "style": "" },
-  "layer4_outfit": { "category": "", "silhouette": "", "materialFeel": "", "dominantColor": "", "accessories": "" },
-  "layer5_artStyle": { "artFamily": "", "lineCleanliness": "", "lineSoftness": "", "shading": "", "texture": "", "glossiness": "", "detailLevel": "" },
-  "layer6_color": { "dominantPalette": [], "colorTemp": "", "saturation": "", "contrast": "" },
-  "layer7_composition": { "shotSize": "", "characterPlacement": "", "negativeSpace": "", "cameraAngle": "", "cinematicFeel": "" },
-  "layer8_vibe": { "coreVibe": "" },
-  "subject": { "mainSubject": "", "characterCount": 1, "genderPresentation": "", "ageVibe": "", "pose": "", "expression": "" },
-  "style": { "artFamily": "", "lineArt": "", "rendering": "", "texture": "", "coloringMethod": "", "detailLevel": "" },
-  "color": { "mainPalette": [], "accentColors": [], "temperature": "", "saturation": "", "contrast": "" },
-  "composition": { "shotSize": "", "cameraAngle": "", "focalPoint": "", "characterPlacement": "", "negativeSpace": "", "leadingLines": "" },
-  "characterDetails": { "face": "", "eyes": "", "hair": "", "outfit": "", "accessories": "", "makeup": "" },
-  "background": { "environment": "", "objects": [], "typography": "", "graphicElements": [] },
-  "promptKeywords": [],
-  "selectedStyleCandidates": [],
-  "negativePromptSuggestions": [],
-  "referenceControl": { "visualSimilarityTarget": "Aesthetic study of art style, rendering, color palette & atmosphere", "adaptationAllowance": "Transformative adaptation to create original story character & Canva design", "originalityGuarantee": "Original Character Creation (Transformative Aesthetic Study)", "priority": "Bespoke character originality first, aesthetic style DNA second" }
-}`;
+  "summary": "Tóm tắt tinh hoa nghệ thuật và kỹ thuật đỉnh cao bằng tiếng Việt.",
+  "visualStyleExtracted": "Đặc tả chi tiết kỹ thuật vẽ, chất cọ, độ loang và Art Family.",
+  "colorPaletteExtracted": "Bảng màu, ánh sáng, độ bão hòa và độ tương phản kỹ thuật.",
+  "lineAndRenderExtracted": "Kỹ thuật đi nét (linework), shading, render da/vật liệu.",
+  "moodExtracted": "Khí chất thị giác và cảm xúc nghệ thuật.",
+  "compositionExtracted": "Bố cục hình học ẩn, đường dẫn thị giác và thiết lập camera (góc máy, tiêu cự).",
+  "outfitExtracted": "Logic thiết kế trang phục, nếp gấp vải và tính gắn kết chi tiết trang trí.",
+  "detailsToPreserve": "Danh sách quy tắc kỹ thuật bắt buộc giữ lại.",
+  "detailsToAdapt": "Các yếu tố nội dung cần biến đổi theo cốt truyện.",
+  "originalityElements": "Yếu tố sáng tạo để đảm bảo tính nguyên bản cho nhân vật.",
+  "technicalAnalysis": {
+    "lineArt": "Phân tích sâu về linework DNA.",
+    "facialRendering": "Phân tích sâu về render khuôn mặt/nhân vật.",
+    "eyeRendering": "Phân tích sâu về render mắt/mắt biếc.",
+    "hairPhysics": "Phân tích sâu về kiến trúc tóc/vật lý tóc.",
+    "materialPhysics": "Phân tích sâu về vật lý màu sắc/vật liệu.",
+    "visualPath": "Phân tích sâu về bố cục/đường dẫn thị giác.",
+    "anatomyProportions": "Phân tích sâu về tỷ lệ/giải phẫu.",
+    "graphicDesign": "Phân tích sâu về đồ họa/typography.",
+    "lightPhysics": "Phân tích sâu về vật lý ánh sáng/bảng màu.",
+    "surfaceDetails": "Phân tích sâu về texture/bề mặt."
+  },
+  "subject": { "pose": "", "expression": "", "anatomyNotes": "" },
+  "style": { "brushwork": "", "rendering": "", "texture": "" },
+  "color": { "palette": [], "lighting": "", "contrast": "" },
+  "composition": { "angle": "", "framing": "", "eyePath": "" },
+  "characterDetails": { "eyeRendering": "", "hairPhysics": "", "skinTexture": "" },
+  "background": { "environment": "", "typography": "", "graphicElements": "" },
+  "promptKeywords": ["keyword1", "keyword2", ...]
+} (Ensure everything is in Vietnamese except keywords and technical IDs)`;
           const messages: any[] = [
             {
               role: "user",

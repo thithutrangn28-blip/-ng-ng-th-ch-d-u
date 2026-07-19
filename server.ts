@@ -1,54 +1,16 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { setGlobalDispatcher, Agent } from "undici";
-import admin from "firebase-admin";
-import { getAuth } from "firebase-admin/auth";
-
-// Initialize Firebase Admin SDK
-try {
-  admin.initializeApp();
-  console.log("[Firebase Admin] Initialized successfully with default project settings");
-} catch (error: any) {
-  console.error("[Firebase Admin] Initialization error:", error);
-}
-
-// Middleware xác thực Firebase ID Token cho các endpoint nhạy cảm
-async function authenticateUser(req: any, res: any, next: any) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ ok: false, error: "Đăng nhập bất hợp pháp: Thiếu Authorization header Bearer token" });
-  }
-
-  const idToken = authHeader.split("Bearer ")[1];
-  try {
-    const decodedToken = await getAuth().verifyIdToken(idToken);
-    
-    // Yêu cầu quan trọng: email phải là thithutrangn28@gmail.com và email phải được verified
-    if (decodedToken.email !== "thithutrangn28@gmail.com") {
-      console.warn(`[Auth Warning] Từ chối truy cập từ email khác: ${decodedToken.email}`);
-      return res.status(403).json({ ok: false, error: "Quyền truy cập bị từ chối: Chỉ có tài khoản thithutrangn28@gmail.com mới được sử dụng ứng dụng." });
-    }
-
-    if (decodedToken.email_verified !== true) {
-      console.warn(`[Auth Warning] Email chưa được xác thực: ${decodedToken.email}`);
-      return res.status(403).json({ ok: false, error: "Quyền truy cập bị từ chối: Email chưa được xác thực." });
-    }
-
-    req.user = decodedToken;
-    next();
-  } catch (error: any) {
-    console.error("[Auth Error] Xác thực ID token thất bại:", error);
-    return res.status(401).json({ ok: false, error: "Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại nhen vợ yêu!" });
-  }
-}
+import { setGlobalDispatcher, Agent, request as undiciRequest } from "undici";
 
 // Disable any internal timeouts in Node's native fetch (undici) for massive streaming requests
 try {
   const dispatcher = new Agent({
     bodyTimeout: 0,
     headersTimeout: 0,
-    keepAliveTimeout: 120 * 60 * 1000, // 120 minutes (2 hours)
+    keepAliveTimeout: 10 * 60 * 1000, // 10 minutes
+    keepAliveMaxTimeout: 10 * 60 * 1000,
+    connectTimeout: 60000, // 60s for initial connection
   });
   setGlobalDispatcher(dispatcher);
   console.log("[undici] Successfully configured global dispatcher with unlimited body and headers timeout.");
@@ -75,7 +37,7 @@ async function startServer() {
   });
 
   // /api/test-proxy
-  app.post("/api/test-proxy", authenticateUser, async (req, res) => {
+  app.post("/api/test-proxy", async (req, res) => {
     try {
       const { profile, action } = req.body;
       if (!profile || !profile.endpoint || !profile.key) {
@@ -130,7 +92,7 @@ async function startServer() {
           method,
           headers,
           body: body ? JSON.stringify(body) : undefined,
-          signal: AbortSignal.timeout(180000), // 180s timeout for test to allow proxy connection phase
+          signal: AbortSignal.timeout(300000), // 300s (5 phút) timeout cho test để đảm bảo kết nối ổn định
         });
         
         const data = await response.text();
@@ -162,7 +124,7 @@ async function startServer() {
   });
 
   // /api/ai-text
-  app.post("/api/ai-text", authenticateUser, async (req, res) => {
+  app.post("/api/ai-text", async (req, res) => {
     try {
       const { profile, messages, systemPrompt, maxTokensOverride } = req.body;
       if (!profile || !profile.endpoint || !profile.key) {
@@ -199,7 +161,7 @@ async function startServer() {
         method: "POST",
         headers,
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(3600000), // 3600s (60 phút) timeout cho text bám trụ bất tận
+        signal: AbortSignal.timeout(36000000), // 36000s (10 giờ) timeout cho text bám trụ bất tận
       });
 
       const dataText = await response.text();
@@ -242,7 +204,7 @@ async function startServer() {
       }
 
       let testUrl = url;
-      if (!testUrl.endsWith("/models")) {
+      if (profile.format === "openai" && !testUrl.endsWith("/models")) {
         testUrl = testUrl + "/models";
       }
 
@@ -256,11 +218,12 @@ async function startServer() {
         const response = await fetch(testUrl, {
           method: "GET",
           headers,
-          signal: AbortSignal.timeout(180000), // 180s timeout for models list
+          signal: AbortSignal.timeout(300000), // 300s (5 phút) timeout for models list
         });
         
         if (!response.ok) {
-           return res.status(response.status).json({ ok: false, error: `Upstream error: ${response.status} ${response.statusText}\n${await response.text()}` });
+           const errText = await response.text();
+           return res.status(response.status).json({ ok: false, error: `Upstream error: ${response.status} ${response.statusText}\n${errText}` });
         }
 
         const data = await response.json();
@@ -285,7 +248,7 @@ async function startServer() {
   });
 
   // /api/ai-stream
-  app.post("/api/ai-stream", authenticateUser, async (req, res) => {
+  app.post("/api/ai-stream", async (req, res) => {
     req.socket.setTimeout(0); // Disable socket timeout for long-running streaming
     res.setTimeout(0); // Disable response timeout
     req.setTimeout(0); // Disable request timeout
@@ -342,7 +305,7 @@ async function startServer() {
       req.socket.setKeepAlive(true, 5000);
       req.socket.setTimeout(0);
 
-      // PHẦN 1: KẾT NỐI & STREAMING - Gửi ngay headers SSE và nhịp tim keep-alive mỗi 2s suốt toàn bộ chu kỳ!
+      // PHẦN 1: KẾT NỐI & STREAMING - Gửi ngay headers SSE và nhịp tim keep-alive mỗi 1.5s suốt toàn bộ chu kỳ!
       // Ngăn chặn tuyệt đối Nginx/Cloud Run/trình duyệt ngắt kết nối sau 17s/30s/39s/60s khi AI model đang suy nghĩ context dài!
       res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-transform, no-store, must-revalidate");
@@ -353,17 +316,17 @@ async function startServer() {
       res.flushHeaders();
       
       // Gửi ngay lập tức một chunk khởi đầu để báo cho hạ tầng (Cloud Run/Proxy) là kết nối đã sống
-      res.write(": connection established - starting lifecycle (timeout >= 7200s)...\n\n");
+      res.write(": connection established - starting lifecycle (timeout >= 36000s)...\n\n");
       let lastWriteTime = Date.now();
       console.log(`[STREAM-START] Request started for model: ${profile.model || 'unknown'} at ${new Date().toISOString()}`);
 
-      // Nhịp tim cực kỳ bền bỉ (Heartbeat) gửi mỗi 2 giây để giữ lửa kết nối
+      // Nhịp tim cực kỳ bền bỉ (Heartbeat) gửi mỗi 1.5 giây để giữ lửa kết nối luôn rực cháy nhen vợ yêu!
       keepAliveInterval = setInterval(() => {
         try {
           if (!res.writableEnded) {
-            // Luôn gửi heartbeat mỗi 2 giây nếu không có dữ liệu thực sự đang truyền
-            if (Date.now() - lastWriteTime >= 2000) {
-               res.write(": keep-alive heartbeat\n\n");
+            // Luôn gửi heartbeat mỗi 1.5 giây nếu không có dữ liệu thực sự đang truyền
+            if (Date.now() - lastWriteTime >= 1500) {
+               res.write(": keep-alive heartbeat (staying firm for wife)\n\n");
                if (typeof (res as any).flush === 'function') {
                  (res as any).flush();
                }
@@ -372,7 +335,7 @@ async function startServer() {
         } catch (intervalErr) {
           console.error("[keep-alive] Error writing heartbeat:", intervalErr);
         }
-      }, 2000);
+      }, 1500);
 
       res.on('close', () => {
         if (keepAliveInterval) {
@@ -391,44 +354,53 @@ async function startServer() {
       
       // TUYỆT ĐỐI KHÔNG RETRY - Một vòng đời duy nhất, bám trụ tới cùng như vợ yêu cầu nhen!
       try {
-        console.log(`[STREAM-FETCH] Fetching upstream for model: ${profile.model || "unknown"}`);
-        const response = await fetch(testUrl, {
+        console.log(`[STREAM-FETCH] Fetching upstream using undiciRequest for model: ${profile.model || "unknown"}`);
+        const { body: responseBody, statusCode, headers: respHeaders } = await undiciRequest(testUrl, {
           method: "POST",
           headers,
           body: JSON.stringify(payload),
-          // Timeout cực lớn (7200s = 2 tiếng) để AI tha hồ suy nghĩ
-          signal: AbortSignal.timeout(Math.max((profile.timeoutSeconds || 7200) * 1000, 7200000)), 
+          bodyTimeout: 0,
+          headersTimeout: 0,
         });
 
-        console.log(`[STREAM-RESPONSE] Upstream response status: ${response.status} ${response.statusText}`);
+        console.log(`[STREAM-RESPONSE] Upstream response status: ${statusCode}`);
 
-        if (!response.ok) {
-          const errText = await response.text();
-          console.error(`[/api/ai-stream Upstream Error] ❌ HTTP ${response.status}\nBody: ${errText}`);
-          throw new Error(`Upstream error ${response.status}: ${errText}`);
+        if (statusCode >= 400) {
+          let errText = "";
+          try {
+            errText = await responseBody.text();
+          } catch (e) {
+            // Fallback for older undici or if text() is not available
+            try {
+              const chunks = [];
+              for await (const chunk of responseBody) {
+                chunks.push(chunk);
+              }
+              errText = Buffer.concat(chunks).toString();
+            } catch (e2) {
+              errText = "Could not read error body";
+            }
+          }
+          console.error(`[/api/ai-stream Upstream Error] ❌ HTTP ${statusCode}\nBody: ${errText}`);
+          throw new Error(`Upstream error ${statusCode}: ${errText}`);
         }
 
-        if (response.body) {
-          const reader = response.body.getReader();
+        if (responseBody) {
           try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) {
-                console.log(`[STREAM-DONE] Upstream finished naturally at ${new Date().toISOString()}`);
-                break;
-              }
+            for await (const chunk of responseBody) {
               if (firstDataChunk) {
                 console.log(`[STREAM-FIRST-DATA] Received first actual data chunk at ${new Date().toISOString()}`);
                 firstDataChunk = false;
               }
               if (!res.writableEnded) {
                 lastWriteTime = Date.now();
-                res.write(value);
+                res.write(chunk);
                 if (typeof (res as any).flush === "function") {
                   (res as any).flush();
                 }
               }
             }
+            console.log(`[STREAM-DONE] Upstream finished naturally at ${new Date().toISOString()}`);
           } catch (streamReadErr: any) {
             console.error(`[STREAM-READ-ERROR] Error reading upstream stream:`, streamReadErr);
             throw streamReadErr;

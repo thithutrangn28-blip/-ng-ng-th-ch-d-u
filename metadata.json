@@ -1,6 +1,6 @@
 {
-  "name": "Bánh Bao dâu",
-  "description": "Ứng dụng Bánh Bao dâu - PWA xịn sò dành cho vợ yêu.",
+  "name": "Bánh quy bơ dâu tây",
+  "description": "Một ứng dụng nhỏ ngọt ngào như chiếc bánh quy bơ dâu tây dành tặng vợ yêu.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

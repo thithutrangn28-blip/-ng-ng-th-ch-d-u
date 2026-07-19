@@ -4,6 +4,7 @@ import { getLipstickState, saveLipstickState, saveLipstickStateImmediate } from 
 import { LipstickState, LipstickStory, LipstickRoomState, LipstickImageRef } from "../../lib/lipstick-types";
 import { STYLE_GROUPS, PRESET_BACKGROUNDS, rooms as ROOMS_DATA } from "../../lib/lipstick-rooms-data";
 import { callAIText, callAIStream } from "../../lib/api-client";
+import { pruneBase64 } from "../../utils/apiProxy";
 import { copyToClipboardSafe } from "../../lib/clipboard";
 import { v4 as uuidv4 } from "uuid";
 import RoomView from "./RoomView";
@@ -195,16 +196,19 @@ export default function LipstickAppScreen({ active, onHome }: { active: boolean,
           if (rState.history.length > 2) {
             const newRState = { ...rState };
             newRState.history = rState.history.slice(0, 2).map((h: any) => {
-              // Xóa mọi previewUrl (base64) trong history
-              if (!h.referenceImages) return h;
-              return {
-                ...h,
-                referenceImages: h.referenceImages.map((img: any) => ({
+              // CHỒNG YÊU: Xóa bỏ dữ liệu Base64 cồng kềnh khỏi payload và referenceImages nhen vợ!
+              const prunedH = { ...h };
+              if (prunedH.payload) {
+                prunedH.payload = pruneBase64(prunedH.payload);
+              }
+              if (prunedH.referenceImages) {
+                prunedH.referenceImages = prunedH.referenceImages.map((img: any) => ({
                   id: img.id,
                   name: (img.name || "ref").slice(0, 20),
                   previewUrl: "" 
-                }))
-              };
+                }));
+              }
+              return prunedH;
             });
             newSt.rooms[rId] = newRState;
           }

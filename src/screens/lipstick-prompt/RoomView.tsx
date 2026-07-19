@@ -40,7 +40,12 @@ function PromptFivePartsViewer({
   const [showRaw, setShowRaw] = useState(false);
   const [activeProfile, setActiveProfile] = useState<any>(null);
   const [copiedParts, setCopiedParts] = useState<Record<string, boolean>>({});
-  const rawText = (output || "").trim();
+  
+  // Xóa các ghi chú nội bộ (Liên hệ: ... và tham chiếu (Img ...)) khỏi văn bản hiển thị và sao chép
+  const rawText = (output || "")
+    .replace(/^[ \t]*Liên hệ\s*:.*(?:\r?\n|$)/gmi, "")
+    .replace(/\s*\(?(?:Img|Image|Reference Image|Ảnh|Reference)\s*[\d,\s]+\)?/gi, "")
+    .trim();
 
   // Load API Profile & settings
   useEffect(() => {
@@ -2212,9 +2217,13 @@ You MUST analyze and extract these mandatory layers in extreme detail:
 4. Lên màu & Ánh sáng (Color & Lighting Precision): Chỉ rõ tông màu chính (dominant colors), các dải chuyển màu mịn màng (seamless color gradients/transitions), gam màu điểm xuyết (accent colors). Phân tích nhiệt độ màu (ấm áp, lạnh lẽo, trung tính), hướng nguồn sáng (chiaroscuro, volumetric rays, rim light rực rỡ bám quanh nhân vật, backlighting mơ màng).
 5. Học vẽ tóc & Kiểu dáng tóc (Hairstyle & Hair Flow Precision - KHÔNG ĐƯỢC CHUNG CHUNG ĐỂ TRÁNH TÓC XẤU): Mô tả siêu chi tiết cấu trúc kiểu tóc (ví dụ: bồng bềnh uốn lượn, tóc lụa mượt mềm buông rủ, tết tinh xảo cổ phong). Đặc tả từng sợi tóc mềm (silky hair strands) bay bổng tự do trong gió, đường rẽ ngôi tóc rõ nét, các điểm phản chiếu ánh sáng óng ả (hair gloss highlight reflections), và các sợi tóc tơ mảnh (fine wisps of baby hair) bám sáng viền volumetric backlight bồng bềnh dã man.
 6. Học vẽ mắt & Thần thái gương mặt (Eye Artistry & Facial Vibe): Đặc tả cách vẽ đôi mắt tinh xảo (ví dụ: tròng mắt long lanh ngậm nước, con ngươi óng ánh đa tầng chi tiết, hàng mi cong dày đen mướt, viền mắt sắc mảnh phóng khoáng). Chỉ rõ hướng nhìn (gaze direction), các điểm phản sáng bắt mắt (highlight reflection points) tạo độ sâu thăm thẳm và thần thái có hồn của đôi mắt.
-7. Trang phục / Outfit Fidelity: Tinh thần trang phục, form dáng silhouette (độ rộng rủ, ôm sát quyến rũ, lớp layer phức tạp), mật độ họa tiết thêu thùa (delicate embroidery), ruy băng (ribbons), ren (lace), cảm giác chất liệu (silk mềm mại, satin bóng nhẹ, voan tơ bán trong suốt), nếp gấp nếp rủ tự nhiên của vải dưới tác động của trọng lực hay gió bão.
+7. Trang phục / Outfit Fidelity (Tính Gắn Kết Trang Trí & Nhịp Điệu Thiết Kế): Tinh thần trang phục, form dáng silhouette (độ rộng rủ, lớp layer phức tạp), mật độ và TÍNH GẮN KẾT CỦA CÁC CHI TIẾT TRANG TRÍ (họa tiết thêu thùa delicate embroidery, ribbons, lace, pearls). Phải phân tích cách các dải ruy băng, dải lụa hay ren hoa uốn lượn ôm sát, cuộn tròn bám theo cấu trúc chuyển động của cơ thể và nếp gấp trang phục theo lực quán tính hay trọng lực (flow vectors), tránh việc mô tả các chi tiết một cách rời rạc, lơ lửng vô nghĩa. Cảm giác chất liệu (voan tơ mỏng nhẹ bay bổng translucent chiffon, lụa mềm mại dập dờn flowing silk, gấm thêu chìm dập nổi jacquard).
 8. Góc chụp & Thị giác / Camera & Perspective Fidelity: Nhiều dải phân tầng không gian, xác định chính xác góc máy (eye-level, low-angle sweeping shot, high-angle, Dutch tilt...), cỡ ảnh (cinematic close-up, medium shot, wide shot), tiêu cự tạo cảm giác bóp méo không gian hay phẳng, độ sâu trường ảnh (depth of field), hiệu ứng mờ nhòe phông nền (creamy bokeh), cấu trúc phân tầng lớp không gian tiền cảnh - trung cảnh - hậu cảnh.
-9. Bố cục thị giác & Đường dẫn (Composition & Leading Lines): Nhịp điệu bố cục (bố cục bento-grid, bố cục 1/3, bố cục đối xứng), nhịp điệu của khoảng trống (negative space rhythm), các dải dẫn hướng mắt người xem (leading composition lines - đường dẫn thị giác, điểm nhìn, tầm nhìn) tạo bởi hướng tóc bay, vạt áo rủ, hướng ánh sáng hay khói mây rực rỡ.
+9. Bố cục Nghệ thuật & Hình học Ẩn (Composition, Geometric Scaffolding & Visual Hierarchy):
+   - Phân tích Cấu trúc hình học ẩn (Geometric Scaffolding): Nhận diện khung xương bố cục chính (ví dụ: diagonal axis, golden triangle, circular spiral vortex, S-curve, mảng khối chồng lớp sâu overlapping planes).
+   - Phân cấp Thị giác & Trọng tâm Tương phản (Visual Hierarchy & Contrast Centers): Chỉ rõ Điểm dừng thị giác 1 (Primary Focal Point - nơi có độ tương phản ánh sáng/màu sắc/chi tiết cao nhất thu hút mắt ngay lập tức), Điểm dừng thị giác 2 & 3 (Secondary/Tertiary Accents) bổ trợ.
+   - Đường dẫn Thị giác & Luồng Di chuyển (Leading Lines & Eye-Travel Path): Phác thảo chi tiết luồng dẫn thị giác từ điểm này sang điểm kia bằng các đường cong của làn tóc bay, nếp xếp nếp rủ áo dài dập dờn, dải sáng volumetric rays hay làn khói tơ mềm uốn lượn tinh tế.
+   - Cân bằng khoảng thở (Positive & Negative Space Rhythm): Phân tích tương quan giữa vùng đặc (nhân vật, trang phục rực rỡ) và vùng trống (khoảng không tĩnh mịch, mây khói mờ nhạt) để bố cục thở sâu, trang nhã, sang trọng, tuyệt đối tránh AI slop rối rắm thiếu trọng tâm.
 10. Kiểu dáng & Cử chỉ / Pose & Gesture Fidelity: Mô tả tư thế đứng/ngồi/tạo dáng của cơ thể, độ nghiêng của đầu quyến rũ, cử chỉ tinh tế của đôi bàn tay hay ngón tay, hướng vai, vị trí không gian của nhân vật để làm nổi bật câu chuyện. Có nhịp điệu đường thị giác sâu sắc.
 
 Return ONLY valid JSON with this exact schema:
@@ -2230,8 +2239,8 @@ Return ONLY valid JSON with this exact schema:
   "colorPaletteExtracted": "Bảng màu chính, màu điểm nhấn, độ trong/mờ, nhiệt độ màu, ánh sáng",
   "lineAndRenderExtracted": "Độ mềm/clean của nét line, kỹ thuật shading, độ bóng, translucent washes...",
   "moodExtracted": "Không khí thị giác tổng thể, vibe cảm xúc (ethereal, poetic, dreamy, regal...)",
-  "compositionExtracted": "Nhịp bố cục, visual hierarchy, eye-flow, negative space rhythm, directional movement của tóc/vải/light",
-  "outfitExtracted": "Hướng trang phục, silhouette, layering logic, cảm giác chất liệu, mật độ trang trí, elegance/fantasy level",
+  "compositionExtracted": "Phân tích cấu trúc hình học ẩn (spiral, diagonal, triangle...), Phân cấp thị giác cực hạn (Primary Focal Point, Secondary Accents), Đường dẫn thị giác chi tiết dẫn dắt mắt người xem thông qua luồng di chuyển của tóc/vải/ánh sáng, và Nhịp điệu khoảng trống thở sâu sang trọng để tránh rối rắm",
+  "outfitExtracted": "Tập trung vào tính gắn kết của chi tiết trang trí (mô tả cách ruy băng/ren/họa tiết bám theo đường cong cơ thể & nếp gấp vải dập dờn theo dòng chảy động học), form dáng silhouette, layering phức tạp, chất liệu dệt chìm sang trọng",
   "cameraAndPerspectiveExtracted": "Chi tiết góc chụp (low-angle, eye-level...), tiêu cự, depth of field, bokeh, framing, độ sâu không gian",
   "poseAndGestureExtracted": "Chi tiết dáng đứng/ngồi/tạo dáng, cử chỉ tay, độ nghiêng đầu, ngôn ngữ cơ thể, vị trí trong khung hình",
   "detailsToPreserve": "Danh sách chi tiết bắt buộc học hỏi giữ lại (camera angle, perspective, pose, stance, gesture, color atmosphere, floral mood, outfit direction...). TUYỆT ĐỐI KHÔNG LIỆT KÊ ĐỒ VẬT/DỤNG CỤ Ở ĐÂY!",
@@ -2761,19 +2770,29 @@ Example return schema:
 
     // Step 2: Gom tất cả ảnh từ Bot Characters, Style Analyzer, và toàn bộ Thẻ làm việc (Work Cards) vào Payload!
     // TUYỆT ĐỐI KHÔNG lọc trùng (deduplicate) vì mỗi thẻ có mục đích và ảnh riêng biệt!
+    // CHỒNG YÊU: Mỗi lần bấm tạo, ta sẽ dựng lại từ đầu để đảm bảo không bị dính context cũ nhen!
     const refreshedPayload = buildContextPayload(normalizedRoomState);
     
     // Thu thập tất cả ảnh thô có chứa URL hợp lệ
-    // CHỒNG YÊU: Xóa bỏ seenIds để gửi toàn bộ ảnh active như vợ dặn nhen!
-    const allActiveRefs: any[] = [];
+    // CHỒNG YÊU: Đảm bảo chỉ lấy ảnh từ state HIỆN TẠI nhen vợ!
+    let allActiveRefs: any[] = [];
+    const seenUrls = new Set<string>(); // Thêm bộ lọc trùng theo URL để tránh gửi 1 ảnh nhiều lần gây lag nhen vợ!
     
     const tryAddRef = (r: any) => {
       if (!r) return;
       const url = r.data || r.previewUrl || r.storageUrl;
-      if (!url) return;
+      if (!url || typeof url !== 'string') return;
+      
+      // CHỒNG YÊU: Nếu ảnh đã xóa (isActive === false) thì không add nhen!
+      if (r.isActive === false) return;
+
       const id = r.imageId || r.id;
       if (!id) return;
-      allActiveRefs.push(r);
+
+      if (!seenUrls.has(url)) {
+        seenUrls.add(url);
+        allActiveRefs.push({ ...r, data: url });
+      }
     };
 
     // 1. Bot character reference images
@@ -2799,7 +2818,7 @@ Example return schema:
     // Tạo bộ ánh xạ chỉ số toàn cục (Global Image Index Mapping #1, #2, #3...)
     // Vì không lọc trùng, nên mỗi instance của ảnh sẽ có một index riêng nhen vợ yêu
     const refToGlobalIndexMap = new Map<any, number>();
-    const orderedVisionRefs: any[] = [];
+    let orderedVisionRefs: any[] = [];
     let imgCounter = 1;
 
     for (const r of allActiveRefs) {
@@ -2869,33 +2888,54 @@ Example return schema:
     const finalPayload = buildContextPayload(finalRoomState);
     const finalSa = finalRoomState.styleAnalyzer || { refs: [], selected: [], analysis: "" };
 
-    const prompt = `You are the world-class, ultra-premium AI engine for Lipstick Prompt Rooms. Generate highly cohesive, breathtakingly detailed production-ready prompts for the current active room.
+    // CHỒNG YÊU: Prune Base64 khỏi payload trước khi đưa vào văn bản prompt nhen vợ!
+    // Điều này cực kỳ quan trọng để model không bị "loạn" context và tiết kiệm token.
+    let prunedPayload = pruneBase64(payloadObj);
+
+    const prompt = `### 🚨 MỆNH LỆNH THỐNG TRỊ VỀ ĐỘ CHI TIẾT & TÍNH ĐẦY ĐỦ TUYỆT ĐỐI (SUPREME MANDATE FOR EXTREME VERBOSITY & ABSOLUTE COMPLETENESS) 🚨
+1. **CẤM TÓM TẮT (NO SUMMARIZATION)**: AI tuyệt đối không được gộp các mục, không được viết tóm tắt chung chung. Mỗi thẻ phải là một công trình nghiên cứu thị giác đồ sộ.
+2. **HOÀN THÀNH 100% MODULE**: Nếu một chương có 15 module, AI PHẢI TRẢ LỜI ĐỦ CẢ 15 MODULE. Bỏ sót bất kỳ module nào hoặc chỉ liệt kê tên thông số mà không mô tả chi tiết đều bị coi là lỗi nghiêm trọng.
+3. **CẤU TRÚC 5 THÀNH PHẦN CHO MỖI MODULE**: Với mỗi module con (ví dụ: Lens, Key Light, Hair Flow...), nội dung BẮT BUỘC phải bao gồm:
+   - **Tên module**: (Ghi rõ số thứ tự và tên).
+   - **Lựa chọn cụ thể**: (Ví dụ: 50mm, Rim Light Amber, v.v.).
+   - **Mô tả chi tiết áp dụng**: (Mô tả cách nó xuất hiện trong ảnh này).
+   - **Tác dụng thị giác & Lý do**: (Giải thích tại sao chọn thông số này và nó tạo ra hiệu ứng gì cho người xem).
+   - **Sự liên hệ đa tầng**: (Kết nối chặt chẽ với Cốt truyện, Hồ sơ nhân vật và Ảnh tham chiếu đính kèm).
+4. **KHÔNG ĐƯỢC CHỈ LIỆT KÊ THÔNG SỐ**: Cấm viết kiểu "Lens: 50mm". Phải viết thành đoạn văn mô tả chuyên sâu về kỹ thuật nhiếp ảnh và nghệ thuật.
+5. **MASTER PROMPT KHÔNG GIỚI HẠN**: Master Prompt cuối cùng phải là bản tổng hợp siêu mật độ (Ultra-high density), không được ngắn hơn các phần phân tích phía trên.
+6. **GIỚI HẠN TOKEN**: AI hãy viết tối đa khả năng, không cần lo lắng về độ dài. Càng dài, càng chi tiết, càng tốt.
+
+You are the world-class, ultra-premium AI engine for Lipstick Prompt Rooms. Generate highly cohesive, breathtakingly detailed production-ready prompts for the current active room.
 
 ### 🏢 ROOM DEFINITION & APP CONTEXT (TỔNG QUAN PHÒNG LÀM VIỆC & ỨNG DỤNG)
 - App Context: You are operating inside Lipstick Prompt Rooms, a world-class, ultra-premium AI prompt engineering application for cinematic and art-station quality character illustrations.
 - Current Active Room: "${roomDef.title}"
 - Room Purpose & Goal: "${roomDef.subtitle}"
 - Overall Room Mandate: This room has a highly specific purpose. Every card generated must strictly align with the overarching goal of this room. Do not treat this as a generic prompt task. You must explicitly recall and enforce the specific rules of THIS room!
+- **🚨 ZERO-METADATA MANDATE**: You are STRICTLY FORBIDDEN from outputting any technical metadata in your response. This includes: CARD_ID, Room ID, UUIDs, image filenames, storage keys, variable names, or internal debug logs. Your output must be pure, professional, production-ready creative content only.
 
 ### 📚 CURRENT CONTEXT WINDOW (MANUAL & IMPORTED FILES)
 - Story Title: ${currentStory.title}
 - Story Plot: ${currentStory.story || "Chưa có cốt truyện."}
 - User Profile ({{user}}): ${currentStory.userProfile || "Chưa thiết lập."}
-- Bot Characters (${finalPayload.currentStory.manualInput.botCharacters ? finalPayload.currentStory.manualInput.botCharacters.length : 1} characters):
-${finalPayload.currentStory.manualInput.botCharacters ? finalPayload.currentStory.manualInput.botCharacters.map((c: any, idx: number) => `  * [Char #${idx+1}: ${c.displayName || 'Unnamed'}]:\n    - Profile: ${c.profileText || 'Trống'}\n    - Attached Ref Images (${(c.referenceImages || []).length} images - DO NOT OUTPUT FILENAMES, TRANSLATE VISUAL TRAITS TO WORDS):\n${(c.referenceImages || []).map((r: any, rIdx: number) => `      + [Bot Char Ref -> ATTACHED IMAGE #${getGIdx(r, rIdx + 1)}]: "${r.name || r.fileName || 'Image'}" | Purpose: bot_character_reference`).join("\n") || "      + No character images attached."}`).join("\n\n") : (currentStory.botProfiles || "Chưa thiết lập.")}
+- Bot Characters (${prunedPayload.currentStory.manualInput.botCharacters ? prunedPayload.currentStory.manualInput.botCharacters.length : 1} characters):
+${prunedPayload.currentStory.manualInput.botCharacters ? prunedPayload.currentStory.manualInput.botCharacters.map((c: any, idx: number) => `  * [Char #${idx+1}: ${c.displayName || 'Unnamed'}]:
+    - Profile: ${c.profileText || 'Trống'}
+    - Attached Ref Images (${(c.referenceImages || []).length} images):
+${(c.referenceImages || []).map((r: any, rIdx: number) => `      + [Character Visual Ref #${getGIdx(r, rIdx + 1)}]: "Attached Character Image" | Purpose: character_identity_reference`).join("\n") || "      + No character images attached."}`).join("\n\n") : (currentStory.botProfiles || "Chưa thiết lập.")}
 - Side Characters: ${currentStory.sideCharacters || "Chưa có."}
 - Story Requirements: ${currentStory.requirements || "Không có yêu cầu thêm."}
 - Target Mode Selected: "${getTargetLabel(target)}"
 - Target Character Isolation Mandate: ${getTargetInstructions(target)}
 
-### 📎 ATTACHED STORY FILES (${finalPayload.currentStory.importedFiles.length} files)
-${finalPayload.currentStory.importedFiles.map((f: any) => `[File: ${f.fileName} | Status: ${f.parserStatus} | ~${f.wordCount} words]\n${f.summary ? `Summary: ${f.summary}\n` : ""}Content excerpt:\n${f.extractedText.slice(0, 15000)}`).join("\n\n---\n\n")}
+### 📎 ATTACHED STORY FILES (${prunedPayload.currentStory.importedFiles.length} files)
+${prunedPayload.currentStory.importedFiles.map((f: any) => `[File: ${f.fileName} | Status: ${f.parserStatus} | ~${f.wordCount} words]\n${f.summary ? `Summary: ${f.summary}\n` : ""}Content excerpt:\n${f.extractedText.slice(0, 15000)}`).join("\n\n---\n\n")}
 
 ### 🖼️ REFERENCE IMAGE MANIFEST (EXACT LOCATION & PURPOSE MAPPING)
 Below is the complete manifest of all attached reference images across this story, room, and individual work cards. You MUST strictly respect the location and purpose of EACH image. Do NOT mix up images from different cards (e.g. never use a hair reference image for pose or outfit).
 \`\`\`json
 ${JSON.stringify({
-  referenceImageManifest: pruneBase64(finalPayload.referenceImageManifest)
+  referenceImageManifest: prunedPayload.referenceImageManifest
 }, null, 2)}
 \`\`\`
 
@@ -2937,7 +2977,16 @@ ${(sa.refs || []).map((r: any, idx: number) => {
   const analysisText = (r.imageAnalysisText && r.imageAnalysisText !== 'Chưa phân tích' && !r.imageAnalysisText.startsWith('⏳')) 
     ? r.imageAnalysisText 
     : `👉 [IN-CONTEXT VISION MANDATE]: Ảnh tham chiếu phong cách này được đính kèm tại vị trí [ATTACHED IMAGE #${gIdx}] trong request! AI HÃY TỰ NHÌN TRỰC TIẾP vào ảnh đính kèm #${gIdx} bên dưới để học hỏi bảng màu, nét vẽ và chất liệu!`;
-  return `  * [Style Ref #${idx+1} -> ATTACHED IMAGE #${gIdx} IN PAYLOAD (DO NOT OUTPUT FILENAME - TRANSLATE VISUAL TRAITS TO WORDS): "${r.name || r.fileName || 'Image'}" | Status: ${status} | Purpose: style_reference (3rd Priority: style/render/color only, do NOT guide card-specific refs)]:\n    - Vision Report: ${analysisText}${r.imageAnalysisJson ? `\n    - Style Keywords: ${(r.imageAnalysisJson.promptKeywords || []).join(", ")}\n    - Art Family/Rendering: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.style || {}))}\n    - Visual Style: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.visualStyleExtracted || {}))}\n    - Color Palette: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.colorPaletteExtracted || {}))}` : ""}`;
+  return `  * [Style Ref #${idx+1} -> ATTACHED IMAGE #${gIdx} IN PAYLOAD]:
+    - Vision Report: ${analysisText}${r.imageAnalysisJson ? `
+    - Style Keywords: ${(r.imageAnalysisJson.promptKeywords || []).join(", ")}
+    - Art Family/Rendering: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.style || {}))}
+    - Visual Style: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.visualStyleExtracted || {}))}
+    - Color Palette: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.colorPaletteExtracted || {}))}
+    - Linework & Rendering DNA: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.lineAndRenderExtracted || {}))}
+    - Composition & Geometric Scaffolding: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.compositionExtracted || {}))}
+    - Outfit & Ornament Flow: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.outfitExtracted || {}))}
+    - Mandatory Technical Analysis (10 Layers): ${JSON.stringify(pruneBase64(r.imageAnalysisJson.technicalAnalysis || {}))}` : ""}`;
 }).join("\n\n") || "  * No style reference images attached."}
 
 ### WORKROOM CARDS & SPECIFIC NOTES (WITH ATTACHED REFERENCE IMAGES & VISION ANALYSIS)
@@ -2949,10 +2998,12 @@ ${cards.map((c: any) => {
     const status = r.analysisStatus || (r.imageAnalysisText && r.imageAnalysisText !== 'Chưa phân tích' ? 'analyzed' : 'pending');
     const baseAnalysisText = (r.imageAnalysisText && r.imageAnalysisText !== 'Chưa phân tích' && !r.imageAnalysisText.startsWith('⏳'))
       ? r.imageAnalysisText
-      : `AI có khả năng quan sát hình ảnh, hãy phân tích trực tiếp [ATTACHED IMAGE #${gIdx}] và trích xuất các yếu tố thuộc phạm vi chức năng của thẻ "${c.title}"!`;
-    const analysisText = `🎨 [TƯ LIỆU THẨM MỸ CHO THẺ "${c.title}"]: Ảnh tham chiếu #${gIdx} là tư liệu hướng dẫn nghệ thuật cho phạm vi "${c.title}". AI hãy học hỏi phong cách, màu sắc và đường nét để tạo dựng nhân vật trong truyện! => Chi tiết Vision: ${baseAnalysisText}`;
-    const jsonStr = r.imageAnalysisJson ? `\n    - Subject Details: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.subject || {}))}\n    - Style & Color: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.style || {}))} | ${JSON.stringify(pruneBase64(r.imageAnalysisJson.color || {}))}\n    - Composition & Details: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.composition || {}))} | ${JSON.stringify(pruneBase64(r.imageAnalysisJson.characterDetails || {}))}\n    - Prompt Keywords: ${(r.imageAnalysisJson.promptKeywords || []).join(", ")}\n    - Visual Style Extracted: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.visualStyleExtracted || {}))}\n    - Color Palette Extracted: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.colorPaletteExtracted || {}))}\n    - Outfit Fidelity Extracted: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.outfitExtracted || r.imageAnalysisJson.layer4_outfit || {}))}\n    - Composition Rhythm Extracted: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.compositionExtracted || r.imageAnalysisJson.composition || {}))}\n    - Details To Preserve (70%-85%): ${JSON.stringify(pruneBase64(r.imageAnalysisJson.detailsToPreserve || "N/A"))}\n    - Details To Adapt (15%-30%): ${JSON.stringify(pruneBase64(r.imageAnalysisJson.detailsToAdapt || "N/A"))}\n    - Originality Elements (0%): ${JSON.stringify(pruneBase64(r.imageAnalysisJson.originalityElements  || "N/A"))}` : "";
-    return `  * [Card Ref #${idx+1} -> ATTACHED IMAGE #${gIdx} IN PAYLOAD (DO NOT OUTPUT FILENAME - TRANSLATE VISUAL TRAITS TO WORDS): "${r.name || r.fileName || 'Image'}" | ID: ${r.id || r.imageId} | Status: ${status} | Card Title Domain: "${c.title}" (EXACT FUNCTIONAL ISOLATION: This image ONLY governs attributes belonging to "${c.title}")]:\n    - Vision Analysis Text: ${analysisText}${jsonStr}`;
+      : `AI có khả năng quan sát hình ảnh, hãy phân tích trực tiếp [ATTACHED IMAGE #${gIdx}] và trích xuất các yếu tố thuộc phạm vi chức năng của thẻ "${c.name || c.title || c.id}"!`;
+    const analysisText = `🎨 [TƯ LIỆU THẨM MỸ CHO THẺ "${c.name || c.title || c.id}"]: Ảnh tham chiếu #${gIdx} là tư liệu hướng dẫn nghệ thuật cho phạm vi "${c.name || c.title || c.id}". AI hãy học hỏi phong cách, màu sắc và đường nét để tạo dựng nhân vật trong truyện! => Chi tiết Vision: ${baseAnalysisText}`;
+    const jsonStr = r.imageAnalysisJson ? `\n    - Subject Details: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.subject || {}))}\n    - Style & Color: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.style || {}))} | ${JSON.stringify(pruneBase64(r.imageAnalysisJson.color || {}))}\n    - Composition & Details: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.composition || {}))} | ${JSON.stringify(pruneBase64(r.imageAnalysisJson.characterDetails || {}))}\n    - Prompt Keywords: ${(r.imageAnalysisJson.promptKeywords || []).join(", ")}\n    - Visual Style Extracted: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.visualStyleExtracted || {}))}\n    - Color Palette Extracted: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.colorPaletteExtracted || {}))}\n    - Outfit Fidelity Extracted: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.outfitExtracted || r.imageAnalysisJson.layer4_outfit || {}))}\n    - Composition Rhythm Extracted: ${JSON.stringify(pruneBase64(r.imageAnalysisJson.compositionExtracted || r.imageAnalysisJson.composition || {}))}\n    - Mandatory Technical Analysis (10 Layers): ${JSON.stringify(pruneBase64(r.imageAnalysisJson.technicalAnalysis || {}))}\n    - Details To Preserve (70%-85%): ${JSON.stringify(pruneBase64(r.imageAnalysisJson.detailsToPreserve || "N/A"))}\n    - Details To Adapt (15%-30%): ${JSON.stringify(pruneBase64(r.imageAnalysisJson.detailsToAdapt || "N/A"))}\n    - Originality Elements (0%): ${JSON.stringify(pruneBase64(r.imageAnalysisJson.originalityElements  || "N/A"))}` : "";
+    return `  * [Card Visual Source #${idx+1} -> ATTACHED IMAGE #${gIdx} IN PAYLOAD]:
+    - Functional Domain: This image strictly governs attributes for the card "${c.name || c.title || c.id}".
+    - Vision Analysis Details: ${baseAnalysisText}${jsonStr}`;
   }).join("\n\n");
 
   let pinkCatSection = "";
@@ -2966,7 +3017,7 @@ ${cards.map((c: any) => {
     pinkCatSection += `\n- Outfit Reference Images Uploaded via Candy Button (${cs.outfitRefs.length} images) to apply strictly:\n${cs.outfitRefs.map((or: any, idx: number) => `  * [Outfit Ref #${idx+1}]: "${or.name || or.fileName}"`).join("\n")}`;
   }
 
-  return `#### Card: "${c.title}" (ID: ${c.id})
+  return `#### Card: "${c.name || c.title || c.id}"
 - Quick Guidelines: ${c.quick}
 - User Note: ${cs.note || "None"}${pinkCatSection}
 - Attached Reference Images (${cardRefsList.length} images):
@@ -3025,19 +3076,18 @@ When attached reference images or Vision Analysis reports are present for any wo
    - You are REQUIRED from writing bare image filenames, file extensions, or image IDs (e.g. "Use references: 1000012463.jpg, 1000012560.jpg", "Character inspired by 1000012463.jpg", or "inspired by image 1.png") inside the generated prompt!
    - When reference images are present, your task is to READ the vision analysis reports, extract their aesthetic layers, camera angles, and poses, and SYNTHESIZE them into rich, descriptive natural language inside the output prompt.
    - A valid output prompt is a complete, standalone descriptive instruction where all aesthetic and structural traits from reference images have been translated into explicit descriptive words ready for direct image generation!
-7. **🎓 MASTER ART AESTHETIC & STYLE OVERRIDE GUIDELINES (KỸ THUẬT ÉP PHONG CÁCH VẼ & ĐẶC TẢ TÓC, MẮT)**:
-   - **MANDATORY STYLE OVERRIDE**: Default AI art styles are FORBIDDEN. You MUST extract the precise art style from the reference images (e.g., retro 90s anime, modern cel-shaded manhwa, soft watercolor, thick impasto oil) and FORCE the final prompt to strictly imitate this style. Use commanding words like: "Masterpiece illustration, strictly imitating the exact brush strokes, line art, and color palette of [Specific Style]... override default AI rendering."
-   - **MANDATORY INSTRUCTION FOR HAIR AND EYES**: You MUST dedicate a massive amount of tokens to generate highly detailed, technical art instructions for rendering Hair and Eyes inside the final prompt. Do NOT summarize!
-   - **Kỹ thuật Thiết Kế Tóc Chuyên Sâu (Hair Design Reference Library)**: Tóc tuyệt đối KHÔNG ĐƯỢC miêu tả chung chung ("tóc dài màu nâu", v.v.). BẮT BUỘC SỬ DỤNG HỆ THỐNG "HAIR KNOWLEDGE TREE" SAU ĐÂY ĐỂ PHÂN TÍCH ẢNH THAM CHIẾU VÀ ĐƯA VÀO PROMPT BẰNG RẤT NHIỀU TOKEN:
-      + *Cấu trúc khối & Thể tích (Hair Architecture & Volume)*: Hình dáng tổng thể, tỷ lệ khối đặc/rỗng, phân bố khối đỉnh/hai bên/sau gáy, độ dày tổng, độ xốp, độ nở, độ phồng, mức phân tầng (layer system).
-      + *Hệ thống Cụm & Lọn tóc (Cluster & Strand System)*: Cụm viền mặt, cụm gáy, lọn ôm mặt, lọn bay, lọn xoắn chữ S/C. Đặc tả tỉ mỉ từng lọn tóc tơ mỏng manh (flyaway/baby hair). Mật độ lọn (Strand Density).
-      + *Chuyển động & Vật lý (Hair Flow & Physics)*: Hướng chảy luồng tóc, góc rơi, dòng chuyển động, chiều sâu, quán tính, độ bay, tương tác gió và trọng lực.
-      + *Chất liệu bề mặt (Material & Texture)*: Độ mượt, độ xốp, độ tơi, satin, silk, airy, fluffy, glossy, matte.
-      + *Chi tiết cấu tạo (Hairline, Bangs, Tips)*: Đường chân tóc (hairline mềm/rõ), hệ thống mái (bangs dày/thưa/rẽ), độ mềm viền mép (hair edge), đuôi lọn (nhọn/tơi/bo).
-      + *Ánh sáng & Phối màu (Lighting, Shadow & Color System)*: Main highlight, vòng sáng đỉnh đầu (angel ring), rim light, ambient shadow, root color, mid tone, tip color, gradient.
-   - **Kỹ thuật vẽ mắt (Eye Rendering Architecture)**: Mắt phải được render vô cùng chi tiết. Đặc tả hình dáng mắt, cấu tạo đồng tử (pupil details), ánh sáng phản chiếu (catchlights/eye highlights), chiều sâu của mống mắt (iris depth), màu sắc chuyển đổi trong mống mắt (gradient iris). Lông mi (lashes) phải cong vút và rõ từng sợi. Kỹ thuật lên màu mắt phải rực rỡ, lấp lánh và có chiều sâu cảm xúc.
-   - **Kỹ thuật Lineart và Lên màu (Linework & Coloring Process)**: Phải miêu tả kỹ thuật vẽ chuẩn họa sĩ: nét vẽ lineart (linework) trước, sau đó mới tỉ mỉ lên màu (coloring). Đặc tả độ thanh đậm của nét vẽ (varying stroke weights), cách đi nét (crisp lines vs soft lines). Đặc tả rõ cách lên màu (coloring method như cell-shading, soft blending, watercolor, hay impasto), độ bão hoà màu sắc (color saturation), và kỹ thuật đánh bóng khối (shading/ambient occlusion).
-   - **HỌC HỎI TỪ ẢNH THAM CHIẾU (Absolute Reference Supremacy)**: Toàn bộ cấu tạo, hình dáng, cách lên màu, độ bão hòa, phong cách nghệ thuật, và nét vẽ của TÓC, MẮT, LINEART phải được **PHÂN TÍCH VÀ BÊ NGUYÊN XI (HỌC HỎI NGHIÊM NGẶT) TỪ CÁC ẢNH THAM CHIẾU (Reference Images)**. Phải viết một đoạn prompt SIÊU CHI TIẾT (highly dense prompt) về kỹ thuật vẽ tóc học từ ảnh gốc. Ví dụ: "Kỹ thuật vẽ tóc mô phỏng chính xác nét cọ từ ảnh tham chiếu, đi line đen sắc nét thanh mảnh, độ bão hòa màu cao, từng lọn tóc tơ bồng bềnh bung tỏa, đổ bóng tím nhạt..."
+7. **🎓 MASTER ART AESTHETIC & STYLE OVERRIDE GUIDELINES (HỆ THỐNG KỸ THUẬT NGHỆ THUẬT TỔNG LỰC & SIÊU PHÂN TÍCH DNA)**:
+   - **MANDATORY STYLE OVERRIDE (ÉP PHONG CÁCH NGHỆ THUẬT TUYỆT ĐỐI)**: Default AI styles are STRICTLY FORBIDDEN. You MUST deconstruct the "Artistic DNA" of the reference images (brushwork, rendering, color physics) and RE-ENGINEER it into the final prompt. Use commanding technical language: "Masterpiece production-ready illustration, strictly synthesizing the exact rendering DNA, brushwork physics, and light interaction from the reference images... override generic AI outputs."
+   - **MANDATORY INSTRUCTION FOR HAIR, EYES & ANATOMY**: You MUST dedicate a massive amount of tokens to generate highly detailed, technical art instructions for rendering every single artistic element. Do NOT summarize!
+   - **Kỹ thuật Thiết Kế Tóc Chuyên Sâu (Advanced Hair Engineering)**: Tóc tuyệt đối KHÔNG ĐƯỢC miêu tả chung chung. BẮT BUỘC SỬ DỤNG HỆ THỐNG "HAIR KNOWLEDGE TREE" ĐỂ PHÂN TÍCH VÀ ĐƯA VÀO PROMPT:
+      + *Cấu trúc & Khối (Volume & Flow)*: Phân tích khối lượng (volume), nhịp điệu lọn tóc (strand rhythm), và cách lọn tóc kết thúc (tapering).
+      + *Vật lý & Ánh sáng (Physics & Highlights)*: Đặc tả vòng sáng (angel rings), độ tơi (airy quality), và cách ánh sáng xuyên qua lớp tóc (translucency).
+   - **Kỹ thuật Vẽ Mắt & Mắt Biếc (High-Fidelity Eye Rendering)**: Mắt phải được render như một viên ngọc. Đặc tả mống mắt (iris depth), ánh sáng phản chiếu (catchlights), và độ bóng của giác mạc.
+   - **Kỹ thuật Render & Linework DNA (KỸ THUẬT VẼ CHUYÊN SÂU)**:
+      + **Linework**: Đặc tả độ thanh đậm (varying line weight), màu của nét line (colored lineart), và độ sắc nét (sharpness vs softness).
+      + **Rendering**: Phân tích kỹ thuật đánh bóng (cell-shading, soft-blending, impasto). Đặc tả độ trong của da (Subsurface Scattering) và cách bề mặt vật liệu phản xạ ánh sáng (Specular highlights).
+   - **HỌC HỎI THỐNG TRỊ (Absolute Reference Supremacy)**: Toàn bộ quy luật kỹ thuật về nét vẽ, cách lên màu, bố cục hình học, và độ bão hòa phải được HỌC HỎI VÀ TÁI CẤU TRÚC (TRANSFORMATIVE SYNTHESIS) từ các báo cáo thị giác (Vision Analysis). Phải viết một đoạn prompt SIÊU CHI TIẾT về kỹ thuật nghệ thuật học từ ảnh gốc. Ví dụ: "Kỹ thuật vẽ mô phỏng chính xác DNA nghệ thuật từ ảnh tham chiếu: nét line mỏng sắc sảo, rendering da có độ trong mờ cao, ánh sáng rim-light vàng hổ phách ôm sát cơ thể, bố cục theo đường chéo động học cực mạnh..."
+   - **Typography & UI/Graphic DNA**: Nếu ảnh tham chiếu có chữ hoặc đồ họa, phải bóc tách logic sắp đặt (layout geometry), font style, và cách các yếu tố đồ họa bổ trợ cho chủ thể để đưa vào prompt.
 8. **🎓 MASTER VISUAL COMPOSITION & CINEMATIC LAYOUT GUIDELINES (HỆ THỐNG BỐ CỤC THỊ GIÁC & GÓC MÁY)**: Tuyệt đối KHÔNG ĐƯỢC miêu tả bố cục và góc máy chung chung. BẮT BUỘC SỬ DỤNG HỆ THỐNG "VISUAL COMPOSITION LIBRARY" SAU ĐÂY ĐỂ ĐẶC TẢ GÓC MÁY BẰNG RẤT NHIỀU TOKEN:
    - *Ngôn ngữ Camera & Ống kính (Camera & Lens Language)*: Đặc tả Góc máy (Perspective, Height, Tilt, Rotation, Distance). Tiêu cự ống kính (Focal Length, Wide/Telephoto/Macro Perspective), độ nén thấu kính (Lens Compression).
    - *Hệ thống Bố cục & Điểm nhìn (Composition & Eye Guidance)*: Phân bố tỷ lệ vàng (Golden Ratio), quy tắc 1/3 (Rule of Thirds), bố cục trung tâm (Central), đối xứng/bất đối xứng. Khung hình trong khung hình (Frame Within Frame). Hệ thống dẫn dắt mắt (Leading Lines, Eye Path, Circular/Directional Flow).
@@ -3050,14 +3100,33 @@ When attached reference images or Vision Analysis reports are present for any wo
 You MUST generate the final production-ready prompt for EACH work card individually.
 Return the result for EACH card listed above individually. Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the following format, without any <think> blocks or conversational prefixes. YOU MUST USE EXACTLY THIS FORMAT TO SEPARATE THE CARDS:
 
-${cards.map((c: any) => `[CARD_ID: ${c.id}]
+${cards.map((c: any) => {
+  const cardName = c.name || c.title || c.id;
+  const isIntelligentRef = c.id === 'aesthetic_reference_intelligent' || cardName.toUpperCase().includes('HỌC HỎI THÔNG MINH');
+  
+  if (isIntelligentRef) {
+    return `[CARD_ID: ${c.id}]
+[FINAL PROMPT]
+(Write the final production-ready standalone visual analysis and prompt for "${cardName}" here. CRITICAL MANDATE: You MUST NOT output [REFERENCE FIDELITY REPORT], Room ID, Card ID, CARD_ID, Attached Reference Images, UUIDs, or filenames.
+
+Structure exactly as follows:
+
+- **WHAT TO CREATE**: [Nội dung, nhân vật và mục tiêu lấy từ câu chuyện cùng hồ sơ nhân vật. Bắt buộc bám sát danh tính, giới tính, tuổi tác, vai trò trong truyện.]
+- **HOW TO VISUALIZE**: [Phong cách vẽ, lineart, brushwork, màu sắc, ánh sáng, góc máy, phối cảnh, pose, bố cục, chất liệu và cách render được rút ra từ TẤT CẢ ảnh tham chiếu. TỔNG HỢP THEO NHÓM: nhóm ảnh cung cấp phong cách, nhóm ảnh cung cấp góc máy, nhóm ảnh cung cấp pose, nhóm ảnh cung cấp màu sắc và ánh sáng, v.v. bằng ngôn ngữ tự nhiên. Tuyệt đối KHÔNG dùng UUID hay số thứ tự ảnh.]
+- **ADAPTATION**: [Chi tiết nào được giữ về mặt kỹ thuật, chi tiết nào phải thay đổi cho phù hợp nhân vật và câu chuyện.]
+- **ANTI-COPY**: [Tuyệt đối không sao chép danh tính, khuôn mặt, chữ, logo, tên riêng, đạo cụ đặc trưng hoặc nội dung cụ thể của ảnh gốc.]
+
+Do NOT include any metadata inside this [FINAL PROMPT] section! Ensure the output is completely standalone and clean!)`;
+  }
+  
+  return `[CARD_ID: ${c.id}]
 [REFERENCE FIDELITY REPORT]
-- Card Title: "${c.title}"
+- Card Title: "${cardName}"
 - Room ID: "${roomDef.id}"
 - Attached Reference Images: (List each image ID/name internally, and detail the EXACT visual DNA analysis: Camera Angle, Perspective, Depth of Field, Pose, Stance, Style, Brushwork, Palette, Light, Texture, Mood, Outfit, Composition. YOU MUST APPLY EVERY SINGLE REFERENCE IMAGE AESTHETIC INTO THE FINAL PROMPT. DO NOT OMIT ANY REFERENCE!)
 ---
 ${isComicMode ? `[FINAL PROMPT]
-(Write the final production-ready COMIC / WEBTOON PAGE SCRIPT & PROMPT for "${c.title}" here. CRITICAL MANDATE FOR COMIC / MANGA / WEBTOON: You MUST NOT use a single-image structure! Instead, you MUST generate a Multi-Panel Comic Page / Webtoon layout with sequential storytelling.
+(Write the final production-ready COMIC / WEBTOON PAGE SCRIPT & PROMPT for "${cardName}" here. CRITICAL MANDATE FOR COMIC / MANGA / WEBTOON: You MUST NOT use a single-image structure! Instead, you MUST generate a Multi-Panel Comic Page / Webtoon layout with sequential storytelling.
 For EACH PANEL, you MUST apply an ULTIMATE "STUDIO AAA" PROMPT ENGINEERING breakdown (incorporating micro-modules for lighting, camera, pose, expression, hair, outfit, background).
 
 Structure exactly as follows:
@@ -3140,8 +3209,22 @@ To preserve absolute character identity across all comic panels and strictly pre
 16. **Coloring (Kỹ thuật phối màu & Bóng đổ)**: [Exact palette, saturation levels, shading/highlight styles strictly learned from reference images]
 17. **Consistency Check (Kiểm định sự nhất quán)**: [Exhaustive validation ensuring ZERO conflicts between Story details and the visual output. Ban direct copies of different character looks from reference images]
 
-Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference Images", "Room:", "Card:", or technical metadata inside this [FINAL PROMPT] section!)` : `[FINAL PROMPT]
-(Write the final production-ready standalone image prompt for "${c.title}" here. CRITICAL MANDATE: You MUST divide the prompt into an ULTIMATE "STUDIO AAA" PROMPT ENGINEERING FRAMEWORK containing roughly 80-120 micro-modules categorized into major chapters, AND end with a Master Production-Ready English Prompt block so the user can use each part or the whole prompt easily!
+### 🔬 HỌC HỎI THÔNG MINH TỪ ẢNH THAM CHIẾU (INTELLIGENT REFERENCE ADAPTATION)
+- **WHAT TO DRAW (Giữ nguyên Cốt Truyện & Nhân Vật)**:
+  + [Identity]: [Mô tả chi tiết danh tính, giới tính, tuổi tác, tên gọi bám sát Cốt truyện. Tuyệt đối không thay đổi.]
+  + [Soul & Narrative]: [Mô tả thần thái, khí chất và vai trò của nhân vật trong cảnh này theo Cốt truyện.]
+  + [Fixed Elements]: [Liệt kê các chi tiết ngoại hình, trang phục, đạo cụ BẮT BUỘC giữ nguyên từ hồ sơ gốc.]
+- **HOW TO DRAW (Học hỏi Phong Cách & Kỹ Thuật)**:
+  + [Artistic DNA]: [Phân tích cực kỳ sâu nét vẽ, kỹ thuật đi cọ, cách sử dụng lineart (mảnh/dày, thô/mượt) từ ảnh tham chiếu.]
+  + [Cinematic Language]: [Học hỏi góc máy, tiêu cự, cách bố trí ánh sáng và nhịp điệu màu sắc từ ảnh tham chiếu.]
+  + [Stylized Rendering]: [Cách AI render chất liệu (vải, da, tóc) theo đúng "ngôn ngữ thị giác" của ảnh tham chiếu.]
+- **ANTI-LAZY-COPY CHECK (Kiểm định Chống Sao Chép & Bảo mật Nội bộ)**:
+  + [Identity Protection]: [Cam kết không sao chép nhân vật/mặt/dáng vóc từ ảnh tham chiếu. Chỉ giữ lại "kỹ thuật vẽ".]
+  + [Zero Metadata Policy]: [TUYỆT ĐỐI KHÔNG đưa bất kỳ ID, mã số, UUID, tên file, CARD_ID, Room ID hoặc dữ liệu nội bộ nào vào kết quả. Nếu phát hiện bất kỳ mã số lạ nào, AI sẽ bị coi là thất bại.]
+  + [Final Verification]: [Xác nhận prompt cuối cùng là một tác phẩm nghệ thuật độc lập, chuyên nghiệp và sạch sẽ.]
+
+Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference Images", "Room:", "Card:", CARD_ID, storage key, variable names, internal data, or phrases asking the image generator to 'look at the attached reference image' inside this [FINAL PROMPT] section! Ensure the output is completely standalone and clean!)` : `[FINAL PROMPT]
+(Write the final production-ready standalone image prompt for "${cardName}" here. CRITICAL MANDATE: You MUST divide the prompt into an ULTIMATE "STUDIO AAA" PROMPT ENGINEERING FRAMEWORK containing roughly 80-120 micro-modules categorized into major chapters, AND end with a Master Production-Ready English Prompt block so the user can use each part or the whole prompt easily!
 
 Structure exactly as follows:
 
@@ -3151,34 +3234,44 @@ Structure exactly as follows:
 
 ---
 ### 🎬 CHƯƠNG 1: QUAY PHIM & NHIẾP ẢNH (CINEMATOGRAPHY & PHOTOGRAPHY - 15 Modules)
-[Phân tích siêu sâu sắc thành các bullet point tiếng Anh kèm giải thích tiếng Việt. Bao gồm: 1. Camera Angle, 2. Shot Type (Close-up, Cowboy, Wide), 3. Lens Type (Macro, Wide, Telephoto), 4. Focal Length, 5. Depth of Field (DoF), 6. Bokeh Type, 7. Aperture (f/1.4 etc), 8. Shutter Speed Effect, 9. ISO/Film Grain, 10. Sensor Size, 11. Perspective (1-point, 2-point, 3-point), 12. Viewpoint (Bird's eye, Worm's eye), 13. Tilt/Dutch Angle, 14. Lens Distortion, 15. Glare/Lens Flare]
+[BẮT BUỘC PHẢI TRIỂN KHAI ĐẦY ĐỦ TỪNG MODULE TỪ 1 ĐẾN 15. Mỗi module phải có: tên module, lựa chọn cụ thể áp dụng cho ảnh này, mô tả chi tiết, lý do hoặc tác dụng thị giác, và sự liên hệ chặt chẽ với câu chuyện, nhân vật và ảnh tham chiếu. KHÔNG ĐƯỢC BỎ MỤC. KHÔNG ĐƯỢC GỘP.
+Bao gồm: 1. Camera Angle, 2. Shot Type, 3. Lens Type, 4. Focal Length, 5. Depth of Field, 6. Bokeh Type, 7. Aperture, 8. Shutter Speed Effect, 9. ISO/Film Grain, 10. Sensor Size, 11. Perspective, 12. Viewpoint, 13. Tilt/Dutch Angle, 14. Lens Distortion, 15. Glare/Lens Flare]
 
 ### 💡 CHƯƠNG 2: HỆ THỐNG ÁNH SÁNG & ĐÁNH KHỐI (LIGHTING & VOLUMETRICS - 15 Modules)
-[Bao gồm: 16. Key Light, 17. Fill Light, 18. Backlight/Rim Light, 19. Hair Light, 20. Catchlight (Eye sparkle), 21. Ambient Light, 22. Bounce Light, 23. Practical Lights, 24. Volumetric Rays (God rays), 25. Subsurface Scattering (SSS), 26. Global Illumination, 27. Contrast Ratio, 28. Shadow Softness/Hardness, 29. Color Temperature, 30. Atmospheric Haze/Fog interaction with light]
+[BẮT BUỘC PHẢI TRIỂN KHAI ĐẦY ĐỦ TỪNG MODULE TỪ 16 ĐẾN 30. Mỗi module phải có: tên module, lựa chọn kỹ thuật, mô tả áp dụng chi tiết, tác dụng thị giác và liên hệ chặt chẽ với câu chuyện, nhân vật và ảnh tham chiếu. KHÔNG ĐƯỢC BỎ MỤC. KHÔNG ĐƯỢC GỘP.
+Bao gồm: 16. Key Light, 17. Fill Light, 18. Backlight/Rim Light, 19. Hair Light, 20. Catchlight (Eye sparkle), 21. Ambient Light, 22. Bounce Light, 23. Practical Lights, 24. Volumetric Rays (God rays), 25. Subsurface Scattering (SSS - Độ xuyên thấu ánh sáng qua da), 26. Global Illumination, 27. Contrast Ratio, 28. Shadow Softness/Hardness, 29. Color Temperature (K), 30. Atmospheric Haze/Fog interaction with light]
 
 ### 🎨 CHƯƠNG 3: MÀU SẮC ĐIỆN ẢNH & HIỆU CHỈNH (COLOR GRADING & PALETTE - 12 Modules)
-[Bao gồm: 31. Primary Color Palette, 32. Secondary/Accent Colors, 33. Color Harmony (Analogous, Complementary), 34. Hue Shifts, 35. Saturation Dynamics, 36. Luminance Levels, 37. Color Contrast, 38. Shadows Tint, 39. Midtones Tint, 40. Highlights Tint, 41. LUT/Cinematic Grading Profile, 42. Visual Mood/Atmosphere via Color]
+[BẮT BUỘC PHẢI TRIỂN KHAI ĐẦY ĐỦ TỪNG MODULE TỪ 31 ĐẾN 42. Mỗi module phải có: tên module, lựa chọn cụ thể, mô tả chi tiết, tác dụng thị giác và liên hệ ảnh tham chiếu. KHÔNG ĐƯỢC BỎ MỤC. KHÔNG ĐƯỢC GỘP.
+Bao gồm: 31. Primary Color Palette, 32. Secondary/Accent Colors, 33. Color Harmony (Analogous, Complementary), 34. Hue Shifts, 35. Saturation Dynamics, 36. Luminance Levels, 37. Color Contrast, 38. Shadows Tint, 39. Midtones Tint, 40. Highlights Tint, 41. LUT/Cinematic Grading Profile, 42. Visual Mood/Atmosphere via Color]
 
 ### 🖌️ CHƯƠNG 4: CHẤT LIỆU, NÉT VẼ & RENDER (ART STYLE, MEDIUM & BRUSHWORK - 15 Modules)
-[Bao gồm: 43. Core Art Style (Anime, Manhwa, Realism, etc.), 44. Medium (Oil, Watercolor, Digital, Cel-shaded), 45. Brushstroke Type, 46. Linework Weight, 47. Line Color/Tapering, 48. Blending Technique, 49. Texture Overlays, 50. Canvas/Paper Grain, 51. Impasto/Thickness, 52. Edge Control (Soft vs Hard edges), 53. Rendering Engine (Unreal, Octane, V-Ray), 54. Specular Maps, 55. Normal/Bump mapping simulation, 56. Anti-Aliasing/Sharpness, 57. Style Bleed Prevention]
+[BẮT BUỘC PHẢI TRIỂN KHAI ĐẦY ĐỦ TỪNG MODULE TỪ 43 ĐẾN 57. Đây là phần quan trọng nhất để AI không render kiểu generic. Mỗi module phải có: tên module, mô tả kỹ thuật chi tiết học từ ảnh tham chiếu, tác dụng thẩm mỹ. KHÔNG ĐƯỢC BỎ MỤC. KHÔNG ĐƯỢC GỘP.
+Bao gồm: 43. Core Art Style, 44. Medium, 45. Brushstroke Type, 46. Linework Weight, 47. Line Color/Tapering, 48. Blending Technique, 49. Texture Overlays, 50. Canvas/Paper Grain, 51. Impasto/Thickness, 52. Edge Control, 53. Rendering Engine, 54. Specular Maps, 55. Normal/Bump mapping, 56. Anti-Aliasing, 57. Style Bleed Prevention]
 
 ### 📐 CHƯƠNG 5: BỐ CỤC & DẪN DẮT THỊ GIÁC (COMPOSITION & VISUAL HIERARCHY - 12 Modules)
-[Bao gồm: 58. Rule of Thirds/Golden Ratio, 59. Eye Guiding Lines (Leading Lines), 60. Framing within Framing, 61. Symmetry/Asymmetry, 62. Visual Weight Distribution, 63. Positive/Negative Space Ratio, 64. Foreground Elements, 65. Midground Elements, 66. Background Elements, 67. Subject Placement, 68. Tension Points, 69. Scale and Proportion]
+[BẮT BUỘC PHẢI TRIỂN KHAI ĐẦY ĐỦ TỪNG MODULE TỪ 58 ĐẾN 69. Phân tích bố cục hình học và nhịp điệu thị giác.
+Bao gồm: 58. Rule of Thirds/Golden Ratio, 59. Eye Guiding Lines (Leading Lines), 60. Framing within Framing, 61. Symmetry/Asymmetry, 62. Visual Weight Distribution, 63. Positive/Negative Space Ratio, 64. Foreground Elements, 65. Midground Elements, 66. Background Elements, 67. Subject Placement, 68. Tension Points, 69. Scale and Proportion]
 
 ### 🧑 CHƯƠNG 6: NHÂN VẬT & NGÔN NGỮ CƠ THỂ (CHARACTER, POSE & KINETICS - 15 Modules)
-[Bao gồm: 70. Core Subject Description, 71. Gender/Identity Fidelity, 72. Age Presentation, 73. Body Type/Anatomy, 74. Posture/Stance, 75. Kinetic Energy/Motion, 76. Weight Distribution (Contrapposto), 77. Hand Gestures/Placement, 78. Footing, 79. Head Tilt, 80. Shoulders Angle, 81. Spine Curve, 82. Tension in Muscles, 83. Interaction with Props, 84. Silhouette Clarity]
+[BẮT BUỘC PHẢI TRIỂN KHAI ĐẦY ĐỦ TỪNG MODULE TỪ 70 ĐẾN 84. Đặc tả dáng vóc và tư thế pose học từ ảnh tham chiếu nhưng phải khớp với hồ sơ nhân vật.
+Bao gồm: 70. Core Subject Description, 71. Gender/Identity Fidelity, 72. Age Presentation, 73. Body Type/Anatomy, 74. Posture/Stance, 75. Kinetic Energy/Motion, 76. Weight Distribution (Contrapposto), 77. Hand Gestures/Placement, 78. Footing, 79. Head Tilt, 80. Shoulders Angle, 81. Spine Curve, 82. Tension in Muscles, 83. Interaction with Props, 84. Silhouette Clarity]
 
 ### 😍 CHƯƠNG 7: KHUÔN MẶT, BIỂU CẢM & TRANG ĐIỂM (FACE, EXPRESSION & MAKEUP - 10 Modules)
-[Bao gồm: 85. Facial Bone Structure, 86. Eye Shape and Gaze Direction, 87. Pupil/Iris Detailing, 88. Eyebrow Arch/Micro-expression, 89. Mouth/Lip Shape and Parting, 90. Skin Texture/Pores/Translucency, 91. Blush/Makeup Application, 92. Micro-asymmetry (Realism), 93. Emotional Output, 94. Jawline/Chin definition]
+[BẮT BUỘC PHẢI TRIỂN KHAI ĐẦY ĐỦ TỪNG MODULE TỪ 85 ĐẾN 94. Mô tả chi tiết khuôn mặt học kỹ thuật vẽ từ ảnh tham chiếu.
+Bao gồm: 85. Facial Bone Structure, 86. Eye Shape and Gaze Direction, 87. Pupil/Iris Detailing, 88. Eyebrow Arch/Micro-expression, 89. Mouth/Lip Shape and Parting, 90. Skin Texture/Pores/Translucency, 91. Blush/Makeup Application, 92. Micro-asymmetry (Realism), 93. Emotional Output, 94. Jawline/Chin definition]
 
 ### 💇‍♀️ CHƯƠNG 8: KIẾN TRÚC TÓC & ĐỘ BỒNG BỀNH (HAIR ARCHITECTURE & FLOW - 10 Modules)
-[Bao gồm: 95. Hair Length and Silhouette, 96. Volume and Density, 97. Hair Root/Parting Line, 98. Strand Grouping (Clumps), 99. Flyaways and Fine Hairs, 100. Hair Flow/Wind Direction, 101. Bangs/Fringe Styling, 102. Material/Glossiness, 103. Highlight Band (Angel Ring), 104. Gravity Interaction]
+[BẮT BUỘC PHẢI TRIỂN KHAI ĐẦY ĐỦ TỪNG MODULE TỪ 95 ĐẾN 104. Áp dụng Hair Knowledge Tree để mô tả tóc cực kỳ chi tiết.
+Bao gồm: 95. Hair Length and Silhouette, 96. Volume and Density, 97. Hair Root/Parting Line, 98. Strand Grouping (Clumps), 99. Flyaways and Fine Hairs, 100. Hair Flow/Wind Direction, 101. Bangs/Fringe Styling, 102. Material/Glossiness, 103. Highlight Band (Angel Ring), 104. Gravity Interaction]
 
 ### 👗 CHƯƠNG 9: TRANG PHỤC & CHẤT LIỆU VẢI (FASHION, DRAPERY & TEXTILES - 12 Modules)
-[Bao gồm: 105. Main Outfit Description, 106. Creative Adaptation (from ref to story), 107. Fabric Types (Silk, Leather, Cotton), 108. Fold Types (Pipe, Drop, Zig-zag), 109. Tension/Pull Points in Fabric, 110. Seam/Stitch Detailing, 111. Metallic/Reflective Accents, 112. Translucency (Sheer fabrics), 113. Layering/Complexity, 114. Accessory Placement, 115. Embroidery/Patterns, 116. Fabric Interaction with Wind]
+[BẮT BUỘC PHẢI TRIỂN KHAI ĐẦY ĐỦ TỪNG MODULE TỪ 105 ĐẾN 116. Phân tích nếp gấp và chất liệu vải.
+Bao gồm: 105. Main Outfit Description, 106. Creative Adaptation (from ref to story), 107. Fabric Types (Silk, Leather, Cotton), 108. Fold Types (Pipe, Drop, Zig-zag), 109. Tension/Pull Points in Fabric, 110. Seam/Stitch Detailing, 111. Metallic/Reflective Accents, 112. Translucency (Sheer fabrics), 113. Layering/Complexity, 114. Accessory Placement, 115. Embroidery/Patterns, 116. Fabric Interaction with Wind]
 
 ### 🌌 CHƯƠNG 10: KHÔNG GIAN & VẬT THỂ BỔ TRỢ (ENVIRONMENT & PROPS - 4 Modules)
-[Bao gồm: 117. Setting/Location, 118. Weather/Atmosphere, 119. Environmental Storytelling, 120. Prop integration]
+[BẮT BUỘC PHẢI TRIỂN KHAI ĐẦY ĐỦ TỪNG MODULE TỪ 117 ĐẾN 120.
+Bao gồm: 117. Setting/Location, 118. Weather/Atmosphere, 119. Environmental Storytelling, 120. Prop integration]
 
 ---
 ### 🎨 PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)
@@ -3198,238 +3291,66 @@ Structure exactly as follows:
 
 ---
 ### 🔒 [CHARACTER VISUAL DETAIL LOCK] (KHÓA CHI TIẾT TẠO HÌNH NHÂN VẬT CHÍNH TRONG CẢNH)
-Mục đích: Mô tả thật chi tiết toàn bộ phần tạo hình nhân vật để AI không tự rơi về kiểu nhân vật anime mặc định, không tự đổi nét, không tự đổi tóc, không tự đơn giản hóa mắt, mặt hoặc cơ thể. Nội dung nhân vật vẫn phải lấy từ cốt truyện, hồ sơ nhân vật, tuổi, giới tính, chiều cao, vóc dáng, kiểu tóc, màu tóc, màu mắt, trang phục, tính cách, cảm xúc, trạng thái hiện tại của cảnh. Ảnh tham chiếu chỉ được dùng để học hỏi kỹ thuật vẽ, ánh sáng và cách render đặc điểm đó.
-
-BẮT BUỘC MÔ TẢ ĐẦY ĐỦ CHO TỪNG NHÂN VẬT CHÍNH ĐANG XUẤT HIỆN TRONG CẢNH QUA 17 PHẦN CHI TIẾT SAU:
+Mục đích: Mô tả thật chi tiết toàn bộ phần tạo hình nhân vật để AI không tự rơi về kiểu nhân vật anime mặc định. BẮT BUỘC TRIỂN KHAI ĐẦY ĐỦ VÀ CHI TIẾT CẢ 17 PHẦN DƯỚI ĐÂY. Mỗi phần không được ít hơn 5 dòng mô tả chuyên sâu.
 
 1. **Tổng thể nhân vật (Total Character)**: 
-- Độ tuổi thể hiện rõ nét trên gương mặt và dáng vóc;
-- Giới tính sinh học và diện mạo tổng thể;
-- Chiều cao tương quan, vóc dáng (thanh mảnh, đầy đặn, săn chắc, mảnh mai, v.v.);
-- Khung xương, độ rộng vai và tỷ lệ đầu so với cơ thể;
-- Chiều dài tay chân;
-- Độ mềm, thanh, khỏe hoặc đầy đặn của hình thể;
-- Khí chất đặc trưng (quý phái, u sầu, tinh nghịch, lạnh lùng, hiền lành, v.v.);
-- Trạng thái trưởng thành;
-- Cảm giác thị giác tổng thể mà nhân vật tạo ra cho người xem;
-- Tuyệt đối không được sao chép nhân dạng của ảnh tham chiếu nếu không khớp với cốt truyện thiết lập.
+- Mô tả cực kỳ chi tiết về: Độ tuổi, Giới tính, Chiều cao, Vóc dáng, Khí chất, Trạng thái trưởng thành, và Cảm giác thị giác tổng thể. Phải liên hệ trực tiếp với Cốt truyện và Ảnh tham chiếu.
 
 2. **Cấu trúc khuôn mặt (Face Structure)**:
-- Hình dáng khuôn mặt đặc trưng (V-line, trái xoan, bầu bĩnh, thon dài, v.v.);
-- Độ rộng và độ cao của vầng trán;
-- Đường gò má (nhô cao nhẹ, mềm mại, v.v.);
-- Độ đầy đặn của má (má bầu bĩnh đáng yêu hay má thon gọn thanh tú);
-- Đường xương hàm dưới và cấu trúc cằm (nhọn, tròn, vuông thanh lịch);
-- Tỷ lệ cân đối giữa phần trán, phần trung tâm và phần cằm;
-- Khoảng cách hài hòa giữa mắt, mũi và miệng;
-- Độ mềm mại hoặc sắc sảo của các đường nét xương mặt;
-- Độ cân đối tuyệt đối hai bên gương mặt;
-- Góc nghiêng khuôn mặt thể hiện độ sâu trường ảnh;
-- Giữ vững độ tuổi và cá tính nhân vật trên từng nét vẽ.
+- Mô tả cực kỳ chi tiết về: Hình dáng mặt (V-line, trái xoan...), Trán, Gò má, Má, Xương hàm, Cằm, Tỷ lệ khuôn mặt, và Góc nghiêng.
 
 3. **Đặc tả đôi mắt (Eyes)**:
-Mô tả cực kỳ chi tiết, sống động và giàu cảm xúc:
-- Hình dáng mắt (mắt phượng dài quyến rũ, mắt tròn ngây thơ, mắt một mí cá tính, mắt cụp u sầu, v.v.);
-- Tỷ lệ chiều ngang và chiều dọc của mắt;
-- Kích thước mắt so với tổng thể khuôn mặt;
-- Độ mở mắt (mở to tròn, híp nhẹ cười, lờ đờ uể oải);
-- Góc trong (khóe mắt) và góc ngoài của mắt;
-- Độ cong mí trên và độ cong mí dưới;
-- Mí mắt (mắt một mí, hai mí rõ nét, mí lót, hoặc nếp mí mềm mại);
-- Độ dày và sắc nét của đường viền mi mắt;
-- Số lượng, độ dài và độ cong vút tự nhiên của lông mi;
-- Hướng mọc của lông mi (hướng lên trên, hướng ra ngoài);
-- Cấu tạo đồng tử và kích thước mống mắt (iris);
-- Viền mống mắt sắc nét hoặc mờ ảo;
-- Chuyển sắc (gradient) mượt mà bên trong mống mắt;
-- Màu nền của mắt và lớp màu phụ hài hòa;
-- Vùng tối phía trên mống mắt (bóng đổ từ mi) và vùng sáng rực rỡ phía dưới;
-- Chấm sáng chính (catchlight lớn) và chấm sáng phụ (highlight nhỏ) phản chiếu ánh sáng nguồn sinh động;
-- Độ trong suốt, độ sâu, độ long lanh và độ ẩm ướt của đôi mắt;
-- Ánh nhìn định hướng rõ ràng và biểu cảm cảm xúc trọn vẹn;
-- Màu mắt và hình dáng mắt phải trung thành tuyệt đối với hồ sơ nhân vật;
-- Cách vẽ mắt, độ chi tiết, lớp màu và highlight phải học hỏi sâu sắc kỹ thuật vẽ từ ảnh tham chiếu, tránh tạo mắt generic tẻ nhạt.
+- Mô tả SIÊU CHI TIẾT (Ultra-detailed) về: Hình dáng mắt, Mí mắt, Lông mi, Mống mắt, Đồng tử, Catchlight, Highlight, Độ long lanh, Ánh nhìn và Cảm xúc. ĐẢM BẢO mắt được render như ngọc quý.
 
 4. **Lông mày (Eyebrows)**:
-- Hình dáng chân mày (ngang thanh tú, lá liễu mềm mại, mày kiếm sắc sảo, v.v.);
-- Độ cong, độ dày và chiều dài chân mày;
-- Vị trí khoảng cách so với mắt (khoảng cách rộng tạo vẻ ngây thơ, hẹp tạo sự sắc sảo);
-- Hướng sợi lông mày tự nhiên;
-- Độ mềm mại hay độ sắc nét của chân mày;
-- Biểu cảm chân mày tạo ra (nhíu mày lo lắng, nhướng mày ngạc nhiên, thả lỏng dịu dàng);
-- Sự phối hợp nhịp nhàng giữa lông mày, mắt và cơ mặt biểu cảm.
+- Mô tả chi tiết về: Hình dáng, Độ dày, Vị trí, Hướng sợi và Biểu cảm chân mày.
 
 5. **Dáng mũi (Nose)**:
-- Độ cao và đường cong của sống mũi (mũi dọc dừa thẳng tắp, mũi cong nhẹ thanh thoát, v.v.);
-- Độ rộng của cánh mũi và dáng đầu mũi (nhỏ nhắn, tròn mềm);
-- Góc nghiêng của mũi so với môi;
-- Mức độ tối giản hoặc chi tiết của nét vẽ mũi;
-- Highlight sáng trên sống mũi và đầu mũi;
-- Bóng đổ nhỏ dưới chân mũi để tạo chiều sâu;
-- Cách mũi phù hợp hoàn toàn với phong cách vẽ học từ ảnh tham chiếu.
+- Mô tả chi tiết về: Độ cao sống mũi, Đầu mũi, Cánh mũi, Highlight và Bóng đổ.
 
 6. **Khuôn miệng và Bờ môi (Mouth/Lips)**:
-- Hình dáng tổng thể của khuôn miệng;
-- Độ dày, độ căng mọng của môi trên và môi dưới;
-- Đường khóe miệng (khóe cười nhẹ duyên dáng, khóe trĩu u sầu);
-- Độ mở của miệng (mím chặt, hé mở nhẹ quyến rũ, mở to cười rạng rỡ);
-- Đường viền môi (mềm mại hay sắc nét rõ ràng);
-- Màu môi tự nhiên hay màu son thời trang;
-- Độ bóng bẩy, độ ẩm ướt và highlight phản sáng trên cánh môi;
-- Trông thấy răng hoặc đầu lưỡi hồng hào nếu miệng đang hé mở;
-- Cách miệng biểu cảm cảm xúc;
-- Sự phối hợp cơ học mượt màng giữa miệng, gò má và đôi mắt.
+- Mô tả chi tiết về: Hình dáng miệng, Độ dày môi, Khóe miệng, Độ mở, Màu môi và Highlight phản sáng.
 
 7. **Làn da (Skin)**:
-- Tông màu da (da trắng sứ trong trẻo, da mật ong khỏe khoắn, da hồng hào tự nhiên, v.v.);
-- Sắc độ dưới da (undertone ấm, lạnh hay trung tính);
-- Độ sáng và độ trong suốt của làn da;
-- Độ mịn màng, texture da tự nhiên và bóng mịn;
-- Vùng da ửng hồng tự nhiên (blush) ở hai gò má, đầu mũi, thùy tai;
-- Highlight bắt sáng trên trán, sống mũi, đỉnh gò má và nhân trung;
-- Bóng tối mềm mại (ambient shadow) đổ dưới chân tóc, cằm và vùng cổ;
-- Sự chuyển sắc mượt mà giữa vùng sáng và vùng tối;
-- Cách kết cấu da và tô bóng bám sát kỹ thuật render từ ảnh tham chiếu, tuyệt đối không để da bị phẳng bẹt, bóng nhựa giả tạo hoặc generic.
+- Mô tả chi tiết về: Tông màu, Sắc độ (undertone), Độ trong suốt, Texture da, Vùng da ửng hồng (blush), và Cách phản xạ ánh sáng (SSS).
 
 8. **Kiến trúc tóc (Hair)**:
-Kiểu tóc, độ dài và màu tóc phải trung thành tuyệt đối với hồ sơ nhân vật gốc. Cách vẽ tóc học sát ảnh tham chiếu qua:
-- Đường chân tóc và ngôi tóc tự nhiên;
-- Kiểu tóc mái (mái thưa, mái bằng, mái rẽ ngôi, v.v.);
-- Phần tóc mai, lọn tóc ôm sát mặt định hình khuôn mặt;
-- Phần tóc phía trên đỉnh đầu (volume, độ phồng);
-- Phần tóc phía sau đầu (buộc đuôi ngựa, xõa dài, bới cao, v.v.);
-- Cấu trúc khối tóc lớn và sự chia mảng cụ thể;
-- Cách phân chia các cụm tóc lớn thành các lọn tóc trung bình;
-- Sắp xếp và vẽ chi tiết từng sợi tóc tơ nhỏ bay bổng tự nhiên (flyaway hair);
-- Độ dày và độ bồng bềnh của từng lọn tóc;
-- Độ tách lớp (layering) rõ ràng giữa các tầng tóc;
-- Độ phồng và độ rơi tự nhiên của mái tóc theo trọng lực;
-- Trọng lượng cảm giác của tóc;
-- Hướng chuyển động, nhịp điệu bay bổng;
-- Độ cong, độ thẳng hoặc độ xoăn tự nhiên của lọn tóc;
-- Hình dạng phần ngọn tóc (nhọn thanh mảnh, cắt bằng, tỉa mỏng) và độ mềm/sắc của ngọn tóc;
-- Độ mượt mà của bề mặt tóc và độ rối nhẹ có kiểm soát nghệ thuật;
-- Độ bóng bẩy của sợi tóc dưới ánh sáng;
-- Highlight chính (angel ring chạy quanh đỉnh đầu) và highlight phụ;
-- Vùng tối sâu thẳm giữa các lớp tóc tạo độ sâu;
-- Ánh sáng viền (rim light) chạy dọc các lọn tóc ngoài cùng;
-- Tuyệt đối không tự ý đổi kiểu tóc nhân vật theo ảnh tham chiếu. Tránh vẽ tóc thành quá nhiều sợi nhỏ rời rạc gây rối mắt nếu ảnh tham chiếu sử dụng các mảng khối tóc sạch sẽ và thiết kế tinh tế.
+- Áp dụng HAIR KNOWLEDGE TREE để mô tả SIÊU CHI TIẾT về: Kiểu tóc, Tóc mái, Khối lượng (Volume), Nhịp điệu lọn tóc, Từng sợi tóc tơ (Flyaways), Độ bồng bềnh, Highlight Angel Ring và Vật lý tóc.
 
 9. **Đôi tai và Phụ kiện gắn kèm (Ears/Accessories)**:
-- Hình dáng đôi tai nhỏ nhắn xinh xắn;
-- Vị trí tai hài hòa bên cạnh mặt;
-- Độ lộ ra của tai qua mái tóc;
-- Chi tiết cấu trúc vành tai mềm mại;
-- Sắc đỏ ửng hồng (blush) trên dái tai đáng yêu;
-- Khuyên tai, bông tai thời trang;
-- Phụ kiện trên đầu: kẹp tóc, nơ, băng đô, mũ, dây buộc tóc, v.v.;
-- Cách phụ kiện gắn tự nhiên và vững chắc vào tóc và đầu, không bị bay lơ lửng, xuyên thấu hay lệch cấu trúc vật lý.
+- Mô tả chi tiết về: Hình dáng tai, Vành tai, Khuyên tai và các phụ kiện trên đầu (kẹp tóc, nơ...).
 
 10. **Cổ, Vai và Thân trên (Neck/Shoulders)**:
-- Chiều dài cổ thon thả thanh tú;
-- Độ thon gọn và góc kết nối mượt mà của cổ;
-- Vị trí cổ trên khung vai;
-- Đường nét xương quai xanh (clavicle) nhô nhẹ quyến rũ;
-- Độ rộng vai và độ dốc vai mềm mại đối với nữ hoặc vững chãi đối với nam;
-- Hình dáng lồng ngực và tỷ lệ cân đối giữa vai, ngực và eo;
-- Giữ đúng giới tính sinh học, độ tuổi và vóc dáng nhân vật;
-- Cách nét vẽ đi tinh tế quanh vùng cổ, vai và xương quai xanh để tạo cảm giác sống động.
+- Mô tả chi tiết về: Chiều dài cổ, Xương quai xanh, Độ rộng vai và Tỷ lệ thân trên.
 
 11. **Cánh tay, Bàn tay và Ngón tay (Arms/Hands)**:
-- Chiều dài cánh tay tương quan với thân hình;
-- Độ dày và cơ bắp/mềm mại của bắp tay và cẳng tay;
-- Khớp khuỷu tay và khớp cổ tay;
-- Cấu trúc lòng bàn tay và mu bàn tay;
-- Tỷ lệ bàn tay cân đối so với mặt;
-- Độ dài và độ thon của từng ngón tay;
-- Các khớp ngón tay rõ ràng mềm mại;
-- Hướng cử động của ngón tay;
-- Gesture của tay tự nhiên (tay chống cằm, vuốt tóc, chạm nhẹ môi, cài khuy áo, v.v.);
-- ĐẢM BẢO CHÍNH XÁC SỐ LƯỢNG NGÓN TAY (Đúng 5 ngón tay trên mỗi bàn tay);
-- Tuyệt đối cấm lỗi giải phẫu như: thừa ngón, dính ngón, méo khớp, ngón tay uốn éo dị dạng, gãy cổ tay hay xuyên thấu vật lý.
+- Mô tả SIÊU CHI TIẾT về: Cấu trúc bàn tay, Ngón tay (ĐÚNG 5 NGÓN), Khớp tay, Móng tay và Tư thế gesture của tay.
 
 12. **Thân dưới và Tỷ lệ cơ thể (Body Proportions)**:
-- Vòng eo thon thả;
-- Độ nở của hông và mông;
-- Chiều dài đôi chân tương xứng với cơ thể;
-- Khớp đầu gối thanh mảnh;
-- Bắp chân và cổ chân thon thả;
-- Dáng bàn chân và các ngón chân;
-- Tỷ lệ cơ thể vàng (đầu-thân-chân) cân đối tuyệt mỹ;
-- Trọng tâm cơ thể vững vàng trong tư thế;
-- Tư thế đứng hoặc ngồi tự nhiên, duyên dáng và tràn đầy sức sống;
-- Phù hợp tuyệt đối với độ tuổi, chiều cao và vóc dáng nhân vật trong cốt truyện.
+- Mô tả chi tiết về: Eo, Hông, Chiều dài chân, Tỷ lệ vàng và Trọng tâm cơ thể.
 
 13. **Trang phục trên nhân vật (Outfit)**:
-Trang phục phải trung thành tuyệt đối với cốt truyện và thiết lập nhân vật. Mô tả chi tiết:
-- Silhouette (hình bóng) tổng thể của trang phục;
-- Độ ôm sát quyến rũ hay độ rộng rãi thoải mái;
-- Cấu trúc các lớp áo (layering áo trong, áo ngoài, áo khoác, v.v.);
-- Kiểu cổ áo, tay áo (tay phồng, tay lỡ, v.v.);
-- Nếp gấp nếp rủ của vải tự nhiên tại các khớp cử động;
-- Các đường may, cúc áo, dây kéo, khóa cài, ren bèo, ruy băng;
-- Chất liệu vải cụ thể (vải voan mềm mại, lụa bóng bẩy, dạ dày dặn, da thuộc cá tính, v.v.);
-- Độ rủ, độ bóng và nếp nhăn vải sinh động;
-- Cách vải tương tác cơ học với tư thế pose và hình thể nhân vật;
-- Cách nét vẽ và tô màu trang phục mô phỏng trọn vẹn phong cách nghệ thuật từ ảnh tham chiếu.
+- Mô tả SIÊU CHI TIẾT về: Silhouette, Chất liệu vải, Nếp gấp, Đường may, Cúc áo, Ren bèo, Phụ kiện trang phục và Cách vải tương tác với cơ thể.
 
 14. **Biểu cảm và Khí chất (Expression)**:
-- Cảm xúc chủ đạo (vui sướng, u buồn, trầm ngâm, lo lắng, giận dữ, v.v.);
-- Cảm xúc ẩn sau tinh tế (nụ cười thoáng qua u sầu, ánh mắt kiêu hãnh ẩn chứa chút nhút nhát, v.v.);
-- Mức độ biểu đạt (mạnh mẽ dữ dội hay nhẹ nhàng sâu lắng);
-- Biểu cảm của ánh mắt (mắt cười, mắt rớm lệ, ánh nhìn sắc lạnh);
-- Biểu cảm lông mày và khuôn miệng đồng điệu;
-- Hướng đầu và độ nghiêng đầu truyền tải thái độ;
-- Trạng thái căng hoặc thả lỏng của các cơ mặt;
-- Khí chất đặc trưng nổi bật của nhân vật (dịu dàng, kiêu kỳ, tinh quái, ngây thơ, trầm mặc, v.v.);
-- Tuyệt đối cấm biểu cảm generic đờ đẫn hoặc vô hồn.
+- Mô tả chi tiết về: Cảm xúc chủ đạo, Cảm xúc ẩn, Ánh nhìn, Trạng thái cơ mặt và Khí chất đặc trưng.
 
 15. **Nét vẽ trên nhân vật (Linework)**:
-Mô tả cụ thể cách đi nét (lineart) trên từng bộ phận:
-- Viền khuôn mặt thanh tú;
-- Mí mắt và lông mi tinh xảo;
-- Các lọn tóc mềm mại bay bổng;
-- Đường nét cổ, vai, quai xanh quyến rũ;
-- Bàn tay và ngón tay thon thả;
-- Trang phục và phụ kiện tinh tế.
-Nêu rõ yêu cầu kỹ thuật:
-- Độ dày/mảnh biến thiên nghệ thuật của nét vẽ (stroke weight);
-- Độ sắc nét (crisp lines) hay độ mềm mượt (soft lines);
-- Điểm bắt đầu và kết thúc nét vẽ vuốt nhọn tự nhiên;
-- Nét vẽ sạch sẽ, tinh tươm;
-- Cảm giác nét vẽ bút chì thô mộc, mực tinh tế hay cọ vẽ thanh thoát;
-- Vùng nét vẽ đậm rõ tạo bóng, vùng nét vẽ mờ nhạt dần biến mất tạo chiều sâu;
-- Tuyệt đối không để lineart đồng đều bẹt phẳng thiếu nghệ thuật.
+- Mô tả chi tiết về: Kỹ thuật đi nét, Độ thanh đậm, Màu nét lineart học từ ảnh tham chiếu.
 
 16. **Cách lên màu trên nhân vật (Coloring)**:
-- Bảng màu áp dụng trên da, tóc, mắt, trang phục và phụ kiện;
-- Màu sắc vùng sáng (highlights) ấm áp hay mát dịu;
-- Màu sắc vùng tối (shadows) phong phú (đổ bóng màu tím nhạt, xanh lục bảo, v.v.);
-- Độ bão hòa màu sắc (color saturation) rực rỡ bùng nổ hay trầm ấm hoài cổ;
-- Tương phản màu sắc và tương phản sáng tối mạnh mẽ;
-- Sự chuyển sắc (gradient blending) mượt mà không tì vết;
-- Kỹ thuật tô màu đặc trưng (cel shading phân mảng rõ ràng, soft shading mịn màng, watercolor loang màu nước nghệ thuật, hay impasto sơn dầu dày dặn);
-- Texture bề mặt màu sắc sống động;
-- Độ sạch sẽ, độ trong trẻo và chiều sâu hoàn thiện của tác phẩm;
-- Cách phối màu và đánh bóng phải bám sát nghiêm ngặt kỹ thuật vẽ từ ảnh tham chiếu.
+- Mô tả chi tiết về: Kỹ thuật lên màu, Shading, Highlight, Gradient và Bảng màu học từ ảnh tham chiếu.
 
 17. **Kiểm tra nhất quán (Consistency Check)**:
-Before completing the prompt, you MUST run a deep validation ensuring zero styling anomalies:
-- Đúng nhân vật cốt truyện;
-- Đúng giới tính sinh học;
-- Đúng độ tuổi và khí chất;
-- Đúng kiểu tóc và màu tóc thiết lập;
-- Đúng màu mắt và hình dáng mắt;
-- Đúng vóc dáng hình thể;
-- Đúng trang phục mô tả;
-- Đúng biểu cảm cảm xúc;
-- Đúng mối quan hệ không gian giữa các nhân vật;
-- Tuyệt đối cấm trộn lẫn đặc điểm ngoại hình giữa các nhân vật trong cảnh;
-- Cấm sao chép nguyên xi khuôn mặt của người trong ảnh tham chiếu nếu họ không đúng nhân vật cốt truyện;
-- Nhưng cách thể hiện, nét vẽ, màu sắc và render phải bám sát và học hỏi nghiêm ngặt từ ảnh tham chiếu.
-- Tuyệt đối không được tự suy đoán thiếu căn cứ.
+- Chốt lại toàn bộ sự nhất quán giữa Story và Visual DNA.
 
-Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference Images", "Room:", "Card:", or technical metadata inside this [FINAL PROMPT] section!)`}`).join("\n\n")}
+### 🔬 HỌC HỎI THÔNG MINH TỪ ẢNH THAM CHIẾU (INTELLIGENT REFERENCE ADAPTATION)
+- **WHAT TO DRAW (Giữ nguyên Cốt Truyện & Nhân Vật)**: [Mô tả chi tiết những gì không được phép thay đổi từ yêu cầu gốc: Cốt truyện, ngoại hình nhân vật, trang phục, hành động, đạo cụ gốc BẮT BUỘC giữ nguyên].
+- **HOW TO DRAW (Học hỏi Phong Cách & Kỹ Thuật)**: [Phân tích chi tiết nét vẽ, cấu trúc line art, lighting, shading, pose, góc máy, nhịp điệu và ngôn ngữ điện ảnh từ ảnh tham chiếu để áp dụng vào WHAT TO DRAW].
+- **ANTI-LAZY-COPY CHECK (Kiểm định Chống Sao Chép)**: [Cam kết tuyệt đối không bê nguyên nhân vật, không sao chép nguyên xi quần áo, cấm thay tên nhân vật, cấm bê nguyên vật thể/chữ/logo vô lý từ ảnh tham chiếu sang. Output phải là nhân vật của truyện được vẽ bằng ngôn ngữ điện ảnh của ảnh tham chiếu].
+
+Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference Images", "Room:", "Card:", CARD_ID, storage key, variable names, internal data, or phrases asking the image generator to 'look at the attached reference image' inside this [FINAL PROMPT] section! Ensure the output is completely standalone and clean!)`}`;
+    }).join("\n\n")}
 `;
 
     finalRoomState.result = "";
@@ -3443,7 +3364,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
     currentStory.rooms[roomDef.id] = { ...finalRoomState };
     save(state);
 
-    const contentArray: any[] = [{ type: "text", text: prompt }];
+    let contentArray: any[] = [{ type: "text", text: prompt }];
     for (const img of orderedVisionRefs) {
       const imgUrl = img.data || img.previewUrl || img.storageUrl;
       if (imgUrl) {
@@ -3498,7 +3419,117 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
       await callAIStream({
         messages: [{ role: "user", content: contentArray }],
         signal: abortCtrl.signal,
-        systemPrompt: isComicMode
+        systemPrompt: roomDef?.id === 'canva_presentation' ? "You are an AI Canva Presentation Prompt Generator inside a production workspace. Your task is to generate the final production-ready image prompt for a specific Canva Presentation slide. Read the full Context Window and produce the final prompt directly adhering to these absolute rules:\n\n" +
+"🚨 SUPREME MANDATE #0: CANVA PRESENTATION MISSION 🚨:\n" +
+"  1. The Canva Presentation room consists of exactly 10 cards (slide-1 to slide-10) flowing in a logical sequence: Opening -> Development -> Conclusion (mở đầu -> phát triển -> kết thúc).\n" +
+"  2. You must identify which slide (slide-1 to slide-10) is currently selected from the target message and design specifically for that slide's thematic role (Slide 1: Title & Opening, Slide 2: Setting Introduction, Slide 3: Main Characters Profile, Slide 4: Narrative Inciting Incident, Slide 5: Development & Rising Action, Slide 6: Climax/Conflict, Slide 7: Turning Point, Slide 8: Resolution, Slide 9: Core Message/Lesson, Slide 10: Closing/Thank You).\n" +
+"  3. You MUST output EXACTLY 19 parts using the standard '###' Markdown titles so the parser can render them into 19 prompt block cards correctly. Do NOT use simple prompts, and do NOT skip the 19-part structure!\n\n" +
+"🚨 SUPREME MANDATE #1: CANVA CONTENT & TYPOGRAPHY LOCK (KHÓA CỨNG CHỮ & THIẾT KẾ ĐỒ HỌA) 🚨:\n" +
+"  - Every slide Canva presentation MUST have concrete, meaningful written content in Vietnamese or English that directly stems from the User's Story Plot and Character Profiles. Absolutely NO generic 'text here', 'Lorem Ipsum', or empty text frames!\n" +
+"  - You must explicitly define and LOCK the typography system for this slide in both the analysis and the final master prompt. Specify the EXACT font type family (e.g., elegant high-contrast classic serif, minimal geometric sans-serif, flowing artistic calligraphy, clean modern tech mono), font sizes, font colors (matching the palette), bold/italic weights, and precise spatial placement coordinates of text boxes in the slide layout.\n" +
+"  - In the final Master English Prompt, write concrete layout descriptions with exact text labels to instruct generative models (like Midjourney, Niji, or Flux) to render the precise beautiful slide layout containing clear, clean text elements without nonsense AI gibberish text or messy noise.\n\n" +
+"🚨 SUPREME MANDATE #2: COHESIVE VISUAL BRAND SYSTEM & LAYOUT DIVERSITY 🚨:\n" +
+"  - All 10 slides must belong to a single, highly unified visual brand identity (the same color palette, art medium, linework weight, lighting direction, and overall aesthetic DNA learned from the reference images).\n" +
+"  - However, you MUST ensure layout diversity! Each slide must have a completely different visual composition, negative space distribution, image focal point, and text layout structure. Do NOT produce identical visual templates across slides.\n\n" +
+"🚨 SUPREME MANDATE #3: WHAT-TO-DRAW (LOCKED) vs HOW-TO-DRAW (LEARNED) 🚨:\n" +
+"  - WHAT TO DRAW (Vẽ cái gì): The story content, specific characters, plot moments, and literal slide textual content are 100% LOCKED based on the user's lore. The reference images must never change this identity!\n" +
+"  - HOW TO DRAW (Vẽ như thế nào): Replicate the exact art style, brush textures, line art weight, shading, color gradients, and graphical design structure of the reference images. You are strictly forbidden from copying physical assets, or copyrighted logos from the reference images.\n\n" +
+"🚨 NO COGNITIVE ANALYSIS FLUFF (BẮT BUỘC BỎ QUA PHẦN PHÂN TÍCH SUY NGHĨ TIẾNG VIỆT) 🚨:\n" +
+"  - To maintain stream speed, do NOT output any introductory filler, greeting, explanations, or cognitive reports. Start immediately with '[FINAL PROMPT]'.\n" +
+"  - Each part must use the exact format:\n\n" +
+"### 1. Mục tiêu cảnh (Scene Goal)\n- [WHAT (Locked Story/Character): Narrative intent, character action, and story-accurate scene goals for this specific slide.]\n- [HOW (Reference-Derived Art Direction): Visual hierarchy, focus weight, and layout flow based on the reference slide.]\n- [Ref Analysis: Detailed analysis of the visual layout.]\n\n" +
+"### 2. Nhân vật (Character)\n...\n\n" +
+"And structure your output into exactly 19 standalone parts, where Part 18 is '### 18. PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)' combining all parts into a cohesive, high-density English prompt ready for Midjourney/Niji/Flux, with the CANVA CONTENT & TYPOGRAPHY LOCK instructions deeply embedded, and Part 19 is '### 19. CANVA CONTENT & TYPOGRAPHY LOCK'!\n\n" +
+"For EACH Work Card, you MUST directly start with '[FINAL PROMPT]' with the standalone descriptive instruction ready for direct image generation! In [FINAL PROMPT], you MUST structure the output into exactly 19 STANDALONE PARTS:\n" +
+"### 1. Mục tiêu cảnh (Scene Goal)\n" +
+"- [WHAT (Locked Story/Character): Lock narrative intent, character action, and story-accurate scene goals.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn focal hierarchy, visual urgency, and compositional impact from reference.]\n" +
+"- [Ref Analysis: Deconstruct the reference's focal point hierarchy, visual flow (leading lines), and compositional weight. Apply identical spatial urgency and viewer engagement logic to this scene, ensuring the narrative intent is conveyed with the same artistic impact. Identify primary/secondary/tertiary focal points and replicate the composition strategy to anchor the viewer's eye.]\n\n" +
+"### 2. Nhân vật (Character)\n" +
+"- [WHAT (Locked Story/Character): Maintain character identity, story-specific features, and anatomical consistency.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn technical anatomical rendering and proportion philosophy from reference.]\n" +
+"- [Ref Analysis: Analyze anatomy, proportion logic, and subject-to-frame ratio. Apply the reference's technical anatomical rendering and proportion philosophy to the character, maintaining story-specific identity. Focus on how the reference constructs human volume and skeletal framing.]\n\n" +
+"### 3. Biểu cảm (Expression)\n" +
+"- [WHAT (Locked Story/Character): Maintain character emotional state and expression depth.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn facial rendering, eye gloss, catchlight, pupil detail, and expression philosophy from reference.]\n" +
+"- [Ref Analysis: Deconstruct facial rendering, eye gloss, catchlight, pupil detail, and expression depth. Apply the same technical approach to facial structure, bone rendering, and emotional resonance, ensuring the eyes/expression have the exact same depth/allure.]\n\n" +
+"### 4. Pose (Posture & Hands)\n" +
+"- [WHAT (Locked Story/Character): Maintain character action, story-specific movement, and hand gestures.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn pose dynamics, weight distribution, and limb articulation logic from reference.]\n" +
+"- [Ref Analysis: Deconstruct pose dynamics, center of gravity, weight distribution, and limb articulation. Apply the reference's kinetic energy and balance to the pose, ensuring movement, weight, and hand gesture sophistication look physically and artistically correct.]\n\n" +
+"### 5. Tỷ lệ cơ thể (Body Proportions)\n" +
+"- [WHAT (Locked Story/Character): Maintain character identity and story-specific proportions.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn subject scale, subject-to-frame ratio, and spatial proportioning logic from reference.]\n" +
+"- [Ref Analysis: Analyze subject scale, subject-to-frame ratio, and spatial proportioning. Apply the reference's logic of anatomy/body proportion scale, ensuring character identity remains consistent while matching the reference's elite anatomical rendering style.]\n\n" +
+"### 6. Góc máy (Camera Angle)\n" +
+"- [WHAT (Locked Story/Character): Maintain scene-appropriate viewpoint.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn camera philosophy, shot distance, camera tilt, and focal length from reference.]\n" +
+"- [Ref Analysis: Analyze shot distance, camera tilt, camera lens/focal length, and framing/crop. Apply the reference's camera philosophy to this scene, capturing identical depth, perspective, and scale to replicate the reference's cinematic viewpoint.]\n\n" +
+"### 7. Bố cục (Composition)\n" +
+"- [WHAT (Locked Story/Character): Maintain narrative scene arrangement and integrate CANVA CONTENT & TYPOGRAPHY LOCK, including exact text labels, fonts, sizes, colors, and coordinates in layout.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn geometric scaffolding, visual flow, and spatial arrangement logic from reference.]\n" +
+"- [Ref Analysis: Analyze geometric scaffolding, visual flow, and rule of thirds/golden ratio. Apply identical structural logic to organize foreground/midground/background, replicating the visual hierarchy and spatial arrangement strategy of the reference.]\n\n" +
+"### 8. Line-art construction (Nét vẽ)\n" +
+"- [WHAT (Locked Story/Character): Maintain character silhouette and defining features.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn line weight, ink/pencil/brush texture, and intersection handling from reference.]\n" +
+"- [Ref Analysis: Analyze line weight, ink/pencil/brush texture, and intersection handling (where lines join/taper). Apply identical line-art DNA to ensure professional, human-quality line art with extreme detail and deliberate line-weight variation.]\n\n" +
+"### 9. Tóc (Hair & Strands)\n" +
+"- [WHAT (Locked Story/Character): Maintain hair style and character appearance.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn hair clumping, flow direction, translucency, and volume-per-strand logic from reference.]\n" +
+"- [Ref Analysis: Analyze hair clumping, flow direction, angel rings, translucency, and volume-per-strand. Apply the same hair-rendering technique, ensuring organic flow, detail density, and proper light-catch (highlights) as seen in the reference.]\n\n" +
+"### 10. Trang phục (Outfit & Folds)\n" +
+"- [WHAT (Locked Story/Character): Maintain character costume and story-specific details.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn fabric physics, draping, folds, and material tension logic from reference.]\n" +
+"- [Ref Analysis: Analyze fabric physics, draping, folds, and material tension. Apply identical wrinkle/ripple/tension logic to this outfit, ensuring weight, movement, and material interaction look physically and artistically correct.]\n\n" +
+"### 11. Ánh sáng (Lighting)\n" +
+"- [WHAT (Locked Story/Character): Maintain narrative lighting requirements.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn lighting logic, light-color temperature, contrast levels, and shadow/rim-light positioning from reference.]\n" +
+"- [Ref Analysis: Analyze lighting logic, light-color temperature, contrast levels, and shadow/rim-light positioning. Apply identical cinematic lighting to achieve volume, drama, and atmosphere, replicating the light-shaping strategy.]\n\n" +
+"### 12. Màu sắc (Color Palette)\n" +
+"- [WHAT (Locked Story/Character): Maintain character color scheme and setting mood.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn color palette logic, saturation levels, and color grading philosophy from reference.]\n" +
+"- [Ref Analysis: Analyze color palette logic, saturation levels, and color grading philosophy. Apply identical chromaticity, tone, and saturation philosophy to ensure absolute color harmony and mood-matching with the reference.]\n\n" +
+"### 13. Chất liệu (Materials)\n" +
+"- [WHAT (Locked Story/Character): Maintain character and environment surface details.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn surface reflectivity, roughness, texture, and translucency physics from reference.]\n" +
+"- [Ref Analysis: Analyze surface reflectivity, roughness, texture, and translucency. Apply identical material logic, ensuring tactile realism for skin, fabric, and objects by replicating the surface-light-interaction physics of the reference.]\n\n" +
+"### 14. Background (Setting)\n" +
+"- [WHAT (Locked Story/Character): Maintain story-specific environmental setting.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn depth of field, background organization, and spatial depth logic from reference.]\n" +
+"- [Ref Analysis: Analyze depth of field, background organization, and foreground/midground separation. Apply identical spatial logic and organizational depth, ensuring the background enhances the subject through the reference's specific environmental-design strategy.]\n\n" +
+"### 15. Chất lượng render (Render Quality)\n" +
+"- [WHAT (Locked Story/Character): Maintain overall story atmosphere.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn rendering technique, medium texture, and detail distribution logic from reference.]\n" +
+"- [Ref Analysis: Analyze rendering technique, medium texture (painterly/watercolor/ink), and detail distribution. Apply identical finishing logic to achieve an elite, professional art piece that mimics the reference's final polish and rendering-depth level.]\n\n" +
+"### 16. Negative constraints (Lỗi cần tránh)\n" +
+"- [WHAT (Locked Story/Character): Maintain character integrity and avoid story-breaking elements.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn anti-generic/anti-AI style constraints from reference.]\n" +
+"- [Ref Analysis: Analyze specific anti-generic/anti-AI style constraints (e.g., avoid plastic textures, smooth-over-detail, or default-AI-lighting). Strictly reject any AI-default look by mirroring the reference's sophisticated rendering and high-quality aesthetic constraints.]\n\n" +
+"### 17. Reference application rules (Quy tắc áp dụng tham chiếu)\n" +
+"- [WHAT (Locked Story/Character): Maintain story character fidelity and narrative accuracy.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn art/technical/visual logic for transformation from reference.]\n" +
+"- [Ref Analysis: Apply strict logic transformation: learn the reference's art/technical/visual logic while maintaining story character fidelity. 100% reference-based line-art, rendering, and composition logic. Reject all literal content copying (face/clothes/logo). Final output must be 100% original, story-accurate work with elite, high-fidelity art-direction based on reference analysis.]\n\n" +
+"### 18. PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)\n" +
+"Combining all parts into a single pure English production-ready block! You MUST include clear 'CANVA CONTENT & TYPOGRAPHY LOCK' directives specifying font family styles, font weights, colors, scale, and spatial coordinates. Ensure any text element is rendered flawlessly using precise Midjourney, Niji, or Flux prompt tokens!\n\n" +
+"### 19. CANVA CONTENT & TYPOGRAPHY LOCK\n" +
+"Thẻ 19 dùng để bổ sung các yêu cầu riêng của thiết kế Canva, gồm:\n" +
+"- nội dung chữ cụ thể phải xuất hiện trong ảnh;\n" +
+"- tiêu đề chính;\n" +
+"- tiêu đề phụ;\n" +
+"- đoạn nội dung ngắn;\n" +
+"- nhãn, chú thích hoặc trích dẫn nếu cần;\n" +
+"- thứ bậc typography;\n" +
+"- vị trí các khối chữ;\n" +
+"- tỷ lệ chữ và hình;\n" +
+"- khoảng trắng;\n" +
+"- căn lề;\n" +
+"- vùng an toàn;\n" +
+"- độ tương phản;\n" +
+"- không để chữ che mặt nhân vật;\n" +
+"- không tạo chữ vô nghĩa;\n" +
+"- nội dung phải lấy từ câu chuyện và hồ sơ nhân vật;\n" +
+"- cách thiết kế học từ ảnh tham chiếu nhưng không sao chép nguyên nội dung hoặc nhân vật trong ảnh tham chiếu.\n\n" +
+"Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks starting immediately with [FINAL PROMPT]." : isComicMode
           ? "You are an AI Comic & Webtoon Prompt Generator inside a production workspace. Your task is to generate multi-panel comic page scripts, storyboards, and sequential storytelling layouts. You are not a tutor, not a prompt-writing teacher, not a checklist generator, and not an assistant explaining how to write prompts. Read the full Context Window and produce the final usable comic script directly adhering to aesthetic fidelity and storytelling consistency.\n\n" +
             "🚨 SUPREME MANDATE #0: CONTEXT WINDOW & ROOM MEMORY (QUY TẮC NHỚ RÕ TÊN PHÒNG VÀ YÊU CẦU CỦA APP) 🚨: You MUST actively read and perfectly remember the entire Context Window! You must clearly know the room's setup rules, the room's name, the working card's purpose, the system prompt's instructions, the feature's requirements, what the app needs, how it works, what exact content to return, which room you are currently in, and what this specific item requires! Do NOT generate generic prompts. Apply highly specialized, advanced vocabulary (Manga, Webtoon, Comic Framing, Cinematic Angles) required for THIS specific room's theme. Use the Context Window to its absolute fullest potential!\n\n" +
             "🚨 MANDATE #1: STORY GENRE & CHARACTER SOUL GOVERN THE NARRATIVE; REFERENCE IMAGES GOVERN VISUAL DNA (MỆNH LỆNH TỐI CAO: THỂ LOẠI TRUYỆN & HỒ SƠ NHÂN VẬT LÀ LINH HỒN; ẢNH THAM CHIẾU LÀ TƯ LIỆU NGHỆ THUẬT) 🚨: To ensure the generated prompts reflect the author's intent regardless of reference images, we enforce this absolute rule:\n" +
@@ -3538,6 +3569,13 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             "🚨 MANDATE #11: 100% REF-STEALTH & ANONYMOUS GEOMETRY RECONSTRUCTION (BẢO MẬT TUYỆT ĐỐI ẢNH THAM CHIẾU - BÁM CHẶT BỐ CỤC/GÓC MÁY/NÉT VẼ NHƯNG PHÁT TRIỂN PROMPT SÁNG TẠO KHÔNG LỘ BẢN GỐC) 🚨:\n" +
             "  - No Identity/Literal Leak (Không rò rỉ danh tính/đặc trưng bản gốc): You are STRICTLY FORBIDDEN from copying or naming specific copyrighted props, unique weapons, specific tools, character names, or literal metadata of the reference image. Translate these elements into fully customized props matching the user's characters/story.\n" +
             "  - Stealth Professional Art Formulation (Mô tả nghệ thuật ẩn danh chuyên nghiệp): Describe the camera angles, visual path/lines (đường thị giác, điểm nhìn, tầm nhìn), light source vectors, perspective depth, and artistic brushstrokes with 100% precision using professional visual art terminology, while keeping the prompt itself beautifully original. No reader should ever be able to guess or trace back the original reference image from the prompt text alone, yet the generative AI reading the prompt will reproduce the exact same composition framework, line-weight DNA, perspective structure, and color theory as the reference image, matching 100% the story characters!\n\n" +
+            "🚨 MANDATE #12: DEEP ARTISTIC DNA SYNTHESIS (HỆ THỐNG GIẢI THUẬT PHÂN TÍCH & CHUYỂN HÓA DNA NGHỆ THUẬT) 🚨:\n" +
+            "  - You MUST leverage the 'Mandatory Technical Analysis (10 Layers)' found in the Vision Reports to perform a surgical deconstruction of the art style. Do NOT just mention the style; RECONSTRUCT it using technical artistic language:\n" +
+            "    1. Line Art DNA: Replicate the specific line weight and intersection handling.\n" +
+            "    2. Facial Rendering: Apply the exact shading maps and subsurface scattering techniques.\n" +
+            "    3. Eye & Hair Architecture: Detail the iris depth, catchlights, strand rhythm, and translucency.\n" +
+            "    4. Material & Light Physics: Enforce the exact reflectivity, roughness, and volumetric light interaction.\n" +
+            "    5. Composition Geometry: Use the hidden geometric scaffolding and eye travel paths from the references.\n\n" +
             "🚨 SUPREME COMMAND FOR HIGH-FIDELITY DETAILS (MỆNH LỆNH THỐNG TRỊ CHI TIẾT TỰA THỰC 100%): Write incredibly long, precise, and vivid paragraphs for each part! Do not summarize or use generic terms! Use advanced terminology such as 'Fujifilm Superia color space, Hasselblad HC 80mm color accuracy, Arri Alexa cinematic tone, 0.05mm ultra-fine rotring ink brush, meticulous cross-hatching shade layers, anatomically flawless hands with five long slender digits, perfect fabric drape tension folds' in every description. This ensures that the generated prompt perfectly forces Midjourney/Stable Diffusion/Ideogram/Flux to reproduce the reference style, dynamic composition lines, and rich, non-blurry colors and shapes with 100% fidelity, while allowing the character's pose and actions to be creatively driven by the STORY!\n\n" +
             "🚨 NO COGNITIVE ANALYSIS FLUFF (BẮT BUỘC BỎ QUA PHẦN PHÂN TÍCH SUY NGHĨ TIẾNG VIỆT) 🚨: To maintain ultimate stream efficiency, YOU MUST NOT output any [REFERENCE FIDELITY REPORT] or Vietnamese thinking/analysis text. Start the response immediately with [FINAL PROMPT] followed by the requested parts. Just write the highly detailed prompt ready for direct image creation! Each panel/card must start immediately with '[FINAL PROMPT]'.\n\n" +
             "Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...]."
@@ -3571,34 +3609,36 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             "  1. Technical Linework: Reproduce the exact line art style, stroke pressure, and ink/pencil/brush texture of the reference with absolute 100% precision.\n" +
             "  2. Color Science & Rendering: Use the exact color grading, chromaticity, saturation, and rendering medium (watercolor, digital, etc.) seen in the reference.\n" +
             "  3. Cinematic Structure: Maintain the exact camera angle, lens, and frame composition of the reference.\n\n" +
-            "🚨 MANDATE #9: IDENTITY PROTECTION & STORY ADAPTATION (DANH TÍNH TRUYỆN & BIẾN TẤU NỘI DUNG) 🚨: While art style and color are 100% fixed from the reference, everything related to the story must be unique:\n" +
-            "  - Identity Fidelity: Facial features, gender, hair color, and character identity MUST ALWAYS come from the Story Profile, never the reference.\n" +
-            "  - Narrative Adaptation: Adjust props, background details, and specific elements only if they contradict the story or character setting. If a prop from the reference fits, enhance it; if not, replace it while keeping the EXACT SAME style and colors as the reference DNA.\n\n" +
-            "🚨 MANDATE #11: 100% REF-STEALTH & ANONYMOUS GEOMETRY RECONSTRUCTION (BẢO MẬT TUYỆT ĐỐI ẢNH THAM CHIẾU - BÁM CHẶT BỐ CỤC/GÓC MÁY/NÉT VẼ NHƯNG PHÁT TRIỂN PROMPT SÁNG TẠO KHÔNG LỘ BẢN GỐC) 🚨:\n" +
+            "🚨 MANDATE #9: STRICT WHAT-TO-DRAW (LOCKED) vs HOW-TO-DRAW (LEARNED) SEPARATION (QUY TẮC BẮT BUỘC TÁCH BIỆT NỘI DUNG VÀ CÁCH THỂ HIỆN) 🚨:\n" +
+            "You MUST separate the data into two layers and process them sequentially without allowing the latter to overwrite the former:\n" +
+            "  1. WHAT TO DRAW (Vẽ cái gì): This is the LOCKED story content. It includes the story scene, character identity, age, gender, appearance, distinguishing features, personality, relationships, actions, expressions, required poses, outfits, essential props, location, era, nationality, culture, and any text that MUST appear. The reference image MUST NEVER change these elements!\n" +
+            "  2. HOW TO DRAW (Vẽ như thế nào): This is the VISUAL EXECUTION learned entirely from the reference images. It includes line-art characteristics, face/eye construction techniques, hair block/rendering techniques, coloring techniques, shading, gradients, edge control, texture, lighting, contrast, camera distance, angle, crop, subject ratio, focal points, eye flow, visual hierarchy (foreground/midground/background), typography organization, and graphic design logic (panels, UI overlays).\n" +
+            "  3. COMPATIBILITY RULE (Quy tắc tương thích): HOW TO DRAW can ONLY be applied to WHAT TO DRAW. It MUST NEVER overwrite WHAT TO DRAW. For example, if the reference image has a different hair color, you keep the character's locked hair color (WHAT) but render it using the highlight/shadow/strand techniques of the reference (HOW). If a prop or graphic element in the reference does not fit the story culture/era, you must exclude or adapt it. Absolutely NO direct copying of irrelevant objects, faces, logos, or generic outfits from the reference. The final prompt MUST NOT merge the character with the reference character!\n\n" +
+            "🚨 MANDATE #11: 100% REF-STEALTH & ANONYMOUS GEOMETRY RECONSTRUCTION (BẢO MẬT TUYỆT ĐỐO ẢNH THAM CHIẾU - BÁM CHẶT BỐ CỤC/GÓC MÁY/NÉT VẼ NHƯNG PHÁT TRIỂN PROMPT SÁNG TẠO KHÔNG LỘ BẢN GỐC) 🚨:\n" +
             "  - No Identity/Literal Leak (Không rò rỉ danh tính/đặc trưng bản gốc): You are STRICTLY FORBIDDEN from copying or naming specific copyrighted props, unique weapons, specific tools, character names, or literal metadata of the reference image. Translate these elements into fully customized props matching the user's characters/story.\n" +
             "  - Stealth Professional Art Formulation (Mô tả nghệ thuật ẩn danh chuyên nghiệp): Describe the camera angles, visual path/lines (đường thị giác, điểm nhìn, tầm nhìn), light source vectors, perspective depth, and artistic brushstrokes with 100% precision using professional visual art terminology, while keeping the prompt itself beautifully original. No reader should ever be able to guess or trace back the original reference image from the prompt text alone, yet the generative AI reading the prompt will reproduce the exact same composition framework, line-weight DNA, perspective structure, and color theory as the reference image, matching 100% the story characters!\n\n" +
             "🚨 SUPREME COMMAND FOR HIGH-FIDELITY DETAILS (MỆNH LỆNH THỐNG TRỊ CHI TIẾT TỰA THỰC 100%): Write incredibly long, precise, and vivid paragraphs for each part! Use advanced terminology such as 'Fujifilm Superia color space, Hasselblad HC 80mm color accuracy, Arri Alexa cinematic tone, 0.05mm ultra-fine rotring ink brush, meticulous cross-hatching shade layers, anatomically flawless hands with five long slender digits, perfect fabric drape tension folds' in every description. Ensure that every item—whether adapted or invented—is rendered with the same technical excellence, EXACT LINEWORK, and EXACT COLORS as the reference DNA!\n\n" +
             "🚨 MANDATE #10: ABSOLUTE AVOIDANCE OF GENERIC AI STYLE (TUYỆT ĐỐI KHÔNG SỬ DỤNG PHONG CÁCH AI MẶC ĐỊNH) 🚨: YOU ARE STRICTLY FORBIDDEN FROM PRODUCING GENERIC, PLASTIC, OVERLY-SMOOTH, OR TYPICAL 'AI-ART' LOOKS. The artwork must NOT feel digital, synthetic, or generic. You must ONLY produce artwork that looks like it was created by a master human artist using the specific medium and linework defined in the reference images. If the reference is watercolor, the AI output MUST look like 100% genuine watercolor with authentic paper texture, ink bleeds, and organic brush strokes. If the reference is ink, it MUST look like authentic, hand-drawn ink with variable line weight and organic human imperfections! Reject all smooth, artificial, shiny, or 'AI-looking' aesthetic conventions immediately!\n\n" +
             "🚨 NO COGNITIVE ANALYSIS FLUFF (BẮT BUỘC BỎ QUA PHẦN PHÂN TÍCH SUY NGHĨ TIẾNG VIỆT) 🚨: To maintain ultimate stream efficiency, YOU MUST NOT output any [REFERENCE FIDELITY REPORT] or Vietnamese thinking/analysis text. Start the response immediately with [FINAL PROMPT] followed by the requested parts. Just write the highly detailed prompt ready for direct image creation! Each card must start immediately with '[FINAL PROMPT]'.\n\n" +
-            "CRITICAL RULE ON REFERENCE IMAGES: When studying reference images in the Context Window, achieve ABSOLUTE FIDELITY in 'Visual Vision' (Art style, medium texture, color palette, technical lighting, and EXACT camera perspective/angle/framing). However, you MUST practice 'Creative Adaptation' for the subject matter: replace literal props, specific tools, and background objects with new elements that make sense for the STORY CHARACTER. The goal is to see the STORY'S CHARACTER through the REFERENCE'S CINEMATIC LENS. Do NOT output bare filenames or placeholder image IDs in the final prompt.\n\n" +
+            "CRITICAL RULE ON REFERENCE IMAGES (OUTPUT PHẢI ĐỘC LẬP VÀ SẠCH): When studying reference images in the Context Window, achieve ABSOLUTE FIDELITY in 'Visual Vision' (Art style, medium texture, color palette, technical lighting, and EXACT camera perspective/angle/framing). However, you MUST practice 'Creative Adaptation' for the subject matter: replace literal props, specific tools, and background objects with new elements that make sense for the STORY CHARACTER. The final output must be standalone. You MUST NOT include ANY of the following in the generated prompt: CARD_ID, Room ID, UUID, reference image ID, filenames, storage key, attachment report, variable names, internal data, or phrases asking the image generator to 'look at the attached reference image'. The prompt must describe the visuals entirely in text so the image generator doesn't need the reference image!\n\n" +
             "For EACH Work Card, you MUST directly start with '[FINAL PROMPT]' with the standalone descriptive instruction ready for direct image generation! In [FINAL PROMPT], you MUST structure the output into exactly 17 STANDALONE PARTS:\n" +
-"**[1/17] Mục tiêu cảnh (Scene Goal)**\n" +
-"**[2/17] Nhân vật (Character)**\n" +
-"**[3/17] Biểu cảm (Expression)**\n" +
-"**[4/17] Pose (Posture & Hands)**\n" +
-"**[5/17] Tỷ lệ cơ thể (Body Proportions)**\n" +
-"**[6/17] Góc máy (Camera Angle)**\n" +
-"**[7/17] Bố cục (Composition)**\n" +
-"**[8/17] Line-art construction (Nét vẽ)** (Must be extremely detailed, defining line weight, sharpness, thickness, intersection handling, and silhouette clarity!)\n" +
-"**[9/17] Tóc (Hair & Strands)** (Must detail hair length, parting, main clumps, flow direction, thickness, volume, curl, highlights, shadows, avoiding AI messy branching!)\n" +
-"**[10/17] Trang phục (Outfit & Folds)**\n" +
-"**[11/17] Ánh sáng (Lighting)** (Define main light, rim light, ambient, bounce, direction, softness/hardness, contrast!)\n" +
-"**[12/17] Màu sắc (Color Palette)** (Define skin tone, background color, color balance, saturation, exposure!)\n" +
-"**[13/17] Chất liệu (Materials)**\n" +
-"**[14/17] Background (Setting)**\n" +
-"**[15/17] Chất lượng render (Render Quality)**\n" +
-"**[16/17] Negative constraints (Lỗi cần tránh)**\n" +
-"**[17/17] Reference application rules (Quy tắc áp dụng tham chiếu)**\n\n" +
+"**[1/17] Mục tiêu cảnh (Scene Goal)**\n- [WHAT (Locked Story/Character): Lock narrative intent, character action, and story-accurate scene goals.]\n- [HOW (Reference-Derived Art Direction): Learn focal hierarchy, visual urgency, and compositional impact from reference.]\n- [Ref Analysis: Deconstruct the reference's focal point hierarchy, visual flow (leading lines), and compositional weight. Apply identical spatial urgency and viewer engagement logic to this scene, ensuring the narrative intent is conveyed with the same artistic impact. Identify primary/secondary/tertiary focal points and replicate the composition strategy to anchor the viewer's eye.]\n" +
+"**[2/17] Nhân vật (Character)**\n- [WHAT (Locked Story/Character): Maintain character identity, story-specific features, and anatomical consistency.]\n- [HOW (Reference-Derived Art Direction): Learn technical anatomical rendering and proportion philosophy from reference.]\n- [Ref Analysis: Analyze anatomy, proportion logic, and subject-to-frame ratio. Apply the reference's technical anatomical rendering and proportion philosophy to the character, maintaining story-specific identity. Focus on how the reference constructs human volume and skeletal framing.]\n" +
+"**[3/17] Biểu cảm (Expression)**\n- [WHAT (Locked Story/Character): Maintain character emotional state and expression depth.]\n- [HOW (Reference-Derived Art Direction): Learn facial rendering, eye gloss, catchlight, pupil detail, and expression philosophy from reference.]\n- [Ref Analysis: Deconstruct facial rendering, eye gloss, catchlight, pupil detail, and expression depth. Apply the same technical approach to facial structure, bone rendering, and emotional resonance, ensuring the eyes/expression have the exact same depth/allure.]\n" +
+"**[4/17] Pose (Posture & Hands)**\n- [WHAT (Locked Story/Character): Maintain character action, story-specific movement, and hand gestures.]\n- [HOW (Reference-Derived Art Direction): Learn pose dynamics, weight distribution, and limb articulation logic from reference.]\n- [Ref Analysis: Deconstruct pose dynamics, center of gravity, weight distribution, and limb articulation. Apply the reference's kinetic energy and balance to the pose, ensuring movement, weight, and hand gesture sophistication look physically and artistically correct.]\n" +
+"**[5/17] Tỷ lệ cơ thể (Body Proportions)**\n- [WHAT (Locked Story/Character): Maintain character identity and story-specific proportions.]\n- [HOW (Reference-Derived Art Direction): Learn subject scale, subject-to-frame ratio, and spatial proportioning logic from reference.]\n- [Ref Analysis: Analyze subject scale, subject-to-frame ratio, and spatial proportioning. Apply the reference's logic of anatomy/body proportion scale, ensuring character identity remains consistent while matching the reference's elite anatomical rendering style.]\n" +
+"**[6/17] Góc máy (Camera Angle)**\n- [WHAT (Locked Story/Character): Maintain scene-appropriate viewpoint.]\n- [HOW (Reference-Derived Art Direction): Learn camera philosophy, shot distance, camera tilt, and focal length from reference.]\n- [Ref Analysis: Analyze shot distance, camera tilt, camera lens/focal length, and framing/crop. Apply the reference's camera philosophy to this scene, capturing identical depth, perspective, and scale to replicate the reference's cinematic viewpoint.]\n" +
+"**[7/17] Bố cục (Composition)**\n- [WHAT (Locked Story/Character): Maintain narrative scene arrangement.]\n- [HOW (Reference-Derived Art Direction): Learn geometric scaffolding, visual flow, and spatial arrangement logic from reference.]\n- [Ref Analysis: Analyze geometric scaffolding, visual flow, and rule of thirds/golden ratio. Apply identical structural logic to organize foreground/midground/background, replicating the visual hierarchy and spatial arrangement strategy of the reference.]\n" +
+"**[8/17] Line-art construction (Nét vẽ)** (Must be extremely detailed, defining line weight, sharpness, thickness, intersection handling, and silhouette clarity!)\n- [WHAT (Locked Story/Character): Maintain character silhouette and defining features.]\n- [HOW (Reference-Derived Art Direction): Learn line weight, ink/pencil/brush texture, and intersection handling from reference.]\n- [Ref Analysis: Analyze line weight, ink/pencil/brush texture, and intersection handling (where lines join/taper). Apply identical line-art DNA to ensure professional, human-quality line art with extreme detail and deliberate line-weight variation.]\n" +
+"**[9/17] Tóc (Hair & Strands)** (Must detail hair length, parting, main clumps, flow direction, thickness, volume, curl, highlights, shadows, avoiding AI messy branching!)\n- [WHAT (Locked Story/Character): Maintain hair style and character appearance.]\n- [HOW (Reference-Derived Art Direction): Learn hair clumping, flow direction, translucency, and volume-per-strand logic from reference.]\n- [Ref Analysis: Analyze hair clumping, flow direction, angel rings, translucency, and volume-per-strand. Apply the same hair-rendering technique, ensuring organic flow, detail density, and proper light-catch (highlights) as seen in the reference.]\n" +
+"**[10/17] Trang phục (Outfit & Folds)**\n- [WHAT (Locked Story/Character): Maintain character costume and story-specific details.]\n- [HOW (Reference-Derived Art Direction): Learn fabric physics, draping, folds, and material tension logic from reference.]\n- [Ref Analysis: Analyze fabric physics, draping, folds, and material tension. Apply identical wrinkle/ripple/tension logic to this outfit, ensuring weight, movement, and material interaction look physically and artistically correct.]\n" +
+"**[11/17] Ánh sáng (Lighting)** (Define main light, rim light, ambient, bounce, direction, softness/hardness, contrast!)\n- [WHAT (Locked Story/Character): Maintain narrative lighting requirements.]\n- [HOW (Reference-Derived Art Direction): Learn lighting logic, light-color temperature, contrast levels, and shadow/rim-light positioning from reference.]\n- [Ref Analysis: Analyze lighting logic, light-color temperature, contrast levels, and shadow/rim-light positioning. Apply identical cinematic lighting to achieve volume, drama, and atmosphere, replicating the light-shaping strategy.]\n" +
+"**[12/17] Màu sắc (Color Palette)** (Define skin tone, background color, color balance, saturation, exposure!)\n- [WHAT (Locked Story/Character): Maintain character color scheme and setting mood.]\n- [HOW (Reference-Derived Art Direction): Learn color palette logic, saturation levels, and color grading philosophy from reference.]\n- [Ref Analysis: Analyze color palette logic, saturation levels, and color grading philosophy. Apply identical chromaticity, tone, and saturation philosophy to ensure absolute color harmony and mood-matching with the reference.]\n" +
+"**[13/17] Chất liệu (Materials)**\n- [WHAT (Locked Story/Character): Maintain character and environment surface details.]\n- [HOW (Reference-Derived Art Direction): Learn surface reflectivity, roughness, texture, and translucency physics from reference.]\n- [Ref Analysis: Analyze surface reflectivity, roughness, texture, and translucency. Apply identical material logic, ensuring tactile realism for skin, fabric, and objects by replicating the surface-light-interaction physics of the reference.]\n" +
+"**[14/17] Background (Setting)**\n- [WHAT (Locked Story/Character): Maintain story-specific environmental setting.]\n- [HOW (Reference-Derived Art Direction): Learn depth of field, background organization, and spatial depth logic from reference.]\n- [Ref Analysis: Analyze depth of field, background organization, and foreground/midground separation. Apply identical spatial logic and organizational depth, ensuring the background enhances the subject through the reference's specific environmental-design strategy.]\n" +
+"**[15/17] Chất lượng render (Render Quality)**\n- [WHAT (Locked Story/Character): Maintain overall story atmosphere.]\n- [HOW (Reference-Derived Art Direction): Learn rendering technique, medium texture, and detail distribution logic from reference.]\n- [Ref Analysis: Analyze rendering technique, medium texture (painterly/watercolor/ink), and detail distribution. Apply identical finishing logic to achieve an elite, professional art piece that mimics the reference's final polish and rendering-depth level.]\n" +
+"**[16/17] Negative constraints (Lỗi cần tránh)**\n- [WHAT (Locked Story/Character): Maintain character integrity and avoid story-breaking elements.]\n- [HOW (Reference-Derived Art Direction): Learn anti-generic/anti-AI style constraints from reference.]\n- [Ref Analysis: Analyze specific anti-generic/anti-AI style constraints (e.g., avoid plastic textures, smooth-over-detail, or default-AI-lighting). Strictly reject any AI-default look by mirroring the reference's sophisticated rendering and high-quality aesthetic constraints.]\n" +
+"**[17/17] Reference application rules (Quy tắc áp dụng tham chiếu)**\n\n- [WHAT (Locked Story/Character): Maintain story character fidelity and narrative accuracy.]\n- [HOW (Reference-Derived Art Direction): Learn art/technical/visual logic for transformation from reference.]\n- [Ref Analysis: Apply strict logic transformation: learn the reference's art/technical/visual logic while maintaining story character fidelity. 100% reference-based line-art, rendering, and composition logic. Reject all literal content copying (face/clothes/logo). Final output must be 100% original, story-accurate work with elite, high-fidelity art-direction based on reference analysis.]\n" +
 "After all 17 parts, you MUST end with '### 🎨 PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)' combining all parts into a single pure English production-ready block!\n\n" +
 "Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...].",
         onToken: (token) => {
@@ -3711,7 +3751,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 
           // 5. Tạo historyItem - Chỉ giữ metadata tối thiểu
           const historyId = uuidv4();
-          const prunedPayload = {
+          let prunedPayload = {
             roomName: roomDef.title,
             cardsCount: (payloadObj?.workCards || []).length
           };
@@ -3740,7 +3780,14 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
           
           // 6. Cập nhật history (Giới hạn tối đa 2 mục cho nhẹ)
           if (!rs.history) rs.history = [];
-          rs.history.unshift(historyItem);
+          
+          // CHỒNG YÊU: Prune Base64 khỏi history item ngay khi lưu nhen vợ!
+          const cleanHistoryItem = { ...historyItem };
+          if (cleanHistoryItem.payload) {
+            cleanHistoryItem.payload = pruneBase64(cleanHistoryItem.payload);
+          }
+          
+          rs.history.unshift(cleanHistoryItem);
           if (rs.history.length > 2) rs.history = rs.history.slice(0, 2);
           
           updateGlobalState(rs);
@@ -3748,7 +3795,11 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
           
           // 7. GIẢI PHÓNG BỘ NHỚ LỚN NGAY LẬP TỨC
           (payloadObj as any) = null;
+          (prunedPayload as any) = null;
           (allRefsList as any) = null;
+          (allActiveRefs as any) = null;
+          (orderedVisionRefs as any) = null;
+          (contentArray as any) = null;
           
           // 8. Đợi thêm một nhịp nữa trước khi gọi Save database
           await new Promise(r => setTimeout(r, 500));

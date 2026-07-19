@@ -32,6 +32,8 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
   const [workStage, setWorkStage] = useState("");
   const [workNotification, setWorkNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
 
+  const [useLocalProxy, setUseLocalProxy] = useState(true);
+
   // Vision Multi-Modal Reference Image State
   const [refImage, setRefImage] = useState<string>("");
   const [refImageName, setRefImageName] = useState<string>("");
@@ -101,8 +103,17 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
       setTestOutput("");
       setIsError(false);
       loadProfiles(true);
+      
+      const settings = getApiProxySettings();
+      setUseLocalProxy(settings.useLocalProxy !== false);
     }
   }, [active]);
+
+  const toggleLocalProxy = () => {
+    const newVal = !useLocalProxy;
+    setUseLocalProxy(newVal);
+    setApiProxySettings({ useLocalProxy: newVal });
+  };
 
   const showMsg = (msg: string, error = false) => {
     setTestOutput(msg);
@@ -436,6 +447,15 @@ export default function ApiProxyScreen({ active, onHome }: Props) {
             </div>
             <div className="field"><label>Header phụ nếu proxy cần</label><textarea value={headersStr} onChange={e=>setHeadersStr(e.target.value)} placeholder='{"HTTP-Referer":"https://your-site.pages.dev"}'></textarea></div>
           </div>
+            <div style={{ margin: "8px 0", padding: "12px 16px", borderRadius: "12px", background: useLocalProxy ? "#f0f9ff" : "#fff1f2", border: `1px solid ${useLocalProxy ? "#bae6fd" : "#fecdd3"}`, display: "flex", flexDirection: "column", gap: "8px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontWeight: 600, color: useLocalProxy ? "#0369a1" : "#be123c" }}>
+                <input type="checkbox" checked={useLocalProxy} onChange={toggleLocalProxy} style={{ width: "18px", height: "18px", cursor: "pointer" }} />
+                Dùng Local Proxy (Bảo mật API Key & Tránh CORS)
+              </label>
+              <div style={{ fontSize: "13px", color: "#64748b", lineHeight: "1.4" }}>
+                {useLocalProxy ? "✅ Mọi request sẽ được gửi qua server nội bộ của app. Giúp giấu kín API key và tránh lỗi CORS từ trình duyệt. Khuyên dùng!" : "⚠️ App sẽ gửi request trực tiếp từ trình duyệt đến API. Nếu server API không có CORS header hợp lệ, tính năng sinh nội dung sẽ bị lỗi. API Key sẽ hiện trong Network tab!"}
+              </div>
+            </div>
           
           {/* MULTI-MODAL VISION ENGINE & REFERENCE IMAGE CONFIG */}
           <div style={{

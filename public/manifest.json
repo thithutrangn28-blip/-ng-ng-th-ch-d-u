@@ -1,27 +1,25 @@
 {
-  "name": "Bánh Bao dâu",
-  "short_name": "Bánh Bao dâu",
+  "short_name": "Bánh quy bơ",
+  "name": "Bánh quy bơ dâu tây",
+  "description": "Một ứng dụng nhỏ ngọt ngào như chiếc bánh quy bơ dâu tây dành tặng vợ yêu.",
+  "icons": [
+    {
+      "src": "https://i.postimg.cc/nLNrWGnx/92d67706f81fc63401cffe01c7afe11a.jpg",
+      "type": "image/jpeg",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://i.postimg.cc/nLNrWGnx/92d67706f81fc63401cffe01c7afe11a.jpg",
+      "type": "image/jpeg",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#fff7fa",
-  "theme_color": "#f3a6bd",
-  "icons": [
-    {
-      "src": "/icons/banh-bao-dau-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/banh-bao-dau-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/banh-bao-dau-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ]
+  "orientation": "portrait",
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff"
 }

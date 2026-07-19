@@ -1,6 +1,6 @@
+import { resolveEndpointUrl, getApiProxySettings } from "../utils/apiProxy";
 import { ApiProfile, getPrimaryApiProfile } from "./api-db";
 import { executeApiProxyText, executeApiProxyStream } from "../utils/apiProxy";
-import { auth } from "./firebase";
 
 export type { ApiProfile };
 
@@ -82,21 +82,31 @@ export async function callAIStream(options: AiStreamOptions): Promise<void> {
 }
 
 /**
- * Kéo danh sách Model: Bắt buộc qua Proxy
+ * Kéo danh sách Model
  */
 export async function pullModels(profile: ApiProfile): Promise<string[]> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const settings = getApiProxySettings();
+  const targetUrl = resolveEndpointUrl(profile, "models");
 
-  const baseUrl = (import.meta as any).env.VITE_API_BASE_URL || window.location.origin;
-  const res = await fetch(`${baseUrl}/api/models`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ profile }),
-  });
+  let res: Response;
+  if (settings.useLocalProxy === true) {
+    res = await fetch(targetUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile }),
+    });
+  } else {
+    res = await fetch(targetUrl, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${profile.key}`,
+        "Content-Type": "application/json",
+        ...(profile.extraHeaders || {})
+      },
+    });
+  }
 
   const text = await res.text();
-  console.log("[DEBUG] pullModels: response status:", res.status, "text:", text.substring(0, 200));
-
   let data;
   try {
     data = JSON.parse(text);
@@ -104,10 +114,21 @@ export async function pullModels(profile: ApiProfile): Promise<string[]> {
     throw new ApiError("Proxy không trả về JSON hợp lệ. Vợ kiểm tra lại server hoặc cấu hình proxy nhé!");
   }
 
-  if (!res.ok || data.ok === false) {
-    throw new ApiError(data.error || "Lỗi khi lấy danh sách model qua Proxy");
+  if (settings.useLocalProxy === true) {
+    if (!res.ok || data.ok === false) {
+      throw new ApiError(data.error || "Lỗi khi lấy danh sách model qua Proxy");
+    }
+    return data.models || [];
+  } else {
+    if (!res.ok) {
+      throw new ApiError(data.error?.message || data.error || "Lỗi khi lấy danh sách model từ API");
+    }
+    if (Array.isArray(data.data)) {
+      return data.data.map((m: any) => m.id).filter(Boolean);
+    } else if (Array.isArray(data.models)) {
+      return data.models.map((m: any) => m.name || m.id).filter(Boolean);
+    }
+    return [];
   }
-
-  return data.models || [];
 }
 

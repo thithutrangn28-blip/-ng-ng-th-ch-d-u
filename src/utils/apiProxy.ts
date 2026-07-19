@@ -1,5 +1,4 @@
 import { ApiProfile } from "../lib/api-db";
-import { auth } from "../lib/firebase";
 
 /**
  * Helper để loại bỏ dữ liệu Base64 cồng kềnh khỏi các object khi stringify vào văn bản (prompt, log, hiển thị UI),
@@ -88,30 +87,51 @@ function normalizeVisionMessages(msgs: any[]): any[] {
   });
 }
 
-export type ApiProxySettings = {};
+export type ApiProxySettings = {
+  useLocalProxy?: boolean;
+};
 
 const SETTINGS_KEY = "minmin_api_proxy_settings_v1";
 
 export function getApiProxySettings(): ApiProxySettings {
-  return {};
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return { useLocalProxy: true };
 }
 
 export function setApiProxySettings(settings: ApiProxySettings): void {
-  // Disabled: Proxy is now mandatory
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch (e) {}
 }
 
 /**
- * Hàm phân giải endpoint cuối cùng: Luôn đi qua Local Proxy server của app.
- * Hỗ trợ VITE_API_URL cho các môi trường deploy tĩnh như Vercel/Cloudflare.
+ * Hàm phân giải endpoint cuối cùng
  */
 export function resolveEndpointUrl(profile: ApiProfile, type: "chat" | "models" | "test" | "text"): string {
-  const baseUrl = (import.meta as any).env.VITE_API_URL || "";
-  const cleanBase = baseUrl.replace(/\/$/, "");
+  const settings = getApiProxySettings();
+  if (settings.useLocalProxy === true) {
+    if (type === "chat") return "/api/ai-stream";
+    if (type === "models") return "/api/models";
+    if (type === "text") return "/api/ai-text";
+    return "/api/test-proxy";
+  }
   
-  if (type === "chat") return `${cleanBase}/api/ai-stream`;
-  if (type === "models") return `${cleanBase}/api/models`;
-  if (type === "text") return `${cleanBase}/api/ai-text`;
-  return `${cleanBase}/api/test-proxy`;
+  let url = profile.endpoint.trim().replace(/\/$/, "");
+  if (type === "models") {
+      if (!url.endsWith("/v1") && !url.includes("/v1/")) url += "/v1";
+      if (!url.endsWith("/models")) url += "/models";
+  } else {
+      if (profile.format === "openai" && (profile.pathMode === "v1" || profile.pathMode === "auto") && !url.endsWith("/v1") && !url.includes("/v1/")) {
+        url += "/v1";
+      }
+      if (profile.format === "openai" && !url.endsWith("/chat/completions")) {
+        url += "/chat/completions";
+      }
+  }
+  return url;
 }
 
 export type ProxyStreamOptions = {
@@ -232,44 +252,69 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
   }
   finalMessages = normalizeVisionMessages(finalMessages);
 
-  // Đặt giới hạn token cực kỳ lớn (16384) để đảm bảo model tạo trọn vẹn 100 ý mà không bị cắt cụt giữa chừng nhen vợ yêu!
-  const maxTokens = Math.max(profile.maxTokens || 0, maxTokensOverride || 0, 16384);
+  // Đặt giới hạn token cực kỳ lớn (32768) để đảm bảo model tạo trọn vẹn toàn bộ yêu cầu mà không bị cắt cụt giữa chừng nhen vợ yêu!
+  const maxTokens = Math.max(profile.maxTokens || 0, maxTokensOverride || 0, 32768);
   const startTime = Date.now();
   let fullContent = "";
   let isDone = false;
 
   const targetUrl = resolveEndpointUrl(profile, "chat");
-  console.log(`[API Proxy Lifecycle] Giai đoạn 1 & 2: Bắt đầu request qua Proxy bắt buộc. Endpoint=${targetUrl}, Model=${profile.model}`);
+  console.log(`[API Proxy Lifecycle] Giai đoạn 1 & 2: Bắt đầu request. Endpoint=${targetUrl}, Model=${profile.model}`);
 
   try {
     let res: Response;
+    let fetchOptions: RequestInit;
 
-    // Luôn gọi qua Local Proxy trung chuyển (Backend Express Server)
-    const payload: any = {
-      profile,
-      messages: finalMessages,
-    };
-    if (maxTokens) {
-      payload.maxTokensOverride = maxTokens;
+    if (settings.useLocalProxy === true) {
+      console.log(`[API Proxy Lifecycle] Giai đoạn 3: Gửi request đến Local Proxy -> Upstream.`);
+      const payload: any = {
+        profile,
+        messages: finalMessages,
+      };
+      if (maxTokens) {
+        payload.maxTokensOverride = maxTokens;
+      }
+      fetchOptions = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "text/event-stream"
+        },
+        body: JSON.stringify(payload),
+        signal: signal,
+      };
+    } else {
+      console.log(`[API Proxy Lifecycle] Giai đoạn 3: Gửi request trực tiếp đến Upstream API.`);
+      const payload: any = {
+        model: profile.model,
+        messages: finalMessages,
+        stream: true,
+      };
+      if (maxTokens) {
+        payload.max_tokens = maxTokens;
+      }
+      fetchOptions = {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${profile.key}`,
+          "Content-Type": "application/json",
+          "Accept": "text/event-stream",
+          ...(profile.extraHeaders || {})
+        },
+        body: JSON.stringify(payload),
+        signal: signal,
+      };
     }
 
-    const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : "";
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      "Accept": "text/event-stream"
-    };
-    if (idToken) {
-      headers["Authorization"] = `Bearer ${idToken}`;
-    }
+    // Tăng cường timeout cho fetch ở frontend lên 10 giờ nếu không có signal ngoài
+    const internalTimeoutSignal = AbortSignal.timeout(36000000); 
+    const combinedSignal = signal || internalTimeoutSignal;
 
-    console.log(`[API Proxy Lifecycle] Giai đoạn 3: Gửi request đến Local Proxy -> Upstream.`);
     res = await fetch(targetUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-      signal: signal, // Dùng signal từ UI để vợ có thể chủ động hủy nếu muốn nhen
+      ...fetchOptions,
+      signal: combinedSignal
     });
-    console.log(`[API Proxy Lifecycle] Local Proxy response status: ${res.status} ${res.statusText}`);
+    console.log(`[API Proxy Lifecycle] Proxy/Upstream response status: ${res.status} ${res.statusText}`);
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
@@ -394,8 +439,8 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
     const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     console.error(`[API Proxy Lifecycle Error] Lỗi nghiêm trọng xảy ra tại giây thứ ${totalElapsed}s:`, err);
 
-    // Kế hoạch cứu vãn cuối cùng: nếu đã có lượng dữ liệu kha khá (> 120 ký tự), vẫn trả về đầy đủ để vợ yêu không bị mất bài!
-    if (fullContent.trim().length > 120 && !isDone) {
+    // Kế hoạch cứu vãn cuối cùng: nếu đã có lượng dữ liệu kha khá (> 50 ký tự), vẫn trả về đầy đủ để vợ yêu không bị mất bài!
+    if (fullContent.trim().length > 50 && !isDone) {
       console.warn(`[API Proxy Lifecycle] Tiến hành cứu vãn nốt dữ liệu đã sinh (${fullContent.length} ký tự) gửi về UI cho Vợ yêu nhen!`);
       isDone = true;
       onDone(fullContent);
@@ -431,27 +476,41 @@ export async function executeApiProxyText(
 
   const maxTokens = options?.maxTokensOverride || profile.maxTokens || 4096;
   const targetUrl = resolveEndpointUrl(profile, "text");
-  const timeoutMs = Math.max((profile.timeoutSeconds || 1500) * 1000, 1500000);
+  // Tăng timeout mặc định lên 36,000,000ms (10 giờ) để bám trụ kiên trì nhen vợ yêu!
+  const timeoutMs = Math.max((profile.timeoutSeconds || 1500) * 1000, 36000000);
   await new Promise(resolve => setTimeout(resolve, 15));
 
-  const payload = {
-    profile,
-    messages: finalMessages,
-    maxTokensOverride: maxTokens,
-  };
-
-  const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : "";
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (idToken) {
-    headers["Authorization"] = `Bearer ${idToken}`;
+  let res: Response;
+  if (settings.useLocalProxy === true) {
+    const payload = {
+      profile,
+      messages: finalMessages,
+      maxTokensOverride: maxTokens,
+    };
+    res = await fetch(targetUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } else {
+    const payload: any = {
+      model: profile.model,
+      messages: finalMessages,
+      stream: false,
+      max_tokens: maxTokens,
+    };
+    res = await fetch(targetUrl, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${profile.key}`,
+        "Content-Type": "application/json",
+        ...(profile.extraHeaders || {})
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
   }
-
-  const res = await fetch(targetUrl, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
 
   const text = await res.text();
   let data;
@@ -462,11 +521,11 @@ export async function executeApiProxyText(
   }
 
   if (!res.ok || data.ok === false) {
-    throw new Error(data.error || "Lỗi không xác định từ Server Proxy");
+    throw new Error(data.error?.message || data.error || "Lỗi không xác định từ Server Proxy");
   }
 
   let sampleText = "";
-  if (data.data) {
+  if (settings.useLocalProxy === true && data.data !== undefined) {
     if (typeof data.data === "string") {
       sampleText = data.data;
     } else {
@@ -478,6 +537,15 @@ export async function executeApiProxyText(
       else if (data.data.response) sampleText = data.data.response;
       else if (data.data.content) sampleText = typeof data.data.content === 'string' ? data.data.content : JSON.stringify(pruneBase64(data.data.content));
     }
+  } else {
+    // Direct API response
+    const c = data.choices?.[0];
+    const cand = data.candidates?.[0];
+    if (c?.message?.content) sampleText = c.message.content;
+    else if (c?.text) sampleText = c.text;
+    else if (cand?.content?.parts?.[0]?.text) sampleText = cand.content.parts[0].text;
+    else if (data.response) sampleText = data.response;
+    else if (data.content) sampleText = typeof data.content === 'string' ? data.content : JSON.stringify(pruneBase64(data.content));
   }
   if (!sampleText) sampleText = data.rawText || "";
 

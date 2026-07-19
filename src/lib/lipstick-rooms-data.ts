@@ -77,5 +77,33 @@ export const rooms: Room[] = [
   card("cine-curves","👗 Trang Phục & Đường Cong","Trang phục được thiết kế tinh tế để tôn lên những đường cong quyến rũ một cách nghệ thuật.","outfit highlighting body curves, elegant form-fitting attire, sophisticated silhouette, artistic body lines, tasteful alluring design, clothing that accentuates natural curves"),
   card("cine-physique","🧍 Vóc Dáng & Hình Thể Chuẩn","Sử dụng các thuật ngữ nhân trắc học an toàn để mô tả hình thể cân đối, vóc dáng chuẩn.","well-balanced anthropometric physique, standard figure, athletic yet graceful body, perfectly proportioned anatomy, healthy aesthetic physique, balanced body composition"),
   card("cine-aura","✨ Khí Chất & Thần Thái Quyến Rũ","Chuyển sự chú ý sang thần thái quyến rũ: Hấp dẫn, quyến rũ, có sức hút, mặn mà/đằm thắm.","magnetic charisma, seductive elegance, alluring mature beauty ('mặn mà'), sophisticated charm, powerful attractive aura, graceful presence, mature and captivating charm")
-]}
-];
+]},
+{id:"reference_visual_intelligence",icon:"🎨",title:"Trí Tuệ Thị Giác Từ Ảnh Tham Chiếu",subtitle:"Phân tích DNA nét vẽ / Kỹ thuật render / Bố cục thị giác",seed:20,cards:[
+  card("reference_visual_intelligence","Trí Tuệ Thị Giác Từ Ảnh Tham Chiếu","Phân tích chuyên sâu: 1. Nét vẽ (line-art), 2. Khuôn mặt/mắt/tóc, 3. Kỹ thuật màu/render, 4. Bố cục, 5. Trung tâm/đường thị giác, 6. Thiết kế đồ họa/UI (nếu có), 7. Quy tắc chuyển hóa nghệ thuật từ ảnh tham chiếu vào nhân vật cốt truyện mà không sao chép.","visual intelligence analysis, style DNA extraction, rendering physics, composition geometry, visual flow, design logic integration")
+]},
+{id:"canva_story_visual_series",icon:"📐",title:"BỘ THIẾT KẾ CANVA CỐT TRUYỆN",subtitle:"Trang bìa, Tóm tắt cốt truyện, Hồ sơ nhân vật, Thiết lập thế giới, Quan hệ nhân vật & Trang kết",seed:29,cards:[
+  card("canva-series-cover","👑 Bìa Series / Poster Chính","Thiết kế trang bìa hoặc Poster chính cho Series Canva quảng bá cốt truyện, làm nổi bật tiêu đề lớn, logo/biểu tượng của cặp đôi, bối cảnh đặc trưng, và bố cục đồ họa cực kỳ ấn tượng, chuyên nghiệp.","series cover design, canva promotional poster, bold typographic title, main story logo, dramatic graphic layout, premium novel cover aesthetic"),
+  card("canva-story-premise","📖 Tóm Tắt Cốt Truyện & Premise","Thiết kế trang tóm tắt cốt truyện Canva với bố cục phân chia thông minh (bento grid, các khối chữ), lồng ghép các từ khóa cốt lõi (keywords), dòng chữ tóm tắt (synopsis), câu thoại mở đầu kịch tính, và các chi tiết đồ họa đại diện cho xung đột chính.","story premise infographic, bento grid layout, key plot points visual, synopsis typography blocks, narrative graphic elements, stylized text placeholders"),
+  card("canva-character-profile","👤 Hồ Sơ Nhân Vật Chi Tiết","Thiết kế trang giới thiệu hồ sơ nhân vật (Profile Card / About Me) trong Canva, gồm khung hình nhân vật sắc nét, các hộp thoại thông tin (họ tên, tuổi, tính cách, sở thích), thanh tiến trình chỉ số RPG, và các sticker trang trí đặc trưng.","character info card, RPG stats layout, structured profile design, text boxes, decorative portrait frames, aesthetic character profile sheet"),
+  card("canva-lore-setting","🌌 Thiết Lập Thế Giới & Lore","Thiết kế trang thế giới truyện/lore trong Canva, mô tả bối cảnh không gian đặc trưng (vũ trụ, học đường, cung điện, phố cổ), bản đồ thu nhỏ cách điệu, các biểu tượng hoa văn địa danh cổ kính hoặc công nghệ cao, và các mốc thời gian lịch sử quan trọng.","world lore graphics, environment showcase, conceptual setting design, timeline infographics, stylized map elements, aesthetic fantasy/sci-fi worldbuilding layout"),
+  card("canva-relationships-hook","🔗 Mối Quan Hệ & Câu Lure (Hook)","Thiết kế trang biểu đồ mối quan hệ giữa các nhân vật (Relationship Chart) hoặc trang câu khách (Hook / Quote) với các đường kết nối vẽ tay mộc mạc, biểu tượng trái tim/mũi tên đan xen, cùng câu thoại định tình hay trích dẫn đắt giá nhất gây tò mò cho độc giả.","relationship chart layout, visual network map, romantic connection diagrams, striking story quote design, emotional hook typography, stylized relational arrows"),
+  card("canva-end-page","🚪 Trang Kết & Call to Action","Thiết kế trang kết thúc của bộ ảnh Canva quảng bá truyện, hiển thị lời kêu gọi hành động (Call to Action) như: 'Đón xem chương tiếp theo...', 'Hãy theo dõi hành trình của chúng mình...', biểu tượng nút bấm hoặc logo nhỏ xinh xắn kết màn, bố cục trang nhã, lắng đọng.","end screen layout, call to action graphic, book trailer end frame, follow button icons, clean elegant finish layout, cinematic story closing spread")
+]},{
+  id: "canva_presentation",
+  icon: "📊",
+  title: "CANVA PRESENTATION",
+  subtitle: "10 Slide Canva Nối Tiếp",
+  seed: 30,
+  cards: [
+    card("slide-1", "Slide 1: Mở Đầu (Title/Hook)", "Slide đầu tiên giới thiệu chủ đề mạnh mẽ", "slide 1 title hook opening intro"),
+    card("slide-2", "Slide 2: Đặt Vấn Đề (Problem/Context)", "Trình bày vấn đề hoặc bối cảnh", "slide 2 context problem setting"),
+    card("slide-3", "Slide 3: Giới Thiệu Nhân Vật (Character/Subject)", "Nhân vật chính", "slide 3 character introduction focus"),
+    card("slide-4", "Slide 4: Diễn Biến 1 (Development A)", "Điểm phát triển đầu tiên", "slide 4 plot development action"),
+    card("slide-5", "Slide 5: Cao Trào/Xung Đột (Climax/Conflict)", "Điểm nhấn trung tâm của câu chuyện", "slide 5 conflict climax turning point"),
+    card("slide-6", "Slide 6: Phân Tích Chi Tiết (Deep Dive)", "Slide đi sâu vào một khía cạnh", "slide 6 detail analysis deep dive"),
+    card("slide-7", "Slide 7: Thông Điệp/Ý Nghĩa (Message/Quote)", "Trích dẫn đắt giá, thông điệp lõi", "slide 7 quote message core value"),
+    card("slide-8", "Slide 8: Diễn Biến 2 (Development B)", "Phần sau cao trào", "slide 8 aftermath resolution flow"),
+    card("slide-9", "Slide 9: Tổng Kết (Summary/Vision)", "Tóm tắt lại hành trình", "slide 9 summary wrap up vision"),
+    card("slide-10", "Slide 10: Call to Action (Outro)", "Kết thúc và kêu gọi hành động", "slide 10 outro call to action end")
+  ]
+}];

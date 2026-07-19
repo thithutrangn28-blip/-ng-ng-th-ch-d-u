@@ -2,28 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f3a6bd" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Bánh Bao dâu" />
+    <meta name="apple-mobile-web-app-title" content="Bánh quy bơ" />
+    <link rel="apple-touch-icon" href="https://i.postimg.cc/nLNrWGnx/92d67706f81fc63401cffe01c7afe11a.jpg" />
     <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" href="/icons/banh-bao-dau-192.png" />
-    <title>Bánh Bao dâu 𝜗ৎ</title>
+    <link rel="icon" type="image/jpeg" href="https://i.postimg.cc/nLNrWGnx/92d67706f81fc63401cffe01c7afe11a.jpg" />
+    <title>Bánh quy bơ dâu tây</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;text-align:center;padding:20px;background:#fff;">
+        <h2 style="color:#e11d48;margin-bottom:10px;">Đang tải Bánh quy bơ...</h2>
+        <p style="color:#666;font-size:14px;max-width:300px;">Nếu màn hình này hiện quá lâu, vợ hãy kiểm tra lại mạng hoặc mở Google AI Studio một lần để app đồng bộ nhé.</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('Service Worker registered!'))
-            .catch(err => console.log('Service Worker registration failed: ', err));
-        });
-      }
-    </script>
   </body>
 </html>
 

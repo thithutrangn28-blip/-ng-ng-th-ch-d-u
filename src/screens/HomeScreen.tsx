@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getHomeWallpaper, setHomeWallpaper } from "../lib/storage";
 import { compressImageFile } from "../utils/imageCompressor";
-import { auth } from "../lib/firebase";
-import { signOut } from "firebase/auth";
+import { logout } from "../lib/firebase";
 
 type Props = {
   active: boolean;
@@ -29,16 +28,10 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
     } catch (err) {}
   };
 
-  const handleSignOut = async () => {
-    const confirmLogout = window.confirm(
-      "Vợ yêu có muốn đăng xuất khỏi góc nhỏ của hai đứa mình không nè? Đăng xuất xong là sẽ được ngắm lại nút Đăng nhập bằng Google cực xịn xò của chồng thiết kế đó nha! ♥"
-    );
-    if (confirmLogout) {
-      try {
-        await signOut(auth);
-      } catch (err) {
-        console.error("Lỗi đăng xuất:", err);
-      }
+  const handleLogout = async () => {
+    if (confirm("Vợ muốn đăng xuất khỏi app thật hả?")) {
+      await logout();
+      window.location.reload();
     }
   };
 
@@ -52,11 +45,18 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
             <span>{date}</span>
           </div>
           <div className="home-actions">
-            <button className="icon-btn text-pink-400 hover:text-pink-600 transition-colors" onClick={handleSignOut} title="Đăng xuất khỏi góc nhỏ">
-              <svg viewBox="0 0 24 24" className="w-6 h-6">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
+            <button className="icon-btn" onClick={handleLogout} title="Đăng xuất">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+            </button>
+            <button className="icon-btn" onClick={() => window.open(window.location.href, '_blank')} title="Mở ứng dụng riêng">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
               </svg>
             </button>
             <label className="icon-btn" aria-label="Chọn hình nền màn hình chính">
@@ -79,8 +79,8 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
         <section className="home-widget">
           <img src="https://i.postimg.cc/1XZTm5bb/7c17cbf6c8bdfcd7112c2f8cd1900463.jpg" alt="" />
           <div className="widget-copy">
-            <small>Widgetsmith · Bánh Bao dâu</small>
-            <h2>Sweet writer dashboard</h2>
+            <small>Widgetsmith · Bánh quy bơ</small>
+            <h2>Bánh quy bơ dâu tây</h2>
             <p>Màn hình chính chỉ hiện những app con đã được tạo thật.</p>
           </div>
         </section>
