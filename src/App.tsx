@@ -4,8 +4,10 @@ import GlamIntroScreen from "./screens/GlamIntroScreen";
 import LockScreen from "./screens/LockScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ApiProxyScreen from "./screens/ApiProxyScreen";
+import DataBackupScreen from "./screens/DataBackupScreen";
 import PromptMarkdownSmartContextScreen from "./screens/prompt-studio/PromptMarkdownSmartContextScreen";
 import LipstickAppScreen from "./screens/lipstick-prompt/LipstickAppScreen";
+import OtomeGameScreen from "./screens/OtomeGameScreen";
 import SplashScreen from "./components/SplashScreen";
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 
@@ -97,12 +99,14 @@ function AppContent() {
         <>
           {activeScreen === "home" && <HomeScreen active={true} onOpenApp={(id) => navigate(id)} time={time} date={homeDateStr} />}
           {activeScreen === "apiProxy" && <ApiProxyScreen active={true} onHome={() => navigate("home")} />}
+          {activeScreen === "dataBackup" && <DataBackupScreen active={true} onHome={() => navigate("home")} />}
           {activeScreen === "promptMarkdown" && <PromptMarkdownSmartContextScreen active={true} onHome={() => navigate("home")} />}
           {activeScreen === "lipstick" && <LipstickAppScreen active={true} onHome={() => navigate("home")} />}
+          {activeScreen === "otomeGame" && <OtomeGameScreen active={true} onHome={() => navigate("home")} />}
         </>
       ) : (
         // If they try to go home without auth, we'll keep them on lock or show a message
-        (activeScreen === "home" || activeScreen === "apiProxy" || activeScreen === "promptMarkdown" || activeScreen === "lipstick") && (
+        (activeScreen === "home" || activeScreen === "apiProxy" || activeScreen === "dataBackup" || activeScreen === "promptMarkdown" || activeScreen === "lipstick" || activeScreen === "otomeGame") && (
           <div className="fixed inset-0 z-[999] bg-pink-100 flex flex-col items-center justify-center p-6 text-center">
              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg mb-6">
                 <svg viewBox="0 0 24 24" className="w-10 h-10 text-pink-500" fill="currentColor">

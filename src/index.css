@@ -185,3 +185,34 @@ button{font:inherit;border:0;background:none;color:inherit;cursor:pointer}
   .left-panel{top:116px;height:44svh}.right-strips{top:142px}.strip{height:56px}.big-back-text{top:28px;font-size:54px}.glam-logo b{font-size:31px}.glam-logo small{font-size:18px}.glam-bottom{padding:11px 12px;bottom:calc(env(safe-area-inset-bottom) + 10px)}.glam-bottom p{font-size:12px;margin:7px 0 10px}
   .keys button{min-height:40px}.lock-head h2{font-size:50px}.music{margin-top:14px}.home-widget{min-height:106px}.widget-copy p{display:none}.home-page{grid-template-rows:96px}.app-bubble{width:62px;height:62px}.home-dock{min-height:62px}.home-clock b{display:block;font-size:44px;}
 }
+
+/* NEW PINK 3 LAYER CARD (Requested by user) */
+.pink-3-layer-card {
+  background-color: rgba(255, 192, 215, 0.25) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  border-radius: 28px !important;
+  box-shadow: 
+    0 8px 0 rgba(255, 192, 215, 0.25), 
+    0 16px 0 rgba(255, 192, 215, 0.15) !important;
+  margin-bottom: 24px !important;
+}
+
+.pink-3-layer-card img {
+  opacity: 0.9 !important;
+}
+
+
+/* Update api-card to have the pink 3-layer look too if needed */
+.api-card {
+  background-color: rgba(255, 192, 215, 0.25) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  border-radius: 28px !important;
+  box-shadow: 
+    0 8px 0 rgba(255, 192, 215, 0.25), 
+    0 16px 0 rgba(255, 192, 215, 0.15) !important;
+  margin-bottom: 24px !important;
+}

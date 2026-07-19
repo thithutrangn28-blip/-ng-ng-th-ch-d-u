@@ -34,7 +34,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onEnter }) => {
       >
         <div className="text-white text-center space-y-2">
           <h1 className="text-3xl font-bold tracking-widest drop-shadow-lg" style={{ fontFamily: 'var(--font-sans)' }}>
-            Bánh quy bơ dâu tây
+            Dâu tây chấm sữa
           </h1>
           <p className="text-white/80 italic drop-shadow-md">Chào mừng vợ yêu đến với góc nhỏ của chúng mình</p>
         </div>

@@ -12,6 +12,77 @@ import { buildContextWindow } from "../../utils/contextBuilder";
 import { PromptSummaryPanel } from "../../components/PromptSummaryPanel";
 import { getApiProxySettings, pruneBase64 } from "../../utils/apiProxy";
 
+// Advanced cleanup to prevent image references, source attributions, and provenance notes from leaking in the copied prompt
+const removeImageProvenanceAndAttribution = (text: string): string => {
+  if (!text) return "";
+  let val = text;
+
+  // 1. Process bracketed or parenthesized clauses containing reference/attribution keywords
+  // We extract safe visual descriptions before commas/semicolons and remove the attribution details.
+  const keywordsPattern = /ref|reference|img|image|ảnh|học từ|lấy từ|dựa trên|phong cách|tối ưu|bố cục|theo ảnh|inspired|based|derived|learned|source|provenance|mapping|uuid|metadata|card_id|room_id|fidelity/i;
+
+  val = val.replace(/\[([^\]]*?)\]/g, (match, inner) => {
+    if (keywordsPattern.test(inner)) {
+      const parts = inner.split(/[,;\-]/);
+      if (parts.length > 1) {
+        const cleanSegments = parts
+          .map((p: string) => p.trim())
+          .filter((p: string) => !keywordsPattern.test(p));
+        if (cleanSegments.length > 0) {
+          return `[${cleanSegments.join(", ")}]`;
+        }
+      }
+      return ""; // No clean visual segment found, remove entire bracket
+    }
+    return match;
+  });
+
+  val = val.replace(/\(([^)]*?)\)/g, (match, inner) => {
+    if (keywordsPattern.test(inner)) {
+      const parts = inner.split(/[,;\-]/);
+      if (parts.length > 1) {
+        const cleanSegments = parts
+          .map((p: string) => p.trim())
+          .filter((p: string) => !keywordsPattern.test(p));
+        if (cleanSegments.length > 0) {
+          return `(${cleanSegments.join(", ")})`;
+        }
+      }
+      return "";
+    }
+    return match;
+  });
+
+  // 2. Process sentence clauses and phrases that indicate source attribution
+  const vnAttributionVerbs = "học từ|lấy từ|dựa trên|phản ánh phong cách|tối ưu hóa từ|giống bố cục|theo ảnh|giống ảnh|tham khảo|lấy cảm hứng|học hỏi từ|được học từ|được lấy từ|được dựa trên|ảnh hưởng từ|phỏng theo|mô phỏng theo|học hỏi|phản ánh|dựa vào|lấy ý tưởng từ|mô phỏng|phỏng sinh|tối ưu hóa|bám sát";
+  const enAttributionVerbs = "inspired by|based on|derived from|learned from|reference to|referenced from|referenced by|referencing|adapted from|taken from|copied from|styled after|stylized from|studied from|inspired|based|derived|learned|imitated from|mimicked from|copied";
+  const referenceNouns = "ref|reference|img|image|ảnh|tư liệu|bức ảnh|tấm ảnh|mẫu ảnh|mẫu|photo|pic|card|room|vẽ|style";
+
+  const attributionRegex = new RegExp(
+    `[,;\\-\\s]*(?:và\\s+|cũng\\s+|and\\s+|also\\s+)?(?:${vnAttributionVerbs}|${enAttributionVerbs})\\s+(?:từ\\s+|của\\s+|với\\s+|theo\\s+)?(?:${referenceNouns})?\\s*(?:\\d+|[a-zA-Z0-9_\\.\\-]+)?\\b`,
+    'gi'
+  );
+  val = val.replace(attributionRegex, "");
+
+  // Remove standalone reference mentions and metadata
+  val = val.replace(/\b(?:ref|reference|img|image|ảnh)\s*\d+\b/gi, "");
+  val = val.replace(/\b(?:source attribution|provenance notes|image mapping|attachment metadata|fidelity report|card_id|room_id|uuid|filename)\b/gi, "");
+  val = val.replace(/\b(?:ref|reference|img|image|ảnh)\b/gi, "");
+  val = val.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "");
+
+  // 3. Post-cleanup of punctuation and whitespaces
+  val = val.replace(/,\s*,/g, ",");
+  val = val.replace(/,\s*\./g, ".");
+  val = val.replace(/\(\s*\)/g, "");
+  val = val.replace(/\[\s*\]/g, "");
+  val = val.replace(/\s+/g, " ");
+  val = val.replace(/\s+([.,!?;:])/g, "$1"); // remove spaces before punctuation
+  val = val.replace(/^[.,\s;\-]+/, ""); // clean leading punctuation
+  val = val.replace(/[,\s;\-]+$/, ""); // clean trailing punctuation
+
+  return val.trim();
+};
+
 // Regex helper to strip out list numbers/ordinals cleanly while keeping tags like "1girl" or "20 years old" intact
 const cleanPromptText = (text: string) => {
   if (!text) return "";
@@ -21,6 +92,10 @@ const cleanPromptText = (text: string) => {
   // We make sure it doesn't match "1girl" or "20 years old" by requiring a separator like . : / - or ) after list digits.
   val = val.replace(/^\s*[-*•(]?\s*(?:(?:Phần|Phân đoạn|Khung|Khung ảnh|Panel|Part|Section|Mẫu|Mẫu ảnh|Mẫu thiết kế|Mẫu trang phục|Mẫu số|Mẫu trang phục số)\s*\d+[\s\-\:\.\/\)]*|\d+[\.\:\/\-\)]+)\s*/i, "");
   val = val.replace(/\n\s*[-*•(]?\s*(?:(?:Phần|Phân đoạn|Khung|Khung ảnh|Panel|Part|Section|Mẫu|Mẫu ảnh|Mẫu thiết kế|Mẫu trang phục|Mẫu số|Mẫu trang phục số)\s*\d+[\s\-\:\.\/\)]*|\d+[\.\:\/\-\)]+)\s*/gi, "\n");
+  
+  // Clean up references and provenance notes completely
+  val = removeImageProvenanceAndAttribution(val);
+  
   return val.trim();
 };
 
@@ -42,10 +117,11 @@ function PromptFivePartsViewer({
   const [copiedParts, setCopiedParts] = useState<Record<string, boolean>>({});
   
   // Xóa các ghi chú nội bộ (Liên hệ: ... và tham chiếu (Img ...)) khỏi văn bản hiển thị và sao chép
-  const rawText = (output || "")
-    .replace(/^[ \t]*Liên hệ\s*:.*(?:\r?\n|$)/gmi, "")
-    .replace(/\s*\(?(?:Img|Image|Reference Image|Ảnh|Reference)\s*[\d,\s]+\)?/gi, "")
-    .trim();
+  const rawText = removeImageProvenanceAndAttribution(
+    (output || "")
+      .replace(/^[ \t]*Liên hệ\s*:.*(?:\r?\n|$)/gmi, "")
+      .replace(/\s*\(?(?:Img|Image|Reference Image|Ảnh|Reference)\s*[\d,\s]+\)?/gi, "")
+  ).trim();
 
   // Load API Profile & settings
   useEffect(() => {
@@ -330,7 +406,7 @@ function PromptFivePartsViewer({
               Prompt hoàn chỉnh chia phần chuẩn chỉnh
             </div>
             <div className="text-[11px] text-gray-600">
-              Vợ có thể sử dụng riêng từng phần bên dưới hoặc copy gộp liền mạch dán vào AI
+              Vợ có thể sử dụng riêng từng phần bên dưới hoặc copy gộp liền mạch dán vào AI v1.0.3 ✨
             </div>
           </div>
         </div>
@@ -3079,9 +3155,9 @@ When attached reference images or Vision Analysis reports are present for any wo
 7. **🎓 MASTER ART AESTHETIC & STYLE OVERRIDE GUIDELINES (HỆ THỐNG KỸ THUẬT NGHỆ THUẬT TỔNG LỰC & SIÊU PHÂN TÍCH DNA)**:
    - **MANDATORY STYLE OVERRIDE (ÉP PHONG CÁCH NGHỆ THUẬT TUYỆT ĐỐI)**: Default AI styles are STRICTLY FORBIDDEN. You MUST deconstruct the "Artistic DNA" of the reference images (brushwork, rendering, color physics) and RE-ENGINEER it into the final prompt. Use commanding technical language: "Masterpiece production-ready illustration, strictly synthesizing the exact rendering DNA, brushwork physics, and light interaction from the reference images... override generic AI outputs."
    - **MANDATORY INSTRUCTION FOR HAIR, EYES & ANATOMY**: You MUST dedicate a massive amount of tokens to generate highly detailed, technical art instructions for rendering every single artistic element. Do NOT summarize!
-   - **Kỹ thuật Thiết Kế Tóc Chuyên Sâu (Advanced Hair Engineering)**: Tóc tuyệt đối KHÔNG ĐƯỢC miêu tả chung chung. BẮT BUỘC SỬ DỤNG HỆ THỐNG "HAIR KNOWLEDGE TREE" ĐỂ PHÂN TÍCH VÀ ĐƯA VÀO PROMPT:
-      + *Cấu trúc & Khối (Volume & Flow)*: Phân tích khối lượng (volume), nhịp điệu lọn tóc (strand rhythm), và cách lọn tóc kết thúc (tapering).
-      + *Vật lý & Ánh sáng (Physics & Highlights)*: Đặc tả vòng sáng (angel rings), độ tơi (airy quality), và cách ánh sáng xuyên qua lớp tóc (translucency).
+   - **Kỹ thuật Thiết Kế Tóc Chuyên Sâu (Advanced Hair Engineering & Reference Adaptation)**: Tóc tuyệt đối KHÔNG ĐƯỢC miêu tả chung chung hoặc sử dụng các từ khóa rập khuôn mặc định (như "individual silky strands", "many fine wisps", "angel-ring highlights", "translucency", "glossy separated strands", "extreme micro-detail"). BẮT BUỘC phân tích kỹ thuật tạo hình tóc của ảnh tham chiếu và mô tả tóc theo đúng kỹ thuật đó:
+      + *Tôn Trọng Kỹ Thuật Tạo Hình Gốc*: Nếu ảnh gốc sử dụng mảng khối lớn (cell shading/anime blocks), tóc phải được tả bằng các mảng màu và khối lớn, nét line sạch sẽ, không vẽ chi tiết từng sợi mảnh. Nếu ảnh gốc sử dụng nét vẽ painterly/impasto, tả tóc bằng nhịp điệu cọ và sự hòa trộn khối màu. Chỉ khi ảnh gốc sử dụng nét mảnh tả thực phong cách gothic/charcoal/pencil sketch, mới tả từng sợi tóc tơ và chi tiết siêu thực.
+      + *Thuộc Tính Kế Thừa Thẩm Mỹ*: Mật độ chi tiết, cách vẽ highlight (đốm sáng/vòng sáng), và hướng chuyển động của tóc phải bắt buộc kế thừa từ phân tích của ảnh tham chiếu, tránh gán cứng các tính từ mỹ miều mặc định của AI.
    - **Kỹ thuật Vẽ Mắt & Mắt Biếc (High-Fidelity Eye Rendering)**: Mắt phải được render như một viên ngọc. Đặc tả mống mắt (iris depth), ánh sáng phản chiếu (catchlights), và độ bóng của giác mạc.
    - **Kỹ thuật Render & Linework DNA (KỸ THUẬT VẼ CHUYÊN SÂU)**:
       + **Linework**: Đặc tả độ thanh đậm (varying line weight), màu của nét line (colored lineart), và độ sắc nét (sharpness vs softness).
@@ -3475,8 +3551,8 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 "- [Ref Analysis: Analyze line weight, ink/pencil/brush texture, and intersection handling (where lines join/taper). Apply identical line-art DNA to ensure professional, human-quality line art with extreme detail and deliberate line-weight variation.]\n\n" +
 "### 9. Tóc (Hair & Strands)\n" +
 "- [WHAT (Locked Story/Character): Maintain hair style and character appearance.]\n" +
-"- [HOW (Reference-Derived Art Direction): Learn hair clumping, flow direction, translucency, and volume-per-strand logic from reference.]\n" +
-"- [Ref Analysis: Analyze hair clumping, flow direction, angel rings, translucency, and volume-per-strand. Apply the same hair-rendering technique, ensuring organic flow, detail density, and proper light-catch (highlights) as seen in the reference.]\n\n" +
+"- [HOW (Reference-Derived Art Direction): Strictly analyze the reference image's specific hair rendering style. Avoid generic AI hair clichés like 'individual silky strands', 'many fine wisps', 'angel-ring highlights', 'translucency', 'glossy separated strands', or 'extreme micro-detail' unless explicitly present in the reference style. Learn the exact hair clumping geometry, block-shading vs line-work technique, and highlight treatment from the reference.]\n" +
+"- [Ref Analysis: Detect the core styling technique: cel-shading blocks, painterly brushwork, or realistic high-fidelity fine-lines. Replicate this exact styling DNA. If the reference utilizes stylized large blocks/cel-shading, describe the hair in solid shapes, flat colors, and clean contours without fine strands. If painterly/thick brush, focus on texture and flow volume. If hyper-realistic line art/sketch, describe delicate flowing wisps and individual detailed strands. All highlights and flow direction must be 100% inherited from reference.]\n\n" +
 "### 10. Trang phục (Outfit & Folds)\n" +
 "- [WHAT (Locked Story/Character): Maintain character costume and story-specific details.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn fabric physics, draping, folds, and material tension logic from reference.]\n" +
@@ -3537,7 +3613,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             "  2. Visual Storytelling (Kể chuyện qua hình ảnh): Even if the reference images are just 'beautiful' and unrelated to the plot, you must FORCE the scene to reflect the story's vibe. Every shadow, object, and expression must tell a piece of the story. Looking at the image must reveal the story's genre and plot ideas!\n" +
             "  3. The Reference Image (Ảnh tham chiếu) is ONLY the 'Brush' and 'Paint': Extract the linework, color palette, and lighting style. Apply these artistic techniques to the story's specific character and narrative. DO NOT clone the character identity from the reference image!\n\n" +
             "🚨 MANDATE #2: EXACT STYLE, COLOR, EYE & EXTRAORDINARY HAIR PRECISION (QUY TẮC ĐỒNG BỘ CHI TIẾT NÉT VẼ, TONE MÀU, LÊN MÀU, VẼ MẮT, VÀ TÓC THEO THAM CHIẾU - SÁNG TẠO POSE THEO TRUYỆN) 🚨: When describing the character, hairstyle, eyes, outfit, and background, you MUST replicate the exact aesthetic style of the reference image. Keep the art medium, line art weight, shading depth, and color blending techniques of the reference image.\n" +
-            "  1. Hair Precision (Học vẽ tóc, mô tả siêu chi tiết để tránh tóc xấu): You must describe hair with extreme clarity, structure, and beauty! Clearly define the hairstyle structure, individual silky hair strands flowing gracefully, parting lines, highlight reflections, and fine wisps catching volumetric backlighting. Never write vague hair descriptions that lead to ugly AI rendering! Make it as detailed and gorgeous as the reference image.\n" +
+            "  1. Hair Precision (Học vẽ tóc thích ứng với ảnh tham chiếu): You must describe hair matching the exact rendering technique of the reference! Do NOT use generic AI hair clichés like 'individual silky strands', 'many fine wisps', 'angel-ring highlights', 'translucency', 'glossy separated strands', or 'extreme micro-detail' unless explicitly present in the reference style. If the reference uses stylized large blocks/cel-shading, describe solid hair blocks, flat colors, and clean lines without fine strands. If it is painterly/thick brush, focus on texture. If hyper-realistic, describe flowing wisps and detailed strands. All highlights/flow must be 100% inherited from reference.\n" +
             "  2. Eye & Face Precision (Học vẽ mắt, học lên màu): Specify the exact drawing style of the eyes from the reference (e.g., highly glossy irises, heavy lash lines, specific gaze direction, light reflection points). Describe the coloring and shading gradients with professional vocabulary to perfectly capture the color palette.\n" +
             "  3. Character Posture: The character pose, gesture, stance, and action must be dynamically generated to match the STORY SETTING, using the reference's composition lines and camera angles (Dutch tilt, low-angle sweeping shot, cinematic framing) to frame the story actions beautifully, rather than cloning the exact pose of the reference image rigidly!\n\n" +
             "🚨 MANDATE #3: STRICT MODULAR CARD ISOLATION & MULTI-REFERENCE SYNTHESIS (QUY TẮC PHÂN LUỒNG TỪNG MỤC THẺ ẢNH QUYẾT LIỆT VÀ ĐẦY ĐỦ) 🚨: You must read and classify every single Work Card domain strictly by its Title (Hair from Hair Card, Pose/Angle from Pose Card, Clothing from Outfit Card, Setting from Environment Card, Art Style from Style Analyzer, and Art Direction from Aesthetic Study). Each card's assigned reference image is the absolute primary authority for that specific domain. Do NOT let one image dominate everything! Isolate them cleanly, study them meticulously, and synthesize them into a harmonious sequential multi-panel masterpiece without losing any detail! IF A SINGLE CARD HAS MULTIPLE ATTACHED REFERENCE IMAGES, YOU MUST STUDY AND SYNTHESIZE EVERY SINGLE ONE OF THEM (KHÔNG ĐƯỢC BỎ SÓT BẤT KỲ ẢNH NÀO - TẤT CẢ ĐỀU PHẢI ĐƯỢC PHÂN TÍCH VÀ ĐƯA VÀO BÁO CÁO THẨM ĐỊNH)!\n\n" +
@@ -3546,7 +3622,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             "  2. Outfit & Fabric Fidelity (Đồng bộ Trang phục & Quần áo): Exhaustively describe garment materials (silk, leather, satin, heavy textured wool), structural layering, tailoring patterns, necklines/collars, delicate laces, dynamic folding tension, ripples, and gravity wrinkles. Match the outfit style perfectly!\n" +
             "  3. Visual Perspective & Composition Lines (Đồng bộ Đường Thị Giác & Bố cục - BẮT BUỘC KHÔNG DÙNG GÓC MÁY BÌNH THƯỜNG TRUNG BÌNH): YOU ARE STRICTLY FORBIDDEN from using flat, boring eye-level center compositions! You MUST actively analyze and replicate the exact dramatic, striking camera perspective of the reference (e.g., dynamic low-angle tilt, cinematic sweeping high-angle, birds-eye view, Dutch tilt for emotional tension, three-quarter side angle). Use professional composition lines, extreme off-center subject positioning (e.g. Rule of Thirds, asymmetrical weight), powerful leading lines (đường dẫn thị giác), diagonal alignment, deep atmospheric foreground/background separation, and breathtaking light-and-shadow vectors. Looking at the composition MUST feel like a high-budget cinematic masterpiece that instantly commands and seizes the viewer's eyes!\n\n" +
             "🚨 MANDATE #5: HIGH-END PROFESSIONAL ART & PHOTOGRAPHY VOCABULARY (QUY TẮC SỬ DỤNG TỪ VỰNG CHUYÊN NGÀNH NGHỆ THUẬT/NHIẾP ẢNH CAO CẤP) 🚨: You are an elite, world-class art director and cinematographer. You MUST NOT use basic, superficial, or generic vocabulary (like 'beautiful dress', 'nice pose', or 'good lighting'). YOU MUST USE ADVANCED, HIGHLY PROFESSIONAL, AND DEEPLY TECHNICAL TERMINOLOGY. Your analysis and prompt must reflect extreme artistic expertise for:\n" +
-            "  1. Facial & Hair Nuance: Head tilt angles, exact direction of gaze, subtle mouth positioning, precise eyelid weights, hair strand flow, individual fine hair wisps catching backlights, parting line.\n" +
+            "  1. Facial & Hair Nuance: Head tilt angles, exact direction of gaze, subtle mouth positioning, precise eyelid weights, hair style flow and clumping details perfectly adapted to the reference style (solid cel-shaded blocks or flowing painterly shapes with zero generic wisps), parting line.\n" +
             "  2. Lighting & Shadow Depth: Exact main light source location, volumetric ray paths, contact shadows under the chin/neck, precise soft-rim backlighting highlights, chiaroscuro shadow gradients on skin/garment folds.\n" +
             "  3. Linework & Rendering Texture: Exact texture of line art (loose sketch, clean ink, charcoal, variable line weight, no outline/painted look), rendering style (watercolor bleeding edges, soft airbrush gradients, matte digital painting, dense textured pencil cross-hatching).\n" +
             "  4. Garment Fold Dynamics & Material Detail: Exact fabric draping patterns, soft overlapping layers, precise wrinkles/ripples representing gravity/tension, specific laces, sheer opacity levels, haute couture stitch/embroidery patterns, texture grains (linen, satin, chiffon, silk, leather).\n" +
@@ -3573,7 +3649,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             "  - You MUST leverage the 'Mandatory Technical Analysis (10 Layers)' found in the Vision Reports to perform a surgical deconstruction of the art style. Do NOT just mention the style; RECONSTRUCT it using technical artistic language:\n" +
             "    1. Line Art DNA: Replicate the specific line weight and intersection handling.\n" +
             "    2. Facial Rendering: Apply the exact shading maps and subsurface scattering techniques.\n" +
-            "    3. Eye & Hair Architecture: Detail the iris depth, catchlights, strand rhythm, and translucency.\n" +
+            "    3. Eye & Hair Architecture: Detail the iris depth, catchlights, hair clumping geometry, and block-shading vs line-work technique adapted to reference style (avoiding generic AI translucency and clichéd silky strands).\n" +
             "    4. Material & Light Physics: Enforce the exact reflectivity, roughness, and volumetric light interaction.\n" +
             "    5. Composition Geometry: Use the hidden geometric scaffolding and eye travel paths from the references.\n\n" +
             "🚨 SUPREME COMMAND FOR HIGH-FIDELITY DETAILS (MỆNH LỆNH THỐNG TRỊ CHI TIẾT TỰA THỰC 100%): Write incredibly long, precise, and vivid paragraphs for each part! Do not summarize or use generic terms! Use advanced terminology such as 'Fujifilm Superia color space, Hasselblad HC 80mm color accuracy, Arri Alexa cinematic tone, 0.05mm ultra-fine rotring ink brush, meticulous cross-hatching shade layers, anatomically flawless hands with five long slender digits, perfect fabric drape tension folds' in every description. This ensures that the generated prompt perfectly forces Midjourney/Stable Diffusion/Ideogram/Flux to reproduce the reference style, dynamic composition lines, and rich, non-blurry colors and shapes with 100% fidelity, while allowing the character's pose and actions to be creatively driven by the STORY!\n\n" +
@@ -3586,7 +3662,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             "  2. Visual Storytelling (Kể chuyện qua hình ảnh): Even if the reference images are just 'beautiful' and unrelated to the plot, you must FORCE the scene to reflect the story's vibe. Every shadow, object, and expression must tell a piece of the story. Looking at the image must reveal the story's genre and plot ideas!\n" +
             "  3. The Reference Image (Ảnh tham chiếu) is ONLY the 'Brush' and 'Paint': Extract the linework, color palette, and lighting style. Apply these artistic techniques to the story's specific character and narrative. DO NOT clone the character identity from the reference image!\n\n" +
             "🚨 SUPREME MANDATE #3: EXACT STYLE, COLOR, EYE & EXTRAORDINARY HAIR PRECISION (QUY TẮC ĐỒNG BỘ CHI TIẾT NÉT VẼ, TONE MÀU, LÊN MÀU, VẼ MẮT, VÀ TÓC THEO THAM CHIẾU - SÁNG TẠO POSE THEO TRUYỆN) 🚨: When describing the character, hairstyle, eyes, outfit, and background, you MUST replicate the exact aesthetic style of the reference image. Keep the art medium, line art weight, shading depth, and color blending techniques of the reference image.\n" +
-            "  1. Hair Precision (Học vẽ tóc, mô tả siêu chi tiết để tránh tóc xấu): You must describe hair with extreme clarity, structure, and beauty! Clearly define the hairstyle structure, individual silky hair strands flowing gracefully, parting lines, highlight reflections, and fine wisps catching volumetric backlighting. Never write vague hair descriptions that lead to ugly AI rendering! Make it as detailed and gorgeous as the reference image.\n" +
+            "  1. Hair Precision (Học vẽ tóc thích ứng với ảnh tham chiếu): You must describe hair matching the exact rendering technique of the reference! Do NOT use generic AI hair clichés like 'individual silky strands', 'many fine wisps', 'angel-ring highlights', 'translucency', 'glossy separated strands', or 'extreme micro-detail' unless explicitly present in the reference style. If the reference uses stylized large blocks/cel-shading, describe solid hair blocks, flat colors, and clean lines without fine strands. If it is painterly/thick brush, focus on texture. If hyper-realistic, describe flowing wisps and detailed strands. All highlights/flow must be 100% inherited from reference.\n" +
             "  2. Eye & Face Precision (Học vẽ mắt, học lên màu): Specify the exact drawing style of the eyes from the reference (e.g., highly glossy irises, heavy lash lines, specific gaze direction, light reflection points). Describe the coloring and shading gradients with professional vocabulary to perfectly capture the color palette.\n" +
             "  3. Character Posture: The character pose, gesture, stance, and action must be dynamically generated to match the STORY SETTING, using the reference's composition lines and camera angles (Dutch tilt, low-angle sweeping shot, cinematic framing) to frame the story actions beautifully, rather than cloning the exact pose of the reference image rigidly!\n\n" +
             "🚨 SUPREME MANDATE #4: STRICT CARD PORTAL ISOLATION & MULTI-IMAGE FULL UTILIZATION (QUY TẮC PHÂN LUỒNG TỪNG MỤC THẺ ẢNH QUYẾT LIỆT VÀ KHÔNG BỎ SÓT BẤT KỲ ẢNH NÀO) 🚨: You must strictly read and process the requirements of each Work Card one-by-one according to its specific functional domain (Hair from Hair Card, Pose/Angle from Pose Card, Clothing/Outfit from Outfit Card, Setting from Environment Card, Makeup/Expression from Face Card, Art Style from Style Analyzer, and Art Direction from Aesthetic Study). Each card's assigned reference image is the primary visual authority for that domain. Do NOT mix them up, do NOT omit any, and do NOT let one single image dominate the entire prompt! Study each card's reference image thoroughly, and synthesize these distinct modular traits together into a harmonious, balanced multi-reference masterpiece!\n\n" +
@@ -3596,7 +3672,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
             "  2. Outfit & Fabric Fidelity (Đồng bộ Trang phục & Quần áo): Exhaustively describe garment materials (silk, leather, satin, heavy textured wool), structural layering, tailoring patterns, necklines/collars, delicate laces, dynamic folding tension, ripples, and gravity wrinkles. Match the outfit style perfectly!\n" +
             "  3. Visual Perspective & Composition Lines (Đồng bộ Đường Thị Giác & Bố cục - BẮT BUỘC KHÔNG DÙNG GÓC MÁY BÌNH THƯỜNG TRUNG BÌNH): YOU ARE STRICTLY FORBIDDEN from using flat, boring eye-level center compositions! You MUST actively analyze and replicate the exact dramatic, striking camera perspective of the reference (e.g., dynamic low-angle tilt, cinematic sweeping high-angle, birds-eye view, Dutch tilt for emotional tension, three-quarter side angle). Use professional composition lines, extreme off-center subject positioning (e.g. Rule of Thirds, asymmetrical weight), powerful leading lines (đường dẫn thị giác), diagonal alignment, deep atmospheric foreground/background separation, and breathtaking light-and-shadow vectors. Looking at the composition MUST feel like a high-budget cinematic masterpiece that instantly commands and seizes the viewer's eyes!\n\n" +
             "🚨 MANDATE #5: HIGH-END PROFESSIONAL ART & PHOTOGRAPHY VOCABULARY (QUY TẮC SỬ DỤNG TỪ VỰNG CHUYÊN NGÀNH NGHỆ THUẬT/NHIẾP ẢNH CAO CẤP) 🚨: You are an elite, world-class art director and cinematographer. You MUST NOT use basic, superficial, or generic vocabulary (like 'beautiful dress', 'nice pose', or 'good lighting'). YOU MUST USE ADVANCED, HIGHLY PROFESSIONAL, AND DEEPLY TECHNICAL TERMINOLOGY. Your analysis and prompt must reflect extreme artistic expertise for:\n" +
-            "  1. Facial & Hair Nuance: Head tilt angles, exact direction of gaze, subtle mouth positioning, precise eyelid weights, hair strand flow, individual fine hair wisps catching backlights, parting line.\n" +
+            "  1. Facial & Hair Nuance: Head tilt angles, exact direction of gaze, subtle mouth positioning, precise eyelid weights, hair style flow and clumping details perfectly adapted to the reference style (solid cel-shaded blocks or flowing painterly shapes with zero generic wisps), parting line.\n" +
             "  2. Lighting & Shadow Depth: Exact main light source location, volumetric ray paths, contact shadows under the chin/neck, precise soft-rim backlighting highlights, chiaroscuro shadow gradients on skin/garment folds.\n" +
             "  3. Linework & Rendering Texture: Exact texture of line art (loose sketch, clean ink, charcoal, variable line weight, no outline/painted look), rendering style (watercolor bleeding edges, soft airbrush gradients, matte digital painting, dense textured pencil cross-hatching).\n" +
             "  4. Garment Fold Dynamics & Material Detail: Exact fabric draping patterns, soft overlapping layers, precise wrinkles/ripples representing gravity/tension, specific laces, sheer opacity levels, haute couture stitch/embroidery patterns, texture grains (linen, satin, chiffon, silk, leather).\n" +
@@ -3630,7 +3706,7 @@ Do NOT include any image IDs, filenames (.jpg/.png), UUIDs, "Attached Reference 
 "**[6/17] Góc máy (Camera Angle)**\n- [WHAT (Locked Story/Character): Maintain scene-appropriate viewpoint.]\n- [HOW (Reference-Derived Art Direction): Learn camera philosophy, shot distance, camera tilt, and focal length from reference.]\n- [Ref Analysis: Analyze shot distance, camera tilt, camera lens/focal length, and framing/crop. Apply the reference's camera philosophy to this scene, capturing identical depth, perspective, and scale to replicate the reference's cinematic viewpoint.]\n" +
 "**[7/17] Bố cục (Composition)**\n- [WHAT (Locked Story/Character): Maintain narrative scene arrangement.]\n- [HOW (Reference-Derived Art Direction): Learn geometric scaffolding, visual flow, and spatial arrangement logic from reference.]\n- [Ref Analysis: Analyze geometric scaffolding, visual flow, and rule of thirds/golden ratio. Apply identical structural logic to organize foreground/midground/background, replicating the visual hierarchy and spatial arrangement strategy of the reference.]\n" +
 "**[8/17] Line-art construction (Nét vẽ)** (Must be extremely detailed, defining line weight, sharpness, thickness, intersection handling, and silhouette clarity!)\n- [WHAT (Locked Story/Character): Maintain character silhouette and defining features.]\n- [HOW (Reference-Derived Art Direction): Learn line weight, ink/pencil/brush texture, and intersection handling from reference.]\n- [Ref Analysis: Analyze line weight, ink/pencil/brush texture, and intersection handling (where lines join/taper). Apply identical line-art DNA to ensure professional, human-quality line art with extreme detail and deliberate line-weight variation.]\n" +
-"**[9/17] Tóc (Hair & Strands)** (Must detail hair length, parting, main clumps, flow direction, thickness, volume, curl, highlights, shadows, avoiding AI messy branching!)\n- [WHAT (Locked Story/Character): Maintain hair style and character appearance.]\n- [HOW (Reference-Derived Art Direction): Learn hair clumping, flow direction, translucency, and volume-per-strand logic from reference.]\n- [Ref Analysis: Analyze hair clumping, flow direction, angel rings, translucency, and volume-per-strand. Apply the same hair-rendering technique, ensuring organic flow, detail density, and proper light-catch (highlights) as seen in the reference.]\n" +
+"**[9/17] Tóc (Hair & Strands)** (Must detail hair length, parting, main clumps, flow direction, thickness, volume, curl, highlights, shadows, avoiding AI messy branching!)\n- [WHAT (Locked Story/Character): Maintain hair style and character appearance.]\n- [HOW (Reference-Derived Art Direction): Strictly analyze the reference image's specific hair rendering style. Avoid generic AI hair clichés like 'individual silky strands', 'many fine wisps', 'angel-ring highlights', 'translucency', 'glossy separated strands', or 'extreme micro-detail' unless explicitly present in the reference style. Learn the exact hair clumping geometry, block-shading vs line-work technique, and highlight treatment from the reference.]\n- [Ref Analysis: Detect the core styling technique: cel-shading blocks, painterly brushwork, or realistic high-fidelity fine-lines. Replicate this exact styling DNA. If the reference utilizes stylized large blocks/cel-shading, describe the hair in solid shapes, flat colors, and clean contours without fine strands. If painterly/thick brush, focus on texture and flow volume. If hyper-realistic line art/sketch, describe delicate flowing wisps and individual detailed strands. All highlights, flow direction, and clumping geometry must be 100% inherited from reference.]\n" +
 "**[10/17] Trang phục (Outfit & Folds)**\n- [WHAT (Locked Story/Character): Maintain character costume and story-specific details.]\n- [HOW (Reference-Derived Art Direction): Learn fabric physics, draping, folds, and material tension logic from reference.]\n- [Ref Analysis: Analyze fabric physics, draping, folds, and material tension. Apply identical wrinkle/ripple/tension logic to this outfit, ensuring weight, movement, and material interaction look physically and artistically correct.]\n" +
 "**[11/17] Ánh sáng (Lighting)** (Define main light, rim light, ambient, bounce, direction, softness/hardness, contrast!)\n- [WHAT (Locked Story/Character): Maintain narrative lighting requirements.]\n- [HOW (Reference-Derived Art Direction): Learn lighting logic, light-color temperature, contrast levels, and shadow/rim-light positioning from reference.]\n- [Ref Analysis: Analyze lighting logic, light-color temperature, contrast levels, and shadow/rim-light positioning. Apply identical cinematic lighting to achieve volume, drama, and atmosphere, replicating the light-shaping strategy.]\n" +
 "**[12/17] Màu sắc (Color Palette)** (Define skin tone, background color, color balance, saturation, exposure!)\n- [WHAT (Locked Story/Character): Maintain character color scheme and setting mood.]\n- [HOW (Reference-Derived Art Direction): Learn color palette logic, saturation levels, and color grading philosophy from reference.]\n- [Ref Analysis: Analyze color palette logic, saturation levels, and color grading philosophy. Apply identical chromaticity, tone, and saturation philosophy to ensure absolute color harmony and mood-matching with the reference.]\n" +

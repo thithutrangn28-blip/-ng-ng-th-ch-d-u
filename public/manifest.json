@@ -1,16 +1,16 @@
 {
-  "short_name": "Bánh quy bơ",
-  "name": "Bánh quy bơ dâu tây",
-  "description": "Một ứng dụng nhỏ ngọt ngào như chiếc bánh quy bơ dâu tây dành tặng vợ yêu.",
+  "short_name": "Dâu tây",
+  "name": "Dâu tây chấm sữa",
+  "description": "Một ứng dụng nhỏ ngọt ngào như dâu tây chấm sữa dành tặng vợ yêu.",
   "icons": [
     {
-      "src": "https://i.postimg.cc/nLNrWGnx/92d67706f81fc63401cffe01c7afe11a.jpg",
+      "src": "https://i.postimg.cc/DfDBDy6B/591e0462b0fdbd4f23c06715e667aa3d.jpg",
       "type": "image/jpeg",
       "sizes": "192x192",
       "purpose": "any maskable"
     },
     {
-      "src": "https://i.postimg.cc/nLNrWGnx/92d67706f81fc63401cffe01c7afe11a.jpg",
+      "src": "https://i.postimg.cc/DfDBDy6B/591e0462b0fdbd4f23c06715e667aa3d.jpg",
       "type": "image/jpeg",
       "sizes": "512x512",
       "purpose": "any maskable"

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'banh-quy-bo-v4';
+const CACHE_NAME = 'banh-quy-bo-v5';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -8,7 +8,7 @@ self.addEventListener('install', (event) => {
         '/',
         '/index.html',
         '/manifest.json',
-        'https://i.postimg.cc/nLNrWGnx/92d67706f81fc63401cffe01c7afe11a.jpg'
+        'https://i.postimg.cc/j2Hz1Kv9/913ee180efbf4dbc8a5aa2d4b670d6ae.jpg'
       ]);
     })
   );

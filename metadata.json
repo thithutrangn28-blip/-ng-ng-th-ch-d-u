@@ -1,6 +1,6 @@
 {
-  "name": "Bánh quy bơ dâu tây",
-  "description": "Một ứng dụng nhỏ ngọt ngào như chiếc bánh quy bơ dâu tây dành tặng vợ yêu.",
+  "name": "Dâu tây chấm sữa",
+  "description": "Một ứng dụng nhỏ ngọt ngào như dâu tây chấm sữa dành tặng vợ yêu.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
