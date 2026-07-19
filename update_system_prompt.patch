@@ -1,0 +1,21 @@
+--- src/screens/lipstick-prompt/RoomView.tsx
++++ src/screens/lipstick-prompt/RoomView.tsx
+@@ -3496,7 +3496,25 @@
+         messages: [{ role: "user", content: contentArray }],
+         signal: abortCtrl.signal,
+         systemPrompt: (() => {
+-          const finalSystemPrompt = roomDef?.id === 'canva_presentation' ? "You are an AI Canva Presentation Prompt Generator inside a production workspace. Your task is to generate the final production-ready image prompt for a specific Canva Presentation slide. Read the full Context Window and produce the final prompt directly adhering to these absolute rules:\n\n" +
++          const antiGenericHairRule = "\n\n🚨 SUPREME MANDATE: ANTI-GENERIC HAIR EXPANSION & STRUCTURAL DEPTH 🚨\n" +
++"Every time a character is present in the prompt, you MUST AUTOMATICALLY expand the hair description into a deep, visually sophisticated block. You are STRICTLY FORBIDDEN from using generic, short, or cliché hair descriptions like 'long black hair', 'flowing hair', 'soft bangs', or 'silky hair'.\n" +
++"Instead, you must describe the hair utilizing high-end artistic terminology covering at least these elements:\n" +
++"- Overall length and silhouette weight (e.g., heavy elegant silhouette, layered flowing masses, abundant root volume).\n" +
++"- Hairline, parting, and bangs structure (e.g., face-framing locks wrapping the cheeks, delicate wispy bangs with airy separation).\n" +
++"- Texture, strands, and flyaways (e.g., fine tapering strands, scattered floating flyaways, ultra-fine loose strands adding realism).\n" +
++"- Movement, flow, and gravity (e.g., hair movement responding naturally to pose and airflow, sweeping rhythms).\n" +
++"- Base color and specific undertones (e.g., cool-brown undertones inside the black base, ashy highlights).\n" +
++"- Lighting, gloss, and rim light (e.g., silky reflective surface catching narrow lines of light, rim lighting on flyaways).\n" +
++"- Render quality and line DNA based on the reference (e.g., bold ink strokes, highly painterly thick blocks, hyper-realistic fine rendering).\n" +
++"This hair expansion MUST be perfectly integrated into the FINAL PROMPT as clean, pure English descriptive text.\n" +
++"🚨 CRITICAL OUTPUT CLEANLINESS: You MUST NOT include any internal analysis metadata, reference notes, or meta-commentary in the FINAL PROMPT. Never use phrases like 'inspired by reference', 'learning from image', 'anti-copy', or 'analysis'. The FINAL PROMPT must be a 100% clean, independent, and copy-pasteable image generation prompt that directly dictates the visual elements, treating the hair as a major, highly-detailed compositional subject.\n\n";
++
++          const finalSystemPrompt = roomDef?.id === 'canva_presentation' ? "You are an AI Canva Presentation Prompt Generator inside a production workspace. Your task is to generate the final production-ready image prompt for a specific Canva Presentation slide. Read the full Context Window and produce the final prompt directly adhering to these absolute rules:\n\n" +
