@@ -88,9 +88,6 @@ function AppContent() {
           <div className="loadbar"><span></span></div>
         </div>
       </div>
-
-      <div className="app-background" />
-
       {activeScreen === "splash" && <SplashScreen onEnter={() => navigate("welcome")} />}
       {activeScreen === "welcome" && <WelcomeScreen active={true} onNext={() => navigate("glamIntro")} time={time} batteryLevel={batteryLevel} />}
       {activeScreen === "glamIntro" && <GlamIntroScreen active={true} onNext={() => navigate("lock")} onBack={() => navigate("welcome")} />}

@@ -149,7 +149,7 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
     // If we are currently running on a specific Cloud Run domain or a development/production Run.app domain, we use it directly.
     // Otherwise, we fallback to the exact HTTPS URL of the production PWA.
     const origin = window.location.origin;
-    const fallbackUrl = "https://ais-pre-qei7yewrz5n2iskmcmqqpq-534993481089.asia-southeast1.run.app";
+    const fallbackUrl = "https://ais-dev-qei7yewrz5n2iskmcmqqpq-534993481089.asia-southeast1.run.app";
     
     if (origin && origin !== "null" && origin.includes(".run.app")) {
       window.open(origin, "_blank");
