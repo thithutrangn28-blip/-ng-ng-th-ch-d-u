@@ -12,14 +12,6 @@ export default function WelcomeScreen({ active, onNext, time, batteryLevel }: Pr
     <section className={`screen ${active ? "active" : ""}`} id="welcome">
       <img className="bg" src="https://i.postimg.cc/kg6wmL76/ac47a1821562958e8931d9ea7fe451dc.jpg" alt="" />
       <div className="fade"></div><div className="grid-bg"></div>
-      <header className="status">
-        <span>{time}</span>
-        <div className="icons">
-          <span className="wifi"></span>
-          <span className="battery"><i style={{ width: Math.max(8, batteryLevel) + "%" }}></i></span>
-          <span>{batteryLevel}%</span>
-        </div>
-      </header>
       <section className="honey-page">
         <div className="logo-cn"><b>云蜜计划</b><small>MINMIN SWEET CLOUD</small></div>
         <div className="top-note">New special effects</div>
