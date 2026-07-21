@@ -1,4 +1,4 @@
-const CACHE_NAME = 'banh-quy-bo-v5';
+const CACHE_NAME = 'banh-sua-nho-pwa-v1';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -8,7 +8,10 @@ self.addEventListener('install', (event) => {
         '/',
         '/index.html',
         '/manifest.json',
-        'https://i.postimg.cc/j2Hz1Kv9/913ee180efbf4dbc8a5aa2d4b670d6ae.jpg'
+        '/manifest.webmanifest',
+        '/icons/icon-192x192.png',
+        '/icons/icon-512x512.png',
+        '/icons/icon-maskable-512x512.png'
       ]);
     })
   );

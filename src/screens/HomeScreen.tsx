@@ -197,7 +197,7 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
         </header>
         
         <section className="home-widget pink-3-layer-card">
-          <img src="https://i.postimg.cc/DfDBDy6B/591e0462b0fdbd4f23c06715e667aa3d.jpg" alt="" style={{ objectPosition: 'center 40%' }} referrerPolicy="no-referrer" />
+          <img src="/assets/home-background.jpg" alt="" style={{ objectPosition: 'center 40%' }} referrerPolicy="no-referrer" />
           <div className="widget-copy">
             <small>Widgetsmith · Dâu tây ngọt ngào</small>
             <h2>Dâu tây chấm sữa</h2>

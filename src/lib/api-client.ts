@@ -32,51 +32,28 @@ export type AiTextOptions = {
 };
 
 const VISUAL_MANDATE = `
-### 🚨 THỨ TỰ ƯU TIÊN DỮ LIỆU BẮT BUỘC (STRICT DATA PRIORITY HIERARCHY) 🚨
-Khi có ảnh tham chiếu, AI BẮT BUỘC phải tuân thủ thứ tự ưu tiên sau để tránh việc ảnh tham chiếu lấn át ngữ cảnh:
+### 🚨 MỆNH LỆNH PHÂN TÍCH THỊ GIÁC VÀ TỔNG HỢP SÁNG TẠO (STRICT VISUAL SYNTHESIS DIRECTIVE) 🚨
 
-1. **ROOM CONTRACT**: Tên phòng và chức năng của phòng quyết định LOẠI SẢN PHẨM phải tạo (ví dụ: Poster phim, Thẻ bài, Concept Art...).
-2. **WORK CARD CONTRACT**: Tên thẻ và yêu cầu cụ thể của thẻ quyết định CẢNH, MỤC TIÊU, TRỌNG TÂM và kết quả cụ thể.
-3. **STORY CONTRACT (Vượt quyền ảnh tham chiếu về Nội dung)**: Câu chuyện quyết định tuyệt đối sự kiện, hoàn cảnh, quan hệ nhân vật, cảm xúc, hành động, bối cảnh, đạo cụ và logic của cảnh. TUYỆT ĐỐI KHÔNG thay câu chuyện bằng nội dung nhìn thấy trong ảnh tham chiếu.
-4. **CHARACTER IDENTITY LOCK (Vượt quyền ảnh tham chiếu về Nhân vật)**: Hồ sơ nhân vật quyết định tuyệt đối danh tính, số lượng, tuổi, giới tính, khuôn mặt, màu/hình dạng mắt, màu/chiều dài/kiểu tóc, vóc dáng, chiều cao tương quan, khí chất và trang phục. TUYỆT ĐỐI KHÔNG biến nhân vật của câu chuyện thành nhân vật trong ảnh tham chiếu.
-5. **VISUAL LANGUAGE ADAPTATION (Ảnh tham chiếu CHỈ dùng cho HOW TO DRAW)**:
-   - Ảnh tham chiếu CHỈ được dùng để học: Nét vẽ (linework), chia khối, kỹ thuật tô, stylization, anatomy philosophy, tỷ lệ tạo hình, camera, crop, bố cục (composition geometry), đường thị giác (visual path), ánh sáng, màu sắc, chất liệu và mức độ hoàn thiện nghệ thuật.
-   - Ảnh tham chiếu KHÔNG được quyết định: Danh tính nhân vật, nội dung truyện, hành động, trang phục trái hồ sơ, đạo cụ/chữ/bối cảnh riêng của ảnh gốc.
-6. **CREATIVE SYNTHESIS**: Tổng hợp các nguồn trên thành một hình ảnh mới, hợp lý và đẹp. KHÔNG sao chép nguyên ảnh tham chiếu. KHÔNG quay về phong cách AI generic/mặc định.
+Khi có ảnh tham chiếu, AI TUYỆT ĐỐI KHÔNG học chủ đề bề mặt (vật thể, màu sắc, cảnh). AI PHẢI HỌC CẤU TRÚC THỊ GIÁC CỐT LÕI (CÁCH VẼ):
 
-### 🚨 MỆNH LỆNH KIỂM TRA NỘI BỘ (INTERNAL AUDIT MANDATE) 🚨
-Trước khi trả kết quả, AI phải tự kiểm tra:
-1. Cảnh có thật sự thuộc câu chuyện không?
-2. Nhân vật có đúng hồ sơ (tóc, mắt, mặt, vóc dáng) không?
-3. Sản phẩm có đúng loại của Phòng và nhiệm vụ của Thẻ không?
-4. Có chi tiết literal (bối cảnh, nhân vật gốc) nào bị lấy nhầm từ ảnh tham chiếu không?
-5. Ngôn ngữ tạo hình (nét vẽ, kỹ thuật render) có bám sát ảnh tham chiếu không?
-Nếu vi phạm, AI PHẢI TỰ SỬA trước khi xuất prompt.
+1. **LINE LANGUAGE (NÉT VẼ)**: Chất lượng lineart, độ mảnh/dày, độ sắc/mềm, nhịp điệu nét, cách đường nét ôm form và xử lý viền (mặt, tóc, tay, quần áo).
+2. **HAIR CONSTRUCTION (TÓC)**: Cấu trúc khối tóc, silhouette, độ dày/bung, cách chia lọn, chuyển từ mảng lớn sang sợi nhỏ, cách render chất tóc, độ mềm/nhọn ngọn tóc, hướng chuyển động.
+3. **FACE CONSTRUCTION (MẶT)**: Hình học, tỷ lệ ngũ quan, hướng mặt, thần thái, độ non/mature, độ nhận diện, thiết kế mắt, mi, cách vẽ tròng, bắt sáng.
+4. **BODY PROPORTION (CƠ THỂ)**: Tỷ lệ đầu-thân, độ dài tay chân, độ thanh/chắc, tư thế, trọng tâm, pose, độ tự nhiên.
+5. **COMPOSITION (BỐ CỤC)**: Camera, góc chụp, crop, đường dẫn mắt, phân bố không gian, đường dẫn thị giác, sự cân bằng.
+6. **RENDERING (ÁNH SÁNG & CHẤT LIỆU)**: Cách đổ bóng, shading, độ mềm/gắt, chất liệu da/tóc/vải, màu sắc logic, độ hoàn thiện cao.
+7. **ARTISTIC LEVEL**: Đạt cấp độ nghệ thuật tinh tế, không được dùng kiểu AI generic/đại trà.
 
-### 🚨 MỆNH LỆNH BẢO MẬT OUTPUT CHO NGƯỜI DÙNG (CLEAN PROMPT ONLY) 🚨
-Prompt người dùng sao chép PHẢI là prompt tạo ảnh hoàn chỉnh, sạch và độc lập. TUYỆT ĐỐI KHÔNG xuất hiện:
-- Ref / Image / Ảnh 1 / Ảnh 2 / Reference / Img.
-- "học từ...", "dựa trên...", "lấy từ...", "liên hệ...", "inspired by...", "derived from...".
-- UUID, filename, attachment ID, metadata, báo cáo phân tích hay ghi chú nội bộ.
-Mọi thông tin học được từ ảnh phải được chuyển hoá thành CHỈ DẪN HÌNH ẢNH TRỰC TIẾP.
-- Ví dụ SAI: "Soft pastel linework learned from Image 1."
-- Ví dụ ĐÚNG: "Soft pastel linework with delicate, lightly textured strokes."
+### 🚫 QUY TẮC CỨNG (STRICT RULES)
+1. **CANONICAL TRUTH (CANON)**: Mọi dữ kiện trong STORY_CANON và CHARACTER_CANON là tuyệt đối. Không được bịa thêm, thay đổi tuổi, ngoại hình, danh tính, quan hệ, bối cảnh. ẢNH THAM CHIẾU KHÔNG ĐƯỢC QUYẾT ĐỊNH NHÂN VẬT.
+2. **STYLE OVER CONTENT**: ẢNH THAM CHIẾU QUYẾT ĐỊNH "VẼ NHƯ THẾ NÀO" (HOW), KHÔNG ĐƯỢC QUYẾT ĐỊNH "VẼ CÁI GÌ" (WHAT).
+3. **CẤM SAO CHÉP BỀ MẶT**: Cấm copy trang phục, vật thể, bối cảnh trong ảnh tham chiếu trừ khi câu chuyện yêu cầu.
+4. **NO GENERIC AI**: CẤM lỗi mặc định: tóc bóng mượt giả, mặt generic, ánh sáng fantasy rẻ tiền, pose thiếu cá tính, anatomy yếu, tỷ lệ yếu.
+5. **STRICT CLEAN OUTPUT**: CHỈ xuất prompt tạo ảnh nghệ thuật. KHÔNG xuất: Ref, Image, metadata, giải thích, ghi chú, mã số, "inspired by", "phân tích ảnh mẫu". Prompt bắt đầu trực tiếp bằng mô tả nghệ thuật.
 `;
 
 function injectVisualMandate(systemPrompt: string | undefined, messages: Message[]): string | undefined {
-  let hasImage = false;
-  for (const m of messages) {
-    if (Array.isArray(m.content)) {
-      for (const c of m.content) {
-        if (c.type === 'image_url' || c.image_url) hasImage = true;
-      }
-    }
-  }
-  
-  if (hasImage) {
-    return (systemPrompt ? systemPrompt + "\n\n" : "") + VISUAL_MANDATE;
-  }
-  return systemPrompt;
+  return (systemPrompt ? systemPrompt + "\n\n" : "") + VISUAL_MANDATE;
 }
 
 /**
@@ -85,8 +62,10 @@ function injectVisualMandate(systemPrompt: string | undefined, messages: Message
 export async function callAIText(options: AiTextOptions): Promise<string> {
   const profile = options.profileOverride || await getActiveApiProfile();
   try {
+    const systemPrompt = injectVisualMandate(options.systemPrompt, options.messages);
+    console.log("[API DEBUG] Final System Prompt:", systemPrompt);
     return await executeApiProxyText(profile, options.messages, {
-      systemPrompt: injectVisualMandate(options.systemPrompt, options.messages),
+      systemPrompt,
       maxTokensOverride: options.maxTokensOverride,
     });
   } catch (err: any) {
@@ -117,10 +96,13 @@ export async function callAIStream(options: AiStreamOptions): Promise<void> {
     return;
   }
   
+  const systemPrompt = injectVisualMandate(options.systemPrompt, options.messages);
+  console.log("[API DEBUG] Final System Prompt:", systemPrompt);
+  
   await executeApiProxyStream({
     profile,
     messages: options.messages,
-    systemPrompt: injectVisualMandate(options.systemPrompt, options.messages),
+    systemPrompt,
     maxTokensOverride: options.maxTokensOverride,
     onToken: options.onToken,
     onDone: options.onDone,

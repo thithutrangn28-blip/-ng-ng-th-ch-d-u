@@ -51,6 +51,8 @@ export function buildContextWindow(
   }
 
   return {
-    orderedVisionRefs: finalImages
+    orderedVisionRefs: finalImages,
+    story: currentStory?.story || "",
+    characterProfile: currentStory?.userProfile || ""
   };
 }

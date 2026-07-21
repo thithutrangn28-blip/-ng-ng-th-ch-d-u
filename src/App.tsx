@@ -78,7 +78,7 @@ function AppContent() {
   const isAuthenticated = !!user;
 
   return (
-    <main className="app">
+    <main className="app app-root">
       <div className={`loading ${loading ? "" : "hide"}`} id="loading">
         <div className="load-card">
           <svg viewBox="0 0 120 110">
@@ -88,6 +88,8 @@ function AppContent() {
           <div className="loadbar"><span></span></div>
         </div>
       </div>
+
+      <div className="app-background" />
 
       {activeScreen === "splash" && <SplashScreen onEnter={() => navigate("welcome")} />}
       {activeScreen === "welcome" && <WelcomeScreen active={true} onNext={() => navigate("glamIntro")} time={time} batteryLevel={batteryLevel} />}
