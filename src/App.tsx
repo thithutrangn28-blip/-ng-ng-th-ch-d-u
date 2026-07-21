@@ -163,7 +163,7 @@ function AppContent() {
             </div>
             <div className="flex-1">
               <h4 className="text-pink-600 font-bold text-sm">Vợ ơi, có phiên bản mới cực xinh nè! ✨</h4>
-              <p className="text-pink-400 text-xs mt-0.5">Bản cập nhật giúp ứng dụng "Bánh sữa nhỏ ★" của vợ chạy mượt mà và ổn định hơn nhé!</p>
+              <p className="text-pink-400 text-xs mt-0.5">Bản cập nhật giúp ứng dụng "Kẹo Bích quy" của vợ chạy mượt mà và ổn định hơn nhé!</p>
             </div>
           </div>
           <div className="flex gap-2 justify-end">
