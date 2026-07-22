@@ -1,8 +1,8 @@
 export function getLockWallpaper(): string | null {
   try {
-    return localStorage.getItem("minmin_wallpaper_v8") || "/assets/home-background.jpg";
+    return localStorage.getItem("minmin_wallpaper_v8") || "https://i.postimg.cc/DfDBDy6B/591e0462b0fdbd4f23c06715e667aa3d.jpg";
   } catch (e) {
-    return "/assets/home-background.jpg";
+    return "https://i.postimg.cc/DfDBDy6B/591e0462b0fdbd4f23c06715e667aa3d.jpg";
   }
 }
 
@@ -16,9 +16,9 @@ export function setLockWallpaper(dataUrl: string) {
 
 export function getHomeWallpaper(): string | null {
   try {
-    return localStorage.getItem("minmin_home_wallpaper_v8") || "/assets/home-background.jpg";
+    return localStorage.getItem("minmin_home_wallpaper_v8") || "https://i.postimg.cc/DfDBDy6B/591e0462b0fdbd4f23c06715e667aa3d.jpg";
   } catch (e) {
-    return "/assets/home-background.jpg";
+    return "https://i.postimg.cc/DfDBDy6B/591e0462b0fdbd4f23c06715e667aa3d.jpg";
   }
 }
 

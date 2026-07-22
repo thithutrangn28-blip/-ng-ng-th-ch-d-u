@@ -1,6 +1,4 @@
-const CACHE_PREFIX = 'banh-sua-nho-';
-const CACHE_VERSION = 'v3';
-const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
+const CACHE_NAME = 'banh-quy-bo-v5';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -10,38 +8,26 @@ self.addEventListener('install', (event) => {
         '/',
         '/index.html',
         '/manifest.json',
-        '/manifest.webmanifest',
-        '/icons/icon-192x192.png',
-        '/icons/icon-512x512.png',
-        '/icons/icon-maskable-512x512.png'
+        'https://i.postimg.cc/j2Hz1Kv9/913ee180efbf4dbc8a5aa2d4b670d6ae.jpg'
       ]);
     })
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    Promise.all([
-      self.clients.claim(),
-      caches.keys().then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cacheName) => {
-            // Only delete old caches with our prefix, ensuring safe storage
-            if (cacheName.startsWith(CACHE_PREFIX) && cacheName !== CACHE_NAME) {
-              console.log('Deleting old cache:', cacheName);
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      })
-    ])
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
   );
-});
-
-self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  return self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {

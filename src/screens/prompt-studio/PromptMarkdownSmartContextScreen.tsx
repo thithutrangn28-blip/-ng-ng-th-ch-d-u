@@ -811,7 +811,7 @@ ${allTasksText}
 2. CHI TIẾT CHUYÊN SÂU CHO TỪNG Ý: Dưới mỗi tag số thứ tự, bạn phải viết giải thích quy tắc rõ ràng, chi tiết, chuyên sâu thành các đoạn văn hoàn chỉnh.
 3. HỆ THỐNG APP SẼ TỰ ĐỘNG DỌN DẸP SỐ ĐẾM: Bạn không cần lo lắng số thứ tự làm xấu prompt của người dùng vì app client bên dưới sẽ tự động ẩn và dọn dẹp các thẻ số đếm này sau khi nhận kết quả. Nhiệm vụ của bạn là PHẢI ĐẾM SỐ ĐỂ ĐẢM BẢO VIẾT ĐỦ 100% SỐ Ý!
 
-${tasks.map((t: any, idx: number) => `- **[Ý ${idx + 1}/${tasks.length}]: ${t.title}**\n  - Purpose: ${t.purpose || ""}\n  - Core Operational Guideline: ${t.detailedInstruction || t.transformationRule || t.outputRequirement || t.desc || ""}\n  - Output Check: ${t.validationRule || ""}`).join("\n\n")}
+${tasks.map((t: any, idx: number) => `- **[Ý ${idx + 1}/${tasks.length}]: ${t.title}**\n  - Purpose: ${t.purpose || ""}\n  - Core Operational Guideline: ${t.detailedInstruction || t.transformationRule || t.outputRequirement || t.desc || ""}\n  - Output Check: ${t.validationRule || ""}\n  - 🚨 PROHIBITED ERRORS (LỖI NGHIÊM CẤM): ${t.prohibitedErrors || "Không có dữ liệu răn đe cụ thể cho thẻ này."}`).join("\n\n")}
 
 `;
       }
@@ -842,6 +842,18 @@ Action Type: ${actionType}
 Task: ${requestText}
 🌐 MANDATORY PROMPT LANGUAGE: ${langStr}. You MUST write all instructions, explanations, and rules in ${langStr}!
 
+🚨 QUY TRÌNH 9 GIAI ĐOẠN BẮT BUỘC (9-STAGE EXECUTION - INTERNAL AI PROCESS):
+Với tư cách là Chuyên gia Kiến trúc sư Prompt, Art Director và Quality Control Artist, bạn phải thực thi quy trình này ngầm khi viết output:
+1. Giai đoạn 1 (Đọc & Khóa): Đọc kỹ Context Vault và các thẻ Task được chọn.
+2. Giai đoạn 2 (Nhập vai Art Director): Xác định phong cách thẩm mỹ và nhịp điệu của prompt.
+3. Giai đoạn 3 (Thiết kế giải pháp): Chuyển hóa Task thành quy tắc vận hành Bot Char.
+4. Giai đoạn 4 (Phân tích rủi ro): Dự đoán các lỗi AI Bot có thể mắc phải (OOC, Robot persona...).
+5. Giai đoạn 5 (Thiết kế chốt chặn): Viết các quy tắc "LỖI NGHIÊM CẤM" dựa trên Section 6.
+6. Giai đoạn 6 (Kiểm soát kỹ thuật): Tối ưu cấu trúc Markdown, Heading và logic rules.
+7. Giai đoạn 7 (Kiểm soát thẩm mỹ): Đảm bảo văn phong ngôi thứ 3 chuyên nghiệp, điện ảnh.
+8. Giai đoạn 8 (Ghép nối Context): Ràng buộc Bot Char vào đúng tình tiết truyện trong Context Vault.
+9. Giai đoạn 9 (Viết thẻ lỗi tổng hợp): Kiểm tra lại và đóng gói output hoàn chỉnh.
+
 🚨 MANDATORY ROMANCE ROLEPLAY DIRECTIVE (BẤT KHẢ XÂM PHẠM TỪ VỢ YÊU ĐƯỜNG ĐƯỜNG):
 1. READY-TO-USE ROLEPLAY PROMPT ONLY: You are building a professional, production-ready Romance Roleplay System Prompt (Hệ thống Chỉ lệnh Nhập vai Tình yêu thực chiến) for an AI Bot Character (to be pasted directly into SillyTavern, JanitorAI, Character.AI, or AI Studio Bot).
 2. ZERO AI ASSISTANT PERSONA & FULL IMMERSION (CẤM TƯ CÁCH TRỢ LÝ AI): The AI plays the role of the Bot Character(s) in the story. NEVER refer to the AI as an "assistant", "language model", or "helpful bot". The AI must strip away all artificiality and EMBODY the Bot Character 100%, living and breathing in a cinematic, sensory-rich realistic world to generate captivating content for {{user}}/Player!
@@ -851,6 +863,7 @@ Task: ${requestText}
    - How the Bot addresses and speaks to {{user}} in third-person context (tone, cadence, vocabulary, emotional warmth/coldness).
    - How to describe the Bot's facial expressions, eye contact, body language, breathing, heart rate, and internal psychological reactions.
    - Strict boundaries: ZERO puppeteering (never speak or act for {{user}}) and ZERO OOC (lock Bot personality to canon).
+   - 🚨 INTEGRATE PROHIBITED ERRORS: For every rule generated, you MUST include a corresponding negative constraint (LỖI NGHIÊM CẤM) based on the "PROHIBITED ERRORS" block of each task to ensure the AI Bot does not deviate from the core instruction.
 6. MANDATORY COUNTING HACK TO PREVENT SHORTENING: You MUST count and number every single item from 1 to ${tasks.length} (e.g. [Ý 1/${tasks.length}], [Ý 2/${tasks.length}], ..., [Ý ${tasks.length}/${tasks.length}]) so you DO NOT SKIP OR COMPRESS ANY RULE!
 7. EXHAUSTIVE DEPTH: Expand every numbered instruction into a rich, thorough, multi-sentence operational guideline (3-6 sentences per item). DO NOT shorten or group them into shallow bullet points!
 `;

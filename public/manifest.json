@@ -1,33 +1,25 @@
 {
-  "id": "/",
-  "name": "Kẹo Bích quy",
-  "short_name": "Kẹo Bích quy",
+  "short_name": "Dâu tây",
+  "name": "Dâu tây chấm sữa",
   "description": "Một ứng dụng nhỏ ngọt ngào như dâu tây chấm sữa dành tặng vợ yêu.",
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",
+      "src": "https://i.postimg.cc/DfDBDy6B/591e0462b0fdbd4f23c06715e667aa3d.jpg",
+      "type": "image/jpeg",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      "src": "https://i.postimg.cc/DfDBDy6B/591e0462b0fdbd4f23c06715e667aa3d.jpg",
+      "type": "image/jpeg",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/icon-maskable-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone"],
   "orientation": "portrait",
-  "theme_color": "#fff1f7",
-  "background_color": "#fff1f7"
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff"
 }

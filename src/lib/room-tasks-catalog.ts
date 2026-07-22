@@ -14,8 +14,69 @@ export interface RoomTask {
   inputSources: string[];
   outputEffect: string;
   preventsError: string;
+  prohibitedErrors?: string; // Khối phân tích và cảnh báo lỗi chuyên sâu
   desc?: string; // For compatibility
 }
+
+export const SUPREME_VISUAL_TASK: RoomTask = {
+  id: "SUPREME-VISUAL-COMMAND",
+  title: "THẺ LỆNH TỐI CAO — SUPREME VISUAL INTELLIGENCE COMMAND",
+  purpose: "Thẻ này đóng vai trò là lớp chỉ huy nghệ thuật và suy luận thị giác cho toàn bộ các thẻ phía sau.",
+  detailedInstruction: `[SUPREME VISUAL INTELLIGENCE COMMAND]
+Thẻ này là lớp chỉ huy nghệ thuật cao nhất của toàn bộ phòng. Mọi thẻ phía sau phải tuân theo các quyết định được xác lập tại đây. AI Model không được bắt đầu viết nội dung chi tiết trước khi hoàn thành toàn bộ quy trình phân tích 20 mục dưới đây.
+
+━━━━━━━━━━━━━━━━━━━━━━
+I. QUY TRÌNH PHÂN TÍCH SIÊU CẤU TRÚC [STUDIO AAA]
+Bạn phải áp dụng hệ thống ULTIMATE "STUDIO AAA" PROMPT ENGINEERING FRAMEWORK (120 Modules) để phân tích bối cảnh:
+- CHƯƠNG 1: QUAY PHIM & NHIẾP ẢNH (15 Modules: Camera Angle, Shot Type, Lens Type, Focal Length, DoF...)
+- CHƯƠNG 2: HỆ THỐNG ÁNH SÁNG & ĐÁNH KHỐI (15 Modules: Key/Fill/Backlight, Volumetrics, SSS...)
+- CHƯƠNG 3: MÀU SẮC ĐIỆN ẢNH & HIỆU CHỈNH (12 Modules: Palette, Hue Shifts, Saturation, LUT...)
+- CHƯƠNG 4: CHẤT LIỆU, NÉT VẼ & RENDER (15 Modules: Core Style, Brushwork, Linework, Textures...)
+- CHƯƠNG 5: BỐ CỤC & DẪN DẮT THỊ GIÁC (12 Modules: Rule of Thirds, Leading Lines, Framing...)
+- CHƯƠNG 6: NHÂN VẬT & NGÔN NGỮ CƠ THỂ (15 Modules: Anatomy, Posture, Kinetic Energy, Gestures...)
+- CHƯƠNG 7: KHUÔN MẶT, BIỂU CẢM & TRANG ĐIỂM (10 Modules: Bone Structure, Eye/Mouth Shape, Emotional Output...)
+- CHƯƠNG 8: KIẾN TRÚC TÓC & ĐỘ BỒNG BỀNH (10 Modules: Volume, Strand Grouping, Flow, Angel Ring...)
+- CHƯƠNG 9: TRANG PHỤC & CHẤT LIỆU VẢI (12 Modules: Fabric Types, Fold Types, Tension Points...)
+- CHƯƠNG 10: KHÔNG GIAN & VẬT THỂ BỔ TRỢ (4 Modules: Setting, Weather, Props...)
+
+━━━━━━━━━━━━━━━━━━━━━━
+II. NỘI DUNG CHI TIẾT 20 MỤC CHỈ HUY TỐI CAO
+Bạn phải xuất ra bản phân tích chi tiết cho 20 mục sau đây để khóa chặt Visual DNA:
+
+[LOCK CHI TIẾT NHÂN VẬT - 17 MỤC]
+1. Tổng thể nhân vật (Total Character): Độ tuổi, Giới tính, Chiều cao, Vóc dáng, Khí chất.
+2. Cấu trúc khuôn mặt (Face Structure): Hình dáng mặt, Trán, Gò má, Má, Xương hàm, Cằm.
+3. Đặc tả đôi mắt (Eyes): Hình dáng, Mí mắt, Lông mi, Mống mắt, Catchlight, Highlight.
+4. Lông mày (Eyebrows): Hình dáng, Độ dày, Vị trí, Hướng sợi và Biểu cảm.
+5. Dáng mũi (Nose): Độ cao sống mũi, Đầu mũi, Cánh mũi, Highlight và Bóng đổ.
+6. Khuôn miệng và Bờ môi (Mouth/Lips): Hình dáng miệng, Độ dày môi, Khóe miệng, Highlight.
+7. Làn da (Skin): Tông màu, Sắc độ, Texture da, Vùng da ửng hồng (blush), SSS.
+8. Kiến trúc tóc (Hair): Kiểu tóc, Tóc mái, Khối lượng (Volume), Flyaways, Angel Ring.
+9. Đôi tai và Phụ kiện gắn kèm (Ears/Accessories): Hình dáng tai, Vành tai, Khuyên tai.
+10. Cổ, Vai và Thân trên (Neck/Shoulders): Chiều dài cổ, Xương quai xanh, Độ rộng vai.
+11. Cánh tay, Bàn tay và Ngón tay (Arms/Hands): Cấu trúc bàn tay, Ngón tay (ĐÚNG 5 NGÓN), Khớp tay.
+12. Thân dưới và Tỷ lệ cơ thể (Body Proportions): Eo, Hông, Chiều dài chân, Tỷ lệ vàng.
+13. Trang phục trên nhân vật (Outfit): Silhouette, Chất liệu vải, Nếp gấp, Đường may, Phụ kiện.
+14. Biểu cảm và Khí chất (Expression): Cảm xúc chủ đạo, Cảm xúc ẩn, Ánh nhìn.
+15. Nét vẽ trên nhân vật (Linework): Kỹ thuật đi nét, Độ thanh đậm, Màu nét lineart.
+16. Cách lên màu trên nhân vật (Coloring): Kỹ thuật lên màu, Shading, Highlight, Gradient.
+17. Kiểm tra nhất quán (Consistency Check): Xác nhận sự nhất quán giữa Story và Visual DNA.
+
+[HỌC HỎI THÔNG MINH - 3 MỤC]
+18. WHAT TO DRAW: Giữ nguyên Cốt truyện, nhân vật, hành động, đạo cụ gốc BẮT BUỘC.
+19. HOW TO DRAW: Học hỏi Phong cách, kỹ thuật đi cọ, ánh sáng, góc máy từ ảnh tham chiếu.
+20. ANTI-LAZY-COPY CHECK: Tuyệt đối không sao chép nhân vật/quần áo/logo vô lý từ ảnh gốc.
+
+━━━━━━━━━━━━━━━━━━━━━━
+III. KẾT LUẬN CHỈ HUY
+Mọi thẻ phía sau phải bám theo kết luận 20 mục này. Không được tự ý đưa ra một hướng nghệ thuật khác. Chốt chặn tuyệt đối visual DNA của Reference Image 100% (Full-Util).`,
+  outputRequirement: "Xuất ra bản chỉ huy [SUPREME_VISUAL_COMMAND] với 20 mục phân tích chi tiết.",
+  validationRule: "Kiểm tra bản chỉ huy phải đủ 20 mục, không dùng từ sáo rỗng, khóa chặt tỷ lệ và kỹ thuật vẽ.",
+  inputSources: ["Context Vault", "Character Profiles", "Reference Images"],
+  outputEffect: "Điều khiển toàn bộ quá trình sáng tạo hình ảnh và nội dung phía sau.",
+  preventsError: "Tránh lỗi AI generic, nhựa hóa, mâu thuẫn prompt và sai lệch tỷ lệ cơ thể búp bê.",
+  prohibitedErrors: "Cấm dùng từ 'masterpiece', 'high quality'; cấm sao chép nguyên xi reference; cấm lỗi tỷ lệ đầu-thân búp bê; cấm nhựa hóa da."
+};
 
 export interface RoomCatalog {
   roomId: string;
@@ -383,7 +444,10 @@ export function getRoomCatalog(roomIdx: number): RoomCatalog {
   
   const meta = roomMetadata[roomIdx] || roomMetadata[0];
   const realTasks = getRealTasksForRoom(meta.id);
-  const tasks = realTasks && realTasks.length === 100 ? realTasks : generate100UniqueTasks(roomIdx);
+  
+  // Prepend SUPREME_VISUAL_TASK to the tasks list
+  const baseTasks = realTasks && realTasks.length > 0 ? [...realTasks] : generate100UniqueTasks(roomIdx);
+  const tasks = [SUPREME_VISUAL_TASK, ...baseTasks];
   
   const catalog: RoomCatalog = {
     roomId: meta.id,

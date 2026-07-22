@@ -3837,7 +3837,7 @@ ${currentStory?.userProfile || "No character profile provided."}
 "🚨 SUPREME MANDATE #0: CANVA PRESENTATION MISSION 🚨:\n" +
 "  1. The Canva Presentation room consists of exactly 10 cards (slide-1 to slide-10) flowing in a logical sequence: Opening -> Development -> Conclusion (mở đầu -> phát triển -> kết thúc).\n" +
 "  2. You must identify which slide (slide-1 to slide-10) is currently selected from the target message and design specifically for that slide's thematic role (Slide 1: Title & Opening, Slide 2: Setting Introduction, Slide 3: Main Characters Profile, Slide 4: Narrative Inciting Incident, Slide 5: Development & Rising Action, Slide 6: Climax/Conflict, Slide 7: Turning Point, Slide 8: Resolution, Slide 9: Core Message/Lesson, Slide 10: Closing/Thank You).\n" +
-"  3. You MUST output EXACTLY 19 parts using the standard '###' Markdown titles so the parser can render them into 19 prompt block cards correctly. Do NOT use simple prompts, and do NOT skip the 19-part structure!\n\n" +
+"  3. You MUST output EXACTLY 20 parts using the standard '###' Markdown titles so the parser can render them into 20 prompt block cards correctly. Do NOT use simple prompts, and do NOT skip the 20-part structure!\n\n" +
 "🚨 SUPREME MANDATE #1: CANVA CONTENT & TYPOGRAPHY LOCK (KHÓA CỨNG CHỮ & THIẾT KẾ ĐỒ HỌA) 🚨:\n" +
 "  - Every slide Canva presentation MUST have concrete, meaningful written content in Vietnamese or English that directly stems from the User's Story Plot and Character Profiles. Absolutely NO generic 'text here', 'Lorem Ipsum', or empty text frames!\n" +
 "  - You must explicitly define and LOCK the typography system for this slide in both the analysis and the final master prompt. Specify the EXACT font type family (e.g., elegant high-contrast classic serif, minimal geometric sans-serif, flowing artistic calligraphy, clean modern tech mono), font sizes, font colors (matching the palette), bold/italic weights, and precise spatial placement coordinates of text boxes in the slide layout.\n" +
@@ -3853,75 +3853,79 @@ ${currentStory?.userProfile || "No character profile provided."}
 "  - Each part must use the exact format:\n\n" +
 "### 1. Mục tiêu cảnh (Scene Goal)\n- [WHAT (Locked Story/Character): Narrative intent, character action, and story-accurate scene goals for this specific slide.]\n- [HOW (Reference-Derived Art Direction): Visual hierarchy, focus weight, and layout flow based on the reference slide.]\n- [Ref Analysis: Detailed analysis of the visual layout.]\n\n" +
 "### 2. Nhân vật (Character)\n...\n\n" +
-"And structure your output into exactly 19 standalone parts, where Part 18 is '### 18. PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)' combining all parts into a cohesive, high-density English prompt ready for Midjourney/Niji/Flux, with the CANVA CONTENT & TYPOGRAPHY LOCK instructions deeply embedded, and Part 19 is '### 19. CANVA CONTENT & TYPOGRAPHY LOCK'!\n\n" +
-"For EACH Work Card, you MUST directly start with '[FINAL PROMPT]' with the standalone descriptive instruction ready for direct image generation! In [FINAL PROMPT], you MUST structure the output into exactly 19 STANDALONE PARTS:\n" +
-"### 1. Mục tiêu cảnh (Scene Goal)\n" +
-"### 2. Nhân vật (Character)\n" +
+"And structure your output into exactly 20 standalone parts, where Part 19 is '### 19. PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)' combining all parts into a cohesive, high-density English prompt ready for Midjourney/Niji/Flux, with the CANVA CONTENT & TYPOGRAPHY LOCK instructions deeply embedded, and Part 20 is '### 20. CANVA CONTENT & TYPOGRAPHY LOCK'!\n\n" +
+"For EACH Work Card, you MUST directly start with '[FINAL PROMPT]' with the standalone descriptive instruction ready for direct image generation! In [FINAL PROMPT], you MUST structure the output into exactly 20 STANDALONE PARTS:\n" +
+"### 1. THẺ LỆNH TỐI CAO — SUPREME VISUAL INTELLIGENCE COMMAND\n" +
+"- [WHAT (Supreme Command): Apply the 120-module STUDIO AAA framework and 20-item visual lock.]\n" +
+"- [HOW (Visual Intelligence): Enforce absolute fidelity to the Reference DNA and Story Soul.]\n" +
+"- [Ref Analysis: Perform a surgical deconstruction of the visual DNA across all 10 Chapters of the Studio AAA framework. Lock the 20 critical visual points (Total Character, Face Structure, Eyes, Eyebrows, Nose, Mouth/Lips, Skin, Hair, Ears, Neck/Shoulders, Arms/Hands, Body Proportions, Outfit, Expression, Material Physics, Lighting, Color Grading, Camera Angle, Composition, Global Aesthetic). This analysis governs all subsequent cards.]\n\n" +
+"### 2. Mục tiêu cảnh (Scene Goal)\n" +
+"### 3. Nhân vật (Character)\n" +
 "- [WHAT (Locked Story/Character): Maintain character identity, story-specific features, and anatomical consistency.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn technical anatomical rendering, facial structure, and bone volume from reference. Avoid generic rounded faces.]\n" +
 "- [Ref Analysis: Analyze facial geometry, jawline sharpness, and the technical rendering of facial planes. Apply the reference's technical anatomical rendering and proportion philosophy to the character, maintaining story-specific identity. Focus on how the reference constructs human volume and skeletal framing.]\n\n" +
-"### 3. Biểu cảm & Đôi mắt (Expression & Eye Architecture)\n" +
+"### 4. Biểu cảm & Đôi mắt (Expression & Eye Architecture)\n" +
 "- [WHAT (Locked Story/Character): Maintain character emotional state and expression depth.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn facial rendering, eye shape geometry, iris architecture, catchlight placement, pupil detail, and lash rendering from reference.]\n" +
 "- [Ref Analysis: Deconstruct facial rendering, eye gloss, catchlight, pupil detail, and expression depth. Study the iris color layers and the sharpness of the eyelids. Apply the same technical approach to facial structure, bone rendering, and emotional resonance, ensuring the eyes/expression have the exact same depth, allure, and artistic 'soul' as the reference.]\n\n" +
-"### 4. Pose (Posture & Hands)\n" +
+"### 5. Pose (Posture & Hands)\n" +
 "- [WHAT (Locked Story/Character): Maintain character action, story-specific movement, and hand gestures.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn pose dynamics, weight distribution, center of gravity, and limb articulation logic from reference. Replicate the 'Pose Line' and silhouette.]\n" +
 "- [Ref Analysis: Deconstruct pose dynamics, center of gravity, weight distribution, and limb articulation. Apply the reference's kinetic energy and balance to the pose, ensuring movement, weight, and hand gesture sophistication (long slender fingers, precise joints) look physically and artistically correct.]\n\n" +
-"### 5. Tỷ lệ cơ thể (Body Proportions)\n" +
+"### 6. Tỷ lệ cơ thể (Body Proportions)\n" +
 "- [WHAT (Locked Story/Character): Maintain character identity and story-specific proportions.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn subject scale, subject-to-frame ratio, limb-to-torso ratios, and spatial proportioning logic from reference.]\n" +
 "- [Ref Analysis: Analyze subject scale, subject-to-frame ratio, and spatial proportioning. Apply the reference's logic of anatomy/body proportion scale, ensuring character identity remains consistent while matching the reference's elite anatomical rendering style and height-to-width balance.]\n\n" +
-"### 6. Góc máy & Phối cảnh (Camera Angle & Perspective)\n" +
+"### 7. Góc máy & Phối cảnh (Camera Angle & Perspective)\n" +
 "- [WHAT (Locked Story/Character): Maintain scene-appropriate viewpoint.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn camera philosophy, shot distance, camera tilt (Dutch tilt), focal length (35mm, 50mm, 85mm), and perspective vanishing points from reference.]\n" +
 "- [Ref Analysis: Analyze shot distance, camera tilt, camera lens/focal length, and framing/crop. Apply the reference's camera philosophy to this scene, capturing identical depth, perspective, and scale to replicate the reference's cinematic viewpoint and spatial compression.]\n\n" +
-"### 7. Bố cục & Đường thị giác (Composition & Visual Flow)\n" +
+"### 8. Bố cục & Đường thị giác (Composition & Visual Flow)\n" +
 "- [WHAT (Locked Story/Character): Maintain narrative scene arrangement.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn geometric scaffolding, rule of thirds, golden ratio, leading lines, and visual flow hierarchy from reference.]\n" +
 "- [Ref Analysis: Analyze geometric scaffolding, visual flow, and how the eye is led through the image. Apply identical structural logic to organize foreground/midground/background, replicating the visual hierarchy and spatial arrangement strategy that makes the reference look artistic.]\n\n" +
-"### 8. Line-art construction (Nét vẽ)\n" +
+"### 9. Line-art construction (Nét vẽ)\n" +
 "- [WHAT (Locked Story/Character): Maintain character silhouette and defining features.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn line weight variation, ink/pencil/brush texture, sharpness, and intersection handling from reference. No generic AI outlines.]\n" +
 "- [Ref Analysis: Analyze line weight (thick vs thin), ink/pencil/brush texture, and intersection handling (where lines join/taper). Apply identical line-art DNA to ensure professional, human-quality line art with extreme detail and deliberate line-weight variation that defines the character's volume.]\n\n" +
-"### 9. Tóc & Mảng tóc (Hair & Strands Architecture)\n" +
+"### 10. Tóc & Mảng tóc (Hair & Strands Architecture)\n" +
 "- [WHAT (Locked Story/Character): Maintain hair style and character appearance.]\n" +
 "- [HOW (Reference-Derived Art Direction): Strictly analyze the reference image's specific hair rendering style, clumping geometry, block-shading, and highlight logic. Define hair flow, gravity, and wind direction.]\n" +
 "- [Ref Analysis: Detect the core styling technique: cel-shading blocks, painterly brushwork, or realistic high-fidelity fine-lines. Replicate the hair's silhouette, density, and root-to-tip flow. If the reference utilizes stylized large blocks, describe the hair in solid shapes and clean contours. Avoid generic 'silky strands' if the reference has thick clumps. Highlight treatment must be 100% inherited from reference.]\n\n" +
-"### 10. Trang phục & Nếp nhăn (Outfit & Folds Physics)\n" +
+"### 11. Trang phục & Nếp nhăn (Outfit & Folds Physics)\n" +
 "- [WHAT (Locked Story/Character): Maintain character costume and story-specific details.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn fabric physics, draping, folds, wrinkles, and material tension logic from reference.]\n" +
 "- [Ref Analysis: Analyze fabric physics, draping, folds, and material tension. Apply identical wrinkle/ripple/tension logic to this outfit, ensuring weight, movement, and material interaction (stretching over body parts) look physically and artistically correct.]\n\n" +
-"### 11. Ánh sáng & Đổ bóng (Lighting & Shading)\n" +
+"### 12. Ánh sáng & Đổ bóng (Lighting & Shading)\n" +
 "- [WHAT (Locked Story/Character): Maintain narrative lighting requirements.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn lighting direction, main light, rim light, shadow contrast, ambient occlusion, and bounce light logic from reference.]\n" +
 "- [Ref Analysis: Analyze lighting logic, light-color temperature, contrast levels, and shadow/rim-light positioning. Apply identical cinematic lighting to achieve volume, drama, and atmosphere, replicating the light-shaping strategy and shadow sharpness/softness.]\n\n" +
-"### 12. Màu sắc (Color Palette & Grading)\n" +
+"### 13. Màu sắc (Color Palette & Grading)\n" +
 "- [WHAT (Locked Story/Character): Maintain character color scheme and setting mood.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn color palette logic, dominant/secondary/accent colors, saturation levels, and color grading philosophy from reference.]\n" +
 "- [Ref Analysis: Analyze color palette logic, saturation levels, and color grading philosophy. Apply identical chromaticity, tone, and saturation philosophy to ensure absolute color harmony and mood-matching with the reference, inheriting the specific 'feel' of the colors.]\n\n" +
-"### 13. Chất liệu & Bề mặt (Materials & Surfaces)\n" +
+"### 14. Chất liệu & Bề mặt (Materials & Surfaces)\n" +
 "- [WHAT (Locked Story/Character): Maintain character and environment surface details.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn surface reflectivity, roughness, texture, and translucency physics (Subsurface scattering) from reference.]\n" +
 "- [Ref Analysis: Analyze surface reflectivity, roughness, texture, and translucency. Apply identical material logic, ensuring tactile realism for skin, fabric, and objects by replicating the surface-light-interaction physics and micro-textures of the reference.]\n\n" +
-"### 14. Background & Chiều sâu (Setting & Spatial Depth)\n" +
+"### 15. Background & Chiều sâu (Setting & Spatial Depth)\n" +
 "- [WHAT (Locked Story/Character): Maintain story-specific environmental setting.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn depth of field (bokeh), background organization, and spatial depth logic (foreground/midground/background separation) from reference.]\n" +
 "- [Ref Analysis: Analyze depth of field, background organization, and spatial separation. Apply identical spatial logic and organizational depth, ensuring the background enhances the subject through the reference's specific environmental-design strategy and atmospheric perspective.]\n\n" +
-"### 15. Chất lượng render & Kỹ thuật vẽ (Render Quality & Technique)\n" +
+"### 16. Chất lượng render & Kỹ thuật vẽ (Render Quality & Technique)\n" +
 "- [WHAT (Locked Story/Character): Maintain overall story atmosphere.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn rendering technique (Painterly, Watercolor, Digital, Ink), medium texture, and detail distribution logic from reference.]\n" +
 "- [Ref Analysis: Analyze rendering technique, medium texture, and detail distribution. Apply identical finishing logic to achieve an elite, professional art piece that mimics the reference's final polish, brushstroke texture, and rendering-depth level.]\n\n" +
-"### 16. Negative constraints (Lỗi cần tránh)\n" +
+"### 17. Negative constraints (Lỗi cần tránh)\n" +
 "- [WHAT (Locked Story/Character): Maintain character integrity and avoid story-breaking elements.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn anti-generic/anti-AI style constraints from reference. Specifically avoid 'AI-face', 'AI-lighting', and 'AI-hair'.]\n" +
 "- [Ref Analysis: Analyze specific anti-generic/anti-AI style constraints (e.g., avoid plastic textures, smooth-over-detail, or default-AI-lighting). Strictly reject any AI-default look by mirroring the reference's sophisticated rendering and high-quality aesthetic constraints.]\n\n" +
-"### 17. Reference application rules (Quy tắc áp dụng tham chiếu)\n" +
+"### 18. Reference application rules (Quy tắc áp dụng tham chiếu)\n" +
 "- [WHAT (Locked Story/Character): Maintain story character fidelity and narrative accuracy.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn art/technical/visual logic for transformation from reference. Perform 'Visual DNA Inheritance'.]\n" +
 "- [Ref Analysis: Apply strict logic transformation: learn the reference's art/technical/visual logic (DNA) while maintaining story character fidelity. 100% reference-based line-art, hair geometry, eye architecture, and composition logic. Reject all literal content copying. Final output must be 100% original, story-accurate work with elite, high-fidelity art-direction.]\n\n" +
-"### 18. PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)\n" +
-"### 19. CANVA CONTENT & TYPOGRAPHY LOCK\n\n" +
+"### 19. PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)\n" +
+"### 20. CANVA CONTENT & TYPOGRAPHY LOCK\n\n" +
 "Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks starting immediately with [FINAL PROMPT]." : isComicMode
           ? coreMandates + "You are an AI Comic & Webtoon Prompt Generator inside a production workspace. Your task is to generate multi-panel comic page scripts, storyboards, and sequential storytelling layouts. You are not a tutor, not a prompt-writing teacher, not a checklist generator, and not an assistant explaining how to write prompts. Read the full Context Window and produce the final usable comic script directly adhering to aesthetic fidelity and storytelling consistency.\n\n" +
             "🚨 SUPREME MANDATE #0: CONTEXT WINDOW & ROOM MEMORY (QUY TẮC NHỚ RÕ TÊN PHÒNG VÀ YÊU CẦU CỦA APP) 🚨: You MUST actively read and perfectly remember the entire Context Window! You must clearly know the room's setup rules, the room's name, the working card's purpose, the system prompt's instructions, the feature's requirements, what the app needs, how it works, what exact content to return, which room you are currently in, and what this specific item requires! Do NOT generate generic prompts. Apply highly specialized, advanced vocabulary (Manga, Webtoon, Comic Framing, Cinematic Angles) required for THIS specific room's theme. Use the Context Window to its absolute fullest potential!\n\n" +

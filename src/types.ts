@@ -1,7 +1,6 @@
 export type Priority = "CRITICAL" | "VERY_HIGH" | "HIGH" | "MEDIUM" | "LOW";
 
 export type ReferenceRole =
-  | "MEDIUM_PRESERVATION"
   | "LINE_ART"
   | "HAIR_RENDERING"
   | "FACE_AND_EYES"
@@ -46,13 +45,6 @@ export interface SurfaceContent {
 }
 
 export interface VisualStyleDNA {
-  medium: {
-    type: "ANIME" | "REALISTIC" | "TRADITIONAL" | "3D" | "MIXED";
-    preservationMandate: string;
-    description?: string;
-    action?: "TRANSFER" | "ADAPT" | "REPLACE" | "REJECT";
-    priority: "CRITICAL";
-  };
   lineArt: {
     weight: string;
     sharpness: string;

@@ -12,31 +12,6 @@ type Props = {
 
 export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
   const [wallpaper, setWallpaper] = useState<string | null>(null);
-  const [activePage, setActivePage] = useState(0);
-  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const container = e.currentTarget;
-    const scrollLeft = container.scrollLeft;
-    const width = container.clientWidth;
-    if (width > 0) {
-      const page = Math.round(scrollLeft / width);
-      if (page !== activePage) {
-        setActivePage(page);
-      }
-    }
-  };
-
-  const scrollToPage = (pageIndex: number) => {
-    if (scrollContainerRef.current) {
-      const width = scrollContainerRef.current.clientWidth;
-      scrollContainerRef.current.scrollTo({
-        left: pageIndex * width,
-        behavior: "smooth"
-      });
-      setActivePage(pageIndex);
-    }
-  };
 
   // Deployment States
   const [showDeployModal, setShowDeployModal] = useState(false);
@@ -52,35 +27,6 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
     logUrl?: string;
     finishTime?: string;
   } | null>(null);
-
-  // PWA Install States & Events
-  const [pwaPrompt, setPwaPrompt] = useState<any>(() => (window as any).deferredPrompt || null);
-  const [showInstallModal, setShowInstallModal] = useState(false);
-
-  useEffect(() => {
-    const handlePrompt = (e: any) => {
-      setPwaPrompt(e.detail);
-    };
-    window.addEventListener('pwa-prompt-available', handlePrompt as EventListener);
-    return () => window.removeEventListener('pwa-prompt-available', handlePrompt as EventListener);
-  }, []);
-
-  const handleInstallPWA = async () => {
-    if (pwaPrompt) {
-      try {
-        pwaPrompt.prompt();
-        const { outcome } = await pwaPrompt.userChoice;
-        if (outcome === 'accepted') {
-          (window as any).deferredPrompt = null;
-          setPwaPrompt(null);
-        }
-      } catch (err) {
-        setShowInstallModal(true);
-      }
-    } else {
-      setShowInstallModal(true);
-    }
-  };
 
   useEffect(() => {
     const saved = getHomeWallpaper();
@@ -203,7 +149,7 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
     // If we are currently running on a specific Cloud Run domain or a development/production Run.app domain, we use it directly.
     // Otherwise, we fallback to the exact HTTPS URL of the production PWA.
     const origin = window.location.origin;
-    const fallbackUrl = "https://ais-dev-qei7yewrz5n2iskmcmqqpq-534993481089.asia-southeast1.run.app";
+    const fallbackUrl = "https://ais-pre-qei7yewrz5n2iskmcmqqpq-534993481089.asia-southeast1.run.app";
     
     if (origin && origin !== "null" && origin.includes(".run.app")) {
       window.open(origin, "_blank");
@@ -251,7 +197,7 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
         </header>
         
         <section className="home-widget pink-3-layer-card">
-          <img src="/assets/home-background.jpg" alt="" style={{ objectPosition: 'center 40%' }} referrerPolicy="no-referrer" />
+          <img src="https://i.postimg.cc/DfDBDy6B/591e0462b0fdbd4f23c06715e667aa3d.jpg" alt="" style={{ objectPosition: 'center 40%' }} referrerPolicy="no-referrer" />
           <div className="widget-copy">
             <small>Widgetsmith · Dâu tây ngọt ngào</small>
             <h2>Dâu tây chấm sữa</h2>
@@ -259,8 +205,7 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
           </div>
         </section>
         
-        <section className="home-pages" ref={scrollContainerRef} onScroll={handleScroll}>
-          {/* TRANG 1 */}
+        <section className="home-pages">
           <div className="home-page">
             <button className="app-icon" onClick={() => onOpenApp("lipstick")}>
               <span className="app-bubble" style={{background: 'linear-gradient(145deg, #fff, #ffe1ec)', border: '1px solid rgba(220,105,150,0.28)', boxShadow: '0 10px 24px rgba(232,106,153,0.18)'}}>
@@ -466,102 +411,9 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
               <span>Kẹo Ngọt🍬</span>
             </button>
           </div>
-
-          {/* TRANG 2 */}
-          <div className="home-page">
-            <button className="app-icon" onClick={() => onOpenApp("appleApp")}>
-              <span className="app-bubble" style={{
-                background: 'linear-gradient(135deg, #fff2f6, #ffccd9)',
-                border: '1px solid rgba(255,105,180,0.4)',
-                boxShadow: '0 10px 24px rgba(255,105,180,0.25), inset 0 0 12px rgba(255,182,193,0.5)',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  backgroundColor: 'rgba(255, 20, 147, 0.08)',
-                  mixBlendMode: 'color-burn',
-                  zIndex: 2,
-                  pointerEvents: 'none'
-                }} />
-                <div style={{
-                  position: 'relative',
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  filter: 'drop-shadow(0 0 5px rgba(255,20,147,0.55))',
-                  zIndex: 1
-                }}>
-                  <svg viewBox="0 0 64 64" style={{ width: '42px', height: '42px' }}>
-                    <defs>
-                      <linearGradient id="appleGlowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#ffb3d1" />
-                        <stop offset="50%" stopColor="#ff4d88" />
-                        <stop offset="100%" stopColor="#ff1493" />
-                      </linearGradient>
-                    </defs>
-                    <path d="M30 16 Q31 8 36 6 Q37 6 36 10 Q35 15 31 16 Z" fill="#8b5a2b" />
-                    <path d="M34 10 Q42 8 44 14 Q38 18 34 10 Z" fill="#5cb85c" />
-                    <path 
-                      d="M32 54 C16 42 10 32 14 20 C18 10 28 12 32 18 C36 12 46 10 50 20 C54 32 48 42 32 54 Z" 
-                      fill="url(#appleGlowGrad)" 
-                      stroke="#ff1493" 
-                      strokeWidth="2"
-                    />
-                    <circle cx="26" cy="28" r="1.5" fill="#fff" />
-                    <circle cx="38" cy="28" r="1.5" fill="#fff" />
-                    <path d="M29 33 Q32 35 35 33" stroke="#fff" strokeWidth="1" fill="none" strokeLinecap="round" />
-                  </svg>
-                </div>
-              </span>
-              <span>୨ৎ Quả Táo🍎</span>
-            </button>
-
-            <button className="app-icon" onClick={handleInstallPWA}>
-              <span className="app-bubble" style={{
-                background: 'linear-gradient(135deg, #fff0f6, #ffdeeb)',
-                border: '1px solid rgba(219,39,119,0.4)',
-                boxShadow: '0 10px 24px rgba(219,39,119,0.25), inset 0 0 12px rgba(244,114,182,0.5)',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  backgroundColor: 'rgba(219,39,119,0.1)',
-                  mixBlendMode: 'color-burn',
-                  zIndex: 2,
-                  pointerEvents: 'none'
-                }} />
-                <div style={{
-                  position: 'relative',
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  filter: 'drop-shadow(0 0 5px rgba(219,39,119,0.55))',
-                  zIndex: 1
-                }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="#db2777" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '36px', height: '36px' }}>
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                </div>
-              </span>
-              <span>Cài Đặt App📲</span>
-            </button>
-          </div>
         </section>
         
-        <div className="home-dots">
-          <i className={activePage === 0 ? "active" : ""} onClick={() => scrollToPage(0)}></i>
-          <i className={activePage === 1 ? "active" : ""} onClick={() => scrollToPage(1)}></i>
-        </div>
+        <div className="home-dots"><i></i></div>
         
         <nav className="home-dock">
           <button className="dock-item" onClick={() => onOpenApp("home")} aria-label="Trang chủ">
@@ -863,90 +715,6 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
               }}
             >
               Cảm ơn chồng yêu! ❤️
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showInstallModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(52, 35, 43, 0.45)',
-          backdropFilter: 'blur(6px)',
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px'
-        }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #ffffff 0%, #fff5f8 100%)',
-            border: '2.5px solid #ffb3d1',
-            borderRadius: '28px',
-            width: '100%',
-            maxWidth: '350px',
-            padding: '24px',
-            boxShadow: '0 20px 40px rgba(255, 105, 180, 0.25)',
-            position: 'relative',
-            color: '#5c3a47',
-            animation: 'scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
-          }}>
-            {/* Modal Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', justifyContent: 'center' }}>
-              <span style={{ fontSize: '24px' }}>📲</span>
-              <h3 style={{ margin: 0, fontWeight: 900, fontSize: '18px', color: '#d23a73' }}>
-                Hướng Dẫn Cài Đặt PWA
-              </h3>
-            </div>
-
-            <p style={{ margin: '0 0 16px', fontSize: '13px', lineHeight: 1.5, fontWeight: 700, color: '#7e5264', textAlign: 'center' }}>
-              Chào vợ yêu! Để trải nghiệm app mượt mà full-screen như ứng dụng di động thực tế, vợ cài đặt theo hướng dẫn dưới đây nha:
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left', marginBottom: '20px' }}>
-              {/* Android Chrome */}
-              <div style={{ background: 'rgba(255,105,180,0.05)', padding: '10px 14px', borderRadius: '16px', border: '1px solid rgba(255,105,180,0.15)' }}>
-                <strong style={{ display: 'block', fontSize: '13px', color: '#dc5789', marginBottom: '4px' }}>🤖 Android (Chrome)</strong>
-                <p style={{ margin: 0, fontSize: '12px', lineHeight: 1.45, fontWeight: 600, color: '#6d4c5c' }}>
-                  Bấm dấu <strong>3 chấm</strong> dọc ở góc trên bên phải Chrome ➔ chọn <strong>"Cài đặt ứng dụng"</strong> hoặc <strong>"Thêm vào M.hình chính"</strong>.
-                </p>
-              </div>
-
-              {/* iOS Safari */}
-              <div style={{ background: 'rgba(255,105,180,0.05)', padding: '10px 14px', borderRadius: '16px', border: '1px solid rgba(255,105,180,0.15)' }}>
-                <strong style={{ display: 'block', fontSize: '13px', color: '#dc5789', marginBottom: '4px' }}>🍎 iOS / iPhone (Safari)</strong>
-                <p style={{ margin: 0, fontSize: '12px', lineHeight: 1.45, fontWeight: 600, color: '#6d4c5c' }}>
-                  Bấm nút <strong>Chia sẻ (Share)</strong> ➔ kéo xuống dưới và chọn <strong>"Thêm vào MH chính" (Add to Home Screen)</strong> ➔ bấm <strong>Thêm (Add)</strong>.
-                </p>
-              </div>
-
-              {/* Desktop */}
-              <div style={{ background: 'rgba(255,105,180,0.05)', padding: '10px 14px', borderRadius: '16px', border: '1px solid rgba(255,105,180,0.15)' }}>
-                <strong style={{ display: 'block', fontSize: '13px', color: '#dc5789', marginBottom: '4px' }}>🖥️ Máy tính (PC / Chrome)</strong>
-                <p style={{ margin: 0, fontSize: '12px', lineHeight: 1.45, fontWeight: 600, color: '#6d4c5c' }}>
-                  Bấm biểu tượng <strong>Cài đặt (hình màn hình)</strong> ở cuối thanh địa chỉ hoặc bấm dấu 3 chấm ➔ chọn <strong>"Cài đặt ứng dụng..."</strong>.
-                </p>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => setShowInstallModal(false)}
-              style={{
-                width: '100%',
-                background: 'linear-gradient(135deg, #ff9fdb 0%, #ff6fa9 100%)',
-                border: 'none',
-                borderRadius: '50px',
-                color: '#ffffff',
-                fontSize: '14px',
-                fontWeight: 800,
-                padding: '12px 16px',
-                cursor: 'pointer',
-                boxShadow: '0 8px 18px rgba(255, 111, 169, 0.3)',
-                outline: 'none'
-              }}
-            >
-              Em hiểu rồi, cảm ơn chồng! ❤️
             </button>
           </div>
         </div>

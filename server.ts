@@ -37,16 +37,6 @@ async function startServer() {
     next();
   });
 
-  // Cấu hình Header chính xác cho PWA Manifest để trình duyệt Chrome Android nhận diện và cho phép "Cài đặt ứng dụng"
-  app.get("/manifest.json", (req, res, next) => {
-    res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
-    next();
-  });
-  app.get("/manifest.webmanifest", (req, res, next) => {
-    res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
-    next();
-  });
-
   // /api/test-proxy
   app.post("/api/test-proxy", async (req, res) => {
     try {
