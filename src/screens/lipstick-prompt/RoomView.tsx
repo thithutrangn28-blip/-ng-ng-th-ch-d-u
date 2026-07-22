@@ -1,6 +1,24 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { LipstickState, LipstickStory, LipstickRoomState, LipstickImageRef } from "../../lib/lipstick-types";
-import { PRESET_BACKGROUNDS, rooms as ROOMS_DATA } from "../../lib/lipstick-rooms-data";
+import { PRESET_BACKGROUNDS, rooms as ROOMS_DATA, errorGuard } from "../../lib/lipstick-rooms-data";
+
+const supremeCommandCard = {
+  id: "supreme_command",
+  title: "THẺ LỆNH TỐI CAO — SUPREME VISUAL INTELLIGENCE COMMAND",
+  desc: "Phân tích, thực thi và tối ưu hóa toàn bộ các thẻ công việc trong phòng để đạt chất lượng cao nhất.",
+  instruction: "Phân tích, thực thi và tối ưu hóa toàn bộ các thẻ công việc trong phòng để đạt chất lượng cao nhất.",
+  visual: "supreme intelligence architecture, analytical perfection, visual masterpiece, high-end quality control, flawless execution",
+  errorGuard: "BẮT BUỘC: Phân tích tổng thể yêu cầu, đảm bảo cấu trúc nghệ thuật hoàn hảo, không có lỗi cấu trúc, không có lỗi ánh sáng, không có lỗi chi tiết, phản hồi chất lượng cao nhất tuyệt đối."
+};
+
+const masterErrorCard = {
+  id: "master_error_card",
+  title: "ABSOLUTE PROHIBITED ERROR MASTER CARD",
+  desc: "Tổng hợp và kiểm soát tất cả các lỗi tiềm ẩn từ các thẻ trước, đảm bảo không có vi phạm nào.",
+  instruction: "Tổng hợp và kiểm soát tất cả các lỗi tiềm ẩn từ các thẻ trước, đảm bảo không có vi phạm nào.",
+  visual: "master error control, flawless correction, absolute quality assurance, error-free final output, perfection guarantee",
+  errorGuard: "BẮT BUỘC: Kiểm tra lại toàn bộ ảnh cuối cùng, loại bỏ tuyệt đối bất kỳ lỗi nào còn sót lại từ các bước trước, đảm bảo không có lỗi anatomy, không có lỗi chi tiết, không có lỗi cấu trúc, hoàn thiện 100%."
+};
 import { callAIText, callAIStream } from "../../lib/api-client";
 import { buildFinalPayload } from "../../utils/promptBuilder";
 import { copyToClipboardSafe } from "../../lib/clipboard";
@@ -720,6 +738,10 @@ const WorkCardItem = React.memo(function WorkCardItem({
       </div>
       <div className="work-body">
         <div className="guide"><b>Nhiệm vụ / từ khóa nhanh của thẻ</b><br/>{c.quick}</div>
+        <div className="error-guard-block" style={{marginTop: '10px', padding: '10px', background: '#fff0f5', border: '1px solid #ffcdd2', borderRadius: '8px'}}>
+          <p style={{color: '#c62828', fontSize: '12px', fontWeight: 'bold'}}>⚠️ Kiểm soát lỗi cho thẻ {c.title || c.name}:</p>
+          <p style={{color: '#d32f2f', fontSize: '12px'}}>{c.errorGuard || errorGuard}</p>
+        </div>
         {c.id === "target" && (
           <div className="target-selector">
             {renderTargetSelector(false)}
@@ -1092,6 +1114,1350 @@ const WorkCardItem = React.memo(function WorkCardItem({
     </article>
   );
 }, areEqual);
+
+const CINEMATIC_VISUAL_INTELLIGENCE_EXPANSION = `
+
+★ SUPREME ADDITIVE DIRECTIVE: CINEMATIC VISUAL INTELLIGENCE, FOCAL HIERARCHY & REFERENCE-ADAPTIVE ART DIRECTION
+
+This directive is additive. It does not replace Story Canon, Character Canon, room requirements, card requirements, existing style locks, or existing output structure.
+
+Your task is not merely to mention camera terminology, composition terminology, lighting terminology, anatomy terminology, or aesthetic keywords.
+
+You must perform actual visual-direction reasoning before writing the final image prompt.
+
+The image must not merely be correct in subject matter.
+
+It must possess a deliberate focal idea, cinematic spatial organization, coherent body scale, memorable visual rhythm, and an immediately readable artistic priority.
+
+★ PRIMARY FAILURE TO PREVENT
+
+A technically valid image may still fail when:
+
+★ The camera is ordinary and emotionally neutral.
+
+★ The character is centered without purpose.
+
+★ The face occupies too little of the frame to carry expression.
+
+★ The head, neck, shoulders, torso, arms, and hands do not share one coherent proportional system.
+
+★ The environment is populated with many unrelated attractive objects.
+
+★ Hair volume overwhelms the face or body.
+
+★ Glow, particles, bokeh, flowers, paper, notes, butterflies, lens flares, or decorative effects compete equally for attention.
+
+★ Every area has similar contrast, detail, sharpness, and saturation.
+
+★ The prompt describes many elements but does not tell the viewer where to look first.
+
+★ The image is pleasant but visually forgettable.
+
+You must explicitly solve these problems.
+
+★ CINEMATIC DECISION ORDER
+
+Before writing visual details, internally decide the following in this exact order:
+
+★ What is the single primary visual event of this image?
+
+★ What must the viewer notice within the first half-second?
+
+★ What emotional information must become visible within the next two seconds?
+
+★ Which facial feature, gesture, silhouette, object, light boundary, or spatial relationship carries that information?
+
+★ What camera position reveals that information most powerfully?
+
+★ What subject scale is required for that information to remain readable?
+
+★ What composition structure holds the eye inside the frame?
+
+★ What elements should be reduced, softened, cropped, darkened, simplified, or removed?
+
+★ What one memorable visual signature prevents the image from feeling generic?
+
+Do not begin by choosing a lens number.
+
+Do not begin by adding cinematic lighting.
+
+Do not begin by filling the background.
+
+Begin with the visual event and focal hierarchy.
+
+★ THE ONE-DOMINANT-IDEA RULE
+
+Every image must have one dominant visual idea.
+
+Examples of dominant visual ideas include:
+
+★ A face caught at the boundary between warm window light and cool interior shadow.
+
+★ A hand pausing above a meaningful object.
+
+★ A long body silhouette stretched through a dramatic diagonal.
+
+★ A figure framed inside architecture that reveals status or isolation.
+
+★ A pair of characters connected by gaze, touch, distance, or opposing movement.
+
+★ A circular arrangement that encloses a subject without dissolving into decorative clutter.
+
+Only one idea may hold the highest hierarchy.
+
+Secondary elements must support it.
+
+Tertiary elements must provide context.
+
+Decorative elements must remain subordinate.
+
+If everything glows, nothing glows.
+
+If every object is sharp, nothing is focal.
+
+If every color is saturated, no accent color exists.
+
+If every area is detailed, the image has no visual breathing space.
+`;
+
+const CINEMATIC_CAMERA_INTELLIGENCE = `
+
+★ CAMERA INTENTION ENGINE
+
+The camera must be selected according to narrative purpose, not according to fashionable vocabulary.
+
+For every prompt, determine:
+
+★ Camera height relative to the subject’s eyes, chest, waist, hands, or floor.
+
+★ Horizontal position relative to the subject.
+
+★ Distance from subject.
+
+★ Direction of optical axis.
+
+★ Degree of tilt.
+
+★ Crop boundaries.
+
+★ Perspective strength.
+
+★ Foreground obstruction or framing.
+
+★ Subject-to-frame ratio.
+
+★ Relationship between lens behavior and facial/body proportions.
+
+Each choice must have a visual consequence.
+
+★ EYE-LEVEL CAMERA
+
+Use eye level when equality, emotional access, sincerity, calm observation, or direct connection is required.
+
+Do not use eye level as the default merely because it is safe.
+
+An eye-level composition must still establish:
+
+★ Off-center placement.
+
+★ Meaningful negative space.
+
+★ Directional gaze.
+
+★ Foreground framing.
+
+★ Depth layers.
+
+★ A purposeful crop.
+
+★ A contrast boundary around the face.
+
+★ HIGH-ANGLE CAMERA
+
+Use a high angle when the scene benefits from vulnerability, intimacy, intellectual workspace overview, geometric organization, isolation, environmental storytelling, or a visible relationship between hands, objects, and the subject.
+
+A high angle must not simply shrink the subject.
+
+Protect:
+
+★ Facial readability.
+
+★ Neck length.
+
+★ Shoulder width.
+
+★ Torso length.
+
+★ Hand scale.
+
+★ Book, desk, prop, or environmental geometry.
+
+Avoid the common failure where the head becomes disproportionately large and the torso collapses beneath it.
+
+★ LOW-ANGLE CAMERA
+
+Use a low angle when status, scale, power, confidence, monumentality, speed, theatrical presence, fashion impact, or environmental height is important.
+
+Protect the face from excessive chin distortion.
+
+Protect legs and feet from uncontrolled wide-angle enlargement.
+
+Do not use low angle solely to make an image “cinematic.”
+
+★ THREE-QUARTER CAMERA
+
+Use a three-quarter view when facial depth, hair silhouette, shoulder rotation, costume layering, spatial perspective, or character personality benefits from asymmetry.
+
+The three-quarter angle must preserve:
+
+★ Correct far-eye size.
+
+★ Nose bridge direction.
+
+★ Jaw rotation.
+
+★ Ear placement.
+
+★ Neck connection.
+
+★ Shoulder perspective.
+
+★ Hair wrapping around the skull.
+
+★ DUTCH ANGLE
+
+A Dutch angle is a rotation of the camera frame or horizon.
+
+It is not a tilted head.
+
+Use it only for instability, urgency, playfulness, fashion energy, psychological tension, directional momentum, or a deliberately graphic composition.
+
+The angle must influence:
+
+★ Horizon.
+
+★ Vertical architecture.
+
+★ Furniture alignment.
+
+★ Body diagonal.
+
+★ Leading lines.
+
+★ Foreground placement.
+
+Do not label a composition Dutch angle when only the character leans.
+
+★ TOP-DOWN AND OVERHEAD
+
+Use top-down views when the arrangement of body, objects, fabric, hair, books, flowers, tools, or graphic shapes is itself the narrative.
+
+Protect anatomical foreshortening.
+
+Do not flatten the character into disconnected parts.
+
+Hair must spread according to gravity and surface contact, not form a decorative halo without weight.
+
+★ EXTREME CLOSE-UP
+
+Use an extreme close-up only when eyes, lips, fingers, tears, texture, or a meaningful object carries the entire emotional scene.
+
+Do not include a wide environmental description that cannot appear in the crop.
+
+★ MEDIUM CLOSE-UP
+
+Use a medium close-up when facial expression and upper-body gesture share equal importance.
+
+The face should remain large enough to show eye architecture and micro-expression.
+
+The shoulders and hands must not be accidentally cropped at joints.
+
+★ MEDIUM SHOT
+
+Use a medium shot when posture, clothing, hand action, and environment all matter.
+
+Do not allow the face to become too small merely to show more background.
+
+★ FULL-BODY SHOT
+
+Use full body when silhouette, height, fashion, movement, status, or body language is essential.
+
+The character must occupy enough of the frame to preserve identity.
+
+Do not shrink a tall adult into a distant decorative figure.
+
+★ WIDE SHOT
+
+Use a wide shot when the environment carries narrative power.
+
+The subject may be smaller, but must remain identifiable through silhouette, contrast, placement, lighting, or movement.
+
+Do not treat a wide shot as permission to abandon facial and proportional logic.
+
+★ LENS SELECTION MUST MATCH THE DESCRIPTION
+
+A lens value is meaningful only when its visual behavior is described.
+
+★ Wide-angle behavior increases spatial expansion, foreground scale, diagonal energy, depth separation, and edge distortion.
+
+★ Normal-lens behavior preserves natural spatial relationships and balanced environmental context.
+
+★ Short-telephoto behavior compresses depth, stabilizes facial proportions, isolates expression, and reduces spatial exaggeration.
+
+★ Long-telephoto behavior strongly compresses depth and layers distant planes.
+
+Never combine incompatible claims such as:
+
+★ Extreme wide-angle expansion with strong telephoto compression.
+
+★ Deep environmental clarity with very shallow portrait depth of field.
+
+★ Flat graphic illustration with photographic lens artifacts that are not part of the selected visual language.
+`;
+
+const SUBJECT_SCALE_AND_PROPORTION_INTELLIGENCE = `
+
+★ SUBJECT SCALE & FRAME OCCUPANCY ENGINE
+
+The prompt must explicitly determine how large the character appears inside the frame.
+
+Do not leave subject scale implicit.
+
+For every character image, define:
+
+★ Approximate percentage of frame height occupied by the character.
+
+★ Approximate percentage of frame width occupied by the visible silhouette.
+
+★ Face size relative to the full canvas.
+
+★ Headroom.
+
+★ Space below the body.
+
+★ Side negative space.
+
+★ Crop boundaries.
+
+★ Whether hair extends beyond the body silhouette.
+
+★ Whether foreground objects overlap the subject.
+
+★ Whether the environment is subordinate, equal, or dominant.
+
+The chosen scale must serve the visual objective.
+
+★ FACE READABILITY LOCK
+
+When facial emotion is important:
+
+★ The face must remain large enough for eye shape, iris construction, eyelid weight, nose placement, lip shape, cheek volume, and micro-expression to be visible.
+
+★ Do not place the face too far from the viewer while still claiming detailed emotional portraiture.
+
+★ Do not let oversized hair masses reduce the apparent size of the face.
+
+★ Do not allow strong background contrast to overpower the facial region.
+
+★ Create a controlled value, color, edge, or light separation around the face.
+
+★ HEAD-TO-BODY COHERENCE
+
+Before describing beauty details, establish one coherent proportional system.
+
+Check:
+
+★ Head height relative to total body height.
+
+★ Skull width relative to shoulder width.
+
+★ Neck length relative to head height.
+
+★ Neck thickness relative to jaw and shoulders.
+
+★ Shoulder width relative to ribcage and pelvis.
+
+★ Torso length relative to upper and lower limbs.
+
+★ Hand length relative to face and forearm.
+
+★ Pelvis position relative to ribcage.
+
+★ Thigh length relative to lower leg.
+
+★ Foot scale relative to body height.
+
+Do not independently stylize each body part.
+
+The head, neck, shoulders, torso, arms, hands, pelvis, legs, and feet must appear to belong to the same individual.
+
+★ ADULT PROPORTION PROTECTION
+
+For adult or late-teen characters with tall or elegant profiles:
+
+★ Preserve a sufficiently small head relative to body height.
+
+★ Preserve visible neck length.
+
+★ Preserve shoulder structure.
+
+★ Preserve ribcage and torso length.
+
+★ Preserve long limbs when specified.
+
+★ Preserve hand size.
+
+★ Preserve mature facial planes appropriate to the stated age.
+
+Do not accidentally convert a tall adult into:
+
+★ A short schoolgirl body.
+
+★ A chibi-adjacent figure.
+
+★ A doll with an oversized head.
+
+★ A narrow torso beneath a large hairstyle.
+
+★ A character with tiny shoulders and tiny hands.
+
+★ CROPPING SAFETY
+
+Avoid crop lines directly through:
+
+★ Elbows.
+
+★ Wrists.
+
+★ Knees.
+
+★ Ankles.
+
+★ Chin.
+
+★ Top of the skull unless deliberately designed as an extreme close-up.
+
+If a body part is cropped, the remaining anatomy must still communicate its continuation clearly.
+
+★ PERSPECTIVE PROPORTION
+
+Distinguish true anatomical proportion from camera-induced scale.
+
+When a hand is close to the camera, describe intentional foreshortening.
+
+When the head is closer to the camera than the torso, control facial enlargement.
+
+When using high angle, protect torso length.
+
+When using low angle, protect head and chin structure.
+
+When using wide angle, keep edge distortion away from important facial features unless intentionally expressive.
+
+★ CHARACTER-ENVIRONMENT SCALE
+
+The environment must confirm the character’s scale.
+
+Use doors, chairs, desks, books, windows, furniture, stairs, architecture, plants, or props consistently.
+
+Do not make a book, desk, chair, flower, cup, or window vary arbitrarily in size merely to fill the composition.
+`;
+
+const POSE_AND_GESTURE_INTELLIGENCE = `
+
+★ POSE DESIGN IS NOT A LIST OF LIMB POSITIONS
+
+A strong pose must contain:
+
+★ A readable action line.
+
+★ A center of gravity.
+
+★ A weight-bearing structure.
+
+★ A clear relationship between ribcage and pelvis.
+
+★ A shoulder angle.
+
+★ A hip angle.
+
+★ A head direction.
+
+★ A gaze direction.
+
+★ A hand intention.
+
+★ A silhouette that can be understood without facial detail.
+
+The pose must reveal personality, emotion, status, occupation, or narrative action.
+
+★ AVOID DEFAULT ATTRACTIVE POSES
+
+Do not automatically use:
+
+★ One hand near the face.
+
+★ Fingers touching a hair strand.
+
+★ Slight head tilt.
+
+★ Soft smile.
+
+★ Body facing forward with shoulders gently rotated.
+
+★ Book held at chest level.
+
+★ Hands clasped demurely in front.
+
+These poses may be used only when supported by the story and given an exact physical and emotional purpose.
+
+★ POSE-SCENE CONNECTION
+
+The body must respond to the environment.
+
+Examples:
+
+★ A person sewing must have hand positions, shoulder posture, wrist angle, visual focus, and tool interaction consistent with sewing.
+
+★ A person reading must have a believable grip, page support, eye line, torso orientation, and book weight.
+
+★ A person standing in wind must show directional response in clothing and hair without losing balance.
+
+★ A person leaning over a desk must show compression at the waist, shoulder displacement, elbow support, and changed head-to-camera distance.
+
+★ A seated subject must visibly transfer weight into the chair, floor, cushion, bed, or surface.
+
+★ HAND STORYTELLING
+
+Hands must not be decorative accessories.
+
+For every visible hand, specify:
+
+★ Function.
+
+★ Contact point.
+
+★ Palm orientation.
+
+★ Finger grouping.
+
+★ Joint bend.
+
+★ Grip pressure.
+
+★ Tension or relaxation.
+
+★ Relationship with sleeves, objects, hair, another person, or the body.
+
+★ Whether the hand leads the viewer’s eye toward the focal point.
+
+Avoid:
+
+★ Floating hands.
+
+★ Identical mirrored hand poses.
+
+★ Fingers resting on objects without believable contact.
+
+★ Unnecessary hair-touching gestures.
+
+★ Hands hidden solely because anatomy is difficult.
+
+★ Silky generic fingers with no joints.
+
+★ BODY SILHOUETTE HIERARCHY
+
+The pose should create a dominant silhouette shape.
+
+Possible silhouette logic:
+
+★ Long diagonal.
+
+★ S-curve.
+
+★ C-curve.
+
+★ Triangular stability.
+
+★ Open expansive gesture.
+
+★ Closed protective gesture.
+
+★ Vertical authority.
+
+★ Compressed intimate shape.
+
+Do not mix several contradictory pose rhythms in one figure.
+
+★ EXPRESSION AND BODY MUST AGREE
+
+A gentle face with highly tense shoulders is a contradiction unless narratively intentional.
+
+A confident expression with collapsed posture weakens status.
+
+A melancholic gaze with an energetic advertising pose weakens emotion.
+
+The facial expression, head tilt, shoulders, spine, arms, hands, and lower body must express the same emotional event.
+`;
+
+const HAIR_FACE_AND_ANTI_PLASTIC_INTELLIGENCE = `
+
+★ HAIR MUST SUPPORT THE FACE, NOT CONSUME THE IMAGE
+
+Hair is a designed mass system.
+
+Before describing strands, determine:
+
+★ Overall silhouette.
+
+★ Skull-following root structure.
+
+★ Parting.
+
+★ Primary mass direction.
+
+★ Secondary locks.
+
+★ Weight distribution.
+
+★ Density around the face.
+
+★ Density behind shoulders.
+
+★ Relationship with neck and clothing.
+
+★ Areas of compression.
+
+★ Areas of separation.
+
+★ Gravity and airflow.
+
+★ Highlight hierarchy.
+
+Do not solve weak hair design by adding more shine, more flyaways, more ribbons, more highlights, or more volume.
+
+★ ANTI-INFLATED-CROWN LOCK
+
+Prevent:
+
+★ Artificially inflated crown height.
+
+★ Hair beginning too far above the skull.
+
+★ A helmet-like rounded upper mass.
+
+★ Excessive root lift unrelated to hairstyle or gravity.
+
+★ A face appearing tiny beneath an oversized dome of hair.
+
+The hairline and crown must follow believable skull volume.
+
+★ ANTI-RIBBON-HAIR LOCK
+
+Prevent:
+
+★ Every lock having the same width.
+
+★ Repeated S-curves.
+
+★ Long glossy ribbons wrapping around the body without gravity.
+
+★ Identical pointed tips.
+
+★ Highlight stripes repeated on every lock.
+
+★ Hair forming decorative loops unrelated to motion.
+
+Use varied mass sizes, overlap depth, compression, lost edges, controlled separation, and purposeful contour rhythm.
+
+★ HIGHLIGHT DISCIPLINE
+
+Hair highlights must be caused by light and material behavior.
+
+Define:
+
+★ Source direction.
+
+★ Width.
+
+★ Edge softness.
+
+★ Value.
+
+★ Color.
+
+★ Continuity.
+
+★ Interruption by form changes.
+
+★ Whether the selected art medium uses broad graphic shapes, narrow strips, broken brush marks, watercolor gaps, ink hatching, or realistic specular response.
+
+Do not automatically use:
+
+★ Angel-ring highlights.
+
+★ Metallic shine.
+
+★ Wet gloss.
+
+★ White edge outlines.
+
+★ Pink-purple reflective bands.
+
+★ FACE SIZE AND HAIR BALANCE
+
+The facial region must retain visual authority.
+
+Hair must frame the face through:
+
+★ Controlled value contrast.
+
+★ Contour opening.
+
+★ Directional locks.
+
+★ Reduced detail near critical facial landmarks.
+
+★ Deliberate separation between cheek contour and hair edge.
+
+Do not let black hair merge into a single dark mass that shrinks the face.
+
+Do not surround the face with equally sharp strands on every side.
+
+★ FACE CONSTRUCTION
+
+A detailed face requires more than large glossy eyes.
+
+Describe:
+
+★ Cranial direction.
+
+★ Forehead-to-brow transition.
+
+★ Eye socket placement.
+
+★ Cheek plane.
+
+★ Nose bridge.
+
+★ Mouth plane.
+
+★ Jaw transition.
+
+★ Chin projection.
+
+★ Far-side facial compression in three-quarter view.
+
+★ Ear position relative to brow and nose.
+
+★ Neck attachment.
+
+★ EYE ARCHITECTURE
+
+Control:
+
+★ Eye width.
+
+★ Eye spacing.
+
+★ Upper and lower lid shape.
+
+★ Iris size.
+
+★ Pupil size.
+
+★ Catchlight count.
+
+★ Catchlight placement.
+
+★ Lash grouping.
+
+★ Tear-line visibility.
+
+★ Gaze convergence.
+
+★ Asymmetry caused by perspective.
+
+Do not replace depth with oversized irises, excessive sparkles, wet gloss, star reflections, or many catchlights.
+
+★ SKIN MATERIAL LOCK
+
+Skin rendering must match the medium.
+
+For anime, manga, cel shading, watercolor, graphic illustration, or painterly art:
+
+★ Use medium-appropriate color planes.
+
+★ Use controlled blush.
+
+★ Use deliberate edge transitions.
+
+★ Preserve facial structure.
+
+Avoid:
+
+★ Wax skin.
+
+★ Porcelain doll skin.
+
+★ Translucent plastic skin.
+
+★ Full-face peach glow.
+
+★ Wet highlights on nose, lips, cheeks, and chin simultaneously.
+
+★ Photographic subsurface scattering pasted onto flat illustration.
+`;
+
+const COMPOSITION_AND_FOCAL_HIERARCHY_INTELLIGENCE = `
+
+★ FOCAL HIERARCHY MUST BE EXPLICIT
+
+Every final prompt must identify:
+
+★ Primary focal point.
+
+★ Secondary focal point.
+
+★ Tertiary supporting information.
+
+★ Visual resting area.
+
+★ Lowest-priority decorative area.
+
+The prompt must state how hierarchy is created through:
+
+★ Scale.
+
+★ Contrast.
+
+★ Sharpness.
+
+★ Saturation.
+
+★ Edge density.
+
+★ Light.
+
+★ Color temperature.
+
+★ Placement.
+
+★ Isolation.
+
+★ Gesture.
+
+★ Gaze.
+
+★ Leading lines.
+
+★ Overlap.
+
+★ Negative space.
+
+★ FIRST-READ TEST
+
+The primary focal point must be readable in less than half a second.
+
+If the primary focal point is the face:
+
+★ Preserve facial scale.
+
+★ Create local contrast.
+
+★ Direct gaze, hands, hair flow, architecture, or light toward it.
+
+★ Reduce competing highlights elsewhere.
+
+If the primary focal point is a gesture:
+
+★ Make the hand-object relationship readable.
+
+★ Avoid background overlap.
+
+★ Use directional lighting or edge separation.
+
+If the primary focal point is a full-body silhouette:
+
+★ Preserve subject scale.
+
+★ Simplify the background immediately around the silhouette.
+
+★ Use vertical, diagonal, circular, or architectural framing intentionally.
+
+★ VISUAL PATH
+
+The viewer’s eye must have a designed route.
+
+Possible route:
+
+★ Foreground object to hand to face to background clue.
+
+★ Face to gaze target to meaningful prop.
+
+★ Hair curve to shoulder to hand to object.
+
+★ Architectural diagonal to subject to light source.
+
+★ Circular frame to face to costume detail to environment.
+
+The eye path must not lead outside the frame immediately.
+
+Avoid unrelated lines that point away from the subject.
+
+★ FOREGROUND INTELLIGENCE
+
+Foreground blur or obstruction can create cinematic depth when it:
+
+★ Frames the subject.
+
+★ Establishes location.
+
+★ Creates scale.
+
+★ Leads the eye.
+
+★ Separates spatial planes.
+
+Do not place large blurred objects randomly at the edges simply to imitate photography.
+
+Foreground elements must have identifiable environmental logic.
+
+★ NEGATIVE SPACE
+
+Negative space is not empty failure.
+
+Use it to:
+
+★ Isolate the face.
+
+★ Support typography.
+
+★ Clarify silhouette.
+
+★ Create emotional distance.
+
+★ Balance a dense area.
+
+★ Allow light to breathe.
+
+Do not fill every quiet area with flowers, particles, notes, books, papers, butterflies, ribbons, sparkles, frames, symbols, or floating objects.
+
+★ DETAIL DENSITY MAP
+
+The most important area receives:
+
+★ Highest edge precision.
+
+★ Strongest meaningful contrast.
+
+★ Most specific texture.
+
+★ Most controlled color variation.
+
+Supporting areas receive reduced detail.
+
+Distant areas receive simplified shapes and atmospheric grouping.
+
+Do not render every book, flower, hair tip, fabric edge, note, wall object, and particle with equal sharpness.
+
+★ TANGENCY CONTROL
+
+Prevent:
+
+★ Lines touching the top of the head.
+
+★ Objects growing from shoulders.
+
+★ Window frames cutting through facial features.
+
+★ Flowers touching eyes or lips.
+
+★ Hair merging into background frames.
+
+★ Fingers aligning with book edges ambiguously.
+
+★ Circular motifs forming accidental halos unless intentionally symbolic.
+
+★ Furniture edges intersecting joints.
+
+★ CENTERED COMPOSITION
+
+Centered composition is allowed only when it creates:
+
+★ Formality.
+
+★ Symmetry.
+
+★ Iconic presence.
+
+★ Ritual.
+
+★ Poster hierarchy.
+
+★ Stillness.
+
+★ Divine or ceremonial framing.
+
+A centered subject must not be used simply because the model cannot design asymmetry.
+`;
+
+const LIGHTING_COLOR_AND_EFFECT_CONTROL = `
+
+★ LIGHTING MUST SHAPE FORM AND HIERARCHY
+
+Lighting is not a decorative overlay.
+
+For each scene, define:
+
+★ Source type.
+
+★ Source position.
+
+★ Source size.
+
+★ Direction.
+
+★ Intensity.
+
+★ Color temperature.
+
+★ Shadow direction.
+
+★ Shadow edge behavior.
+
+★ Bounce environment.
+
+★ Material response.
+
+★ Focal function.
+
+The key light must explain:
+
+★ Facial planes.
+
+★ Hair mass.
+
+★ Shoulder and torso volume.
+
+★ Hand-object contact.
+
+★ Fabric folds.
+
+★ Environmental depth.
+
+★ WARM WINDOW LIGHT CONTROL
+
+Warm sunset or window light must not become a full-image yellow filter.
+
+Preserve:
+
+★ Local skin color.
+
+★ Hair undertones.
+
+★ Cool interior shadows.
+
+★ Neutral material colors.
+
+★ Separation between lit and unlit planes.
+
+★ Contact shadows.
+
+★ Shadow color variation.
+
+★ RIM-LIGHT DISCIPLINE
+
+Use rim light only where the subject is backlit.
+
+The rim must follow the silhouette facing the source.
+
+Do not outline the entire body uniformly.
+
+Do not place bright white rims on both sides without multiple justified sources.
+
+★ GLOW CONTROL
+
+Glow must originate from a luminous object or intense reflected source.
+
+Prevent:
+
+★ Glow from ordinary flowers.
+
+★ Glow from paper without magic.
+
+★ Glow from every strand of hair.
+
+★ Glow around the entire face.
+
+★ Glow covering structural line art.
+
+★ Bloom that erases textile detail.
+
+★ PARTICLE CONTROL
+
+Particles, dust, petals, sparkles, floating notes, butterflies, and paper must have:
+
+★ A narrative reason.
+
+★ A physical or magical force.
+
+★ A direction.
+
+★ A depth layer.
+
+★ A density limit.
+
+★ A hierarchy.
+
+Do not scatter luminous dots uniformly across the canvas.
+
+Do not use particles to make a weak composition appear rich.
+
+★ COLOR HIERARCHY
+
+Define:
+
+★ Dominant color family.
+
+★ Supporting color family.
+
+★ Accent color.
+
+★ Shadow family.
+
+★ Highlight family.
+
+★ Skin color behavior.
+
+★ Hair color behavior.
+
+★ Background restraint.
+
+The accent color must occupy a limited area.
+
+Do not allow purple, pink, blue, gold, white, and black to compete at equal intensity.
+
+★ CONTRAST MAP
+
+Highest contrast belongs near the primary focal point.
+
+Medium contrast belongs to secondary information.
+
+Low contrast belongs to atmosphere and distant background.
+
+Do not place the brightest white simultaneously on:
+
+★ Hair.
+
+★ Eyes.
+
+★ Skin.
+
+★ Dress.
+
+★ Flowers.
+
+★ Window.
+
+★ Particles.
+
+★ Decorative frames.
+
+Choose a hierarchy.
+`;
+
+const REFERENCE_ADAPTIVE_CINEMATIC_LEARNING = `
+
+★ LEARN THE VISUAL DECISION, NOT THE LITERAL ARRANGEMENT
+
+A reference image contains both transferable visual intelligence and instance-specific content.
+
+Transferable visual intelligence includes:
+
+★ Why the camera is placed at that height.
+
+★ Why the subject occupies that amount of the frame.
+
+★ Why the face remains readable.
+
+★ How foreground and background create depth.
+
+★ How leading lines guide the eye.
+
+★ How contrast is concentrated.
+
+★ How hair supports silhouette.
+
+★ How pose communicates action.
+
+★ How light separates planes.
+
+★ How detail density is distributed.
+
+★ How negative space creates emphasis.
+
+★ How color accents are limited.
+
+Instance-specific content includes:
+
+★ The exact person.
+
+★ The exact face.
+
+★ The exact outfit.
+
+★ The exact prop.
+
+★ The exact room.
+
+★ The exact flower.
+
+★ The exact book.
+
+★ The exact camera coordinates.
+
+★ The exact placement of every object.
+
+★ The exact decorative symbol.
+
+Learn the first category deeply.
+
+Rebuild the second category for the new story.
+
+★ REFERENCE FUNCTION ASSIGNMENT
+
+For each reference, internally assign one or more functions:
+
+★ Camera language.
+
+★ Subject scale.
+
+★ Pose mechanics.
+
+★ Face rendering.
+
+★ Eye rendering.
+
+★ Hair architecture.
+
+★ Line-art language.
+
+★ Color logic.
+
+★ Lighting logic.
+
+★ Material treatment.
+
+★ Environmental depth.
+
+★ Graphic layout.
+
+Do not allow one reference to control every domain unless it genuinely supplies a coherent complete direction.
+
+★ CAMERA LEARNING WITHOUT CAMERA COPYING
+
+Do not blindly copy the exact camera angle.
+
+Instead identify:
+
+★ What visual problem the camera solved.
+
+★ What emotion it produced.
+
+★ What body part or object it emphasized.
+
+★ How it controlled scale.
+
+★ How it organized foreground and background.
+
+★ How it created asymmetry or depth.
+
+Then choose the most suitable camera for the new scene that solves the same type of visual problem.
+
+★ COMPOSITION LEARNING WITHOUT LAYOUT COPYING
+
+Do not duplicate the exact position of character, books, flowers, windows, frames, or props.
+
+Extract:
+
+★ Shape balance.
+
+★ Focal hierarchy.
+
+★ Negative-space proportion.
+
+★ Eye-path logic.
+
+★ Overlap strategy.
+
+★ Depth structure.
+
+★ Density map.
+
+Reconstruct these principles with new scene-specific content.
+
+★ QUALITY PARITY WITHOUT GENERIC ENHANCEMENT
+
+Do not attempt to surpass a reference by merely adding:
+
+★ More glow.
+
+★ More hair.
+
+★ More detail.
+
+★ More jewelry.
+
+★ More flowers.
+
+★ More particles.
+
+★ More contrast.
+
+★ More saturation.
+
+★ More cinematic vocabulary.
+
+Match or exceed quality through:
+
+★ Better decision clarity.
+
+★ Stronger silhouette.
+
+★ More coherent anatomy.
+
+★ More deliberate edge control.
+
+★ More precise focal hierarchy.
+
+★ More meaningful environmental storytelling.
+
+★ Cleaner material separation.
+
+★ More disciplined color.
+
+★ More intentional composition.
+
+★ REFERENCE-ABSENT MODE
+
+When no reference image is supplied:
+
+★ Do not weaken the artistic direction.
+
+★ Build a complete visual strategy from the Story Canon, Character Canon, room purpose, selected mode, emotional objective, and image format.
+
+★ Choose one coherent medium.
+
+★ Choose one clear focal idea.
+
+★ Choose a scene-appropriate camera.
+
+★ Establish a deliberate subject scale.
+
+★ Build a controlled color and lighting system.
+
+★ Do not fall back to generic centered anime portraiture.
+`;
 
 export default function RoomView({ roomDef, roomState, currentStory, state, save, toast, onBack, onHome, onOpenDrawer, progress, setProgress, isCompactHeader, onToggleCompact, onOpenStoryForm }: any) {
 
@@ -4125,6 +5491,16 @@ ${currentStory?.userProfile || "No character profile provided."}
           "   - CREATIVITY is how you adapt these elements into a beautiful, logical new composition that fits the story without losing the reference's artistic spirit.\n" +
           "\n🚨 CRITICAL OUTPUT CLEANLINESS: You MUST NOT include any internal analysis metadata, reference notes, or meta-commentary in the FINAL PROMPT. Never use phrases like 'inspired by reference', 'learning from image', 'anti-copy', 'from reference', 'image 1', or 'analysis'. The FINAL PROMPT must be a 100% clean, independent, and copy-pasteable image generation prompt that directly dictates the visual elements.\n\n";
 
+          finalSystemPrompt +=
+            CINEMATIC_VISUAL_INTELLIGENCE_EXPANSION +
+            CINEMATIC_CAMERA_INTELLIGENCE +
+            SUBJECT_SCALE_AND_PROPORTION_INTELLIGENCE +
+            POSE_AND_GESTURE_INTELLIGENCE +
+            HAIR_FACE_AND_ANTI_PLASTIC_INTELLIGENCE +
+            COMPOSITION_AND_FOCAL_HIERARCHY_INTELLIGENCE +
+            LIGHTING_COLOR_AND_EFFECT_CONTROL +
+            REFERENCE_ADAPTIVE_CINEMATIC_LEARNING;
+
           console.log("=== FINAL SYSTEM PROMPT ===\n", finalSystemPrompt);
           console.log("=== CONTENT ARRAY ===\n", JSON.stringify(contentArray, null, 2));
           return finalSystemPrompt;
@@ -4731,7 +6107,7 @@ ${currentStory?.userProfile || "No character profile provided."}
 
         {!isWorkListCollapsed && (
           <div className="work-list" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px'}}>
-            {roomDef.cards.map((c: any, i: number) => (
+            {[supremeCommandCard, ...roomDef.cards, masterErrorCard].map((c: any, i: number) => (
               <WorkCardItem
                 key={`card_${roomDef.id}_${c.id}_${i}`}
                 c={c}

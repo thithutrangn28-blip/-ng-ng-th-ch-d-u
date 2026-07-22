@@ -1,20 +1,35 @@
 export interface PayloadParts {
   room: { name: string; purpose: string };
-  card: { name: string; purpose: string };
+  card: { name: string; purpose: string; errorGuard?: string };
   story: string;
   characterProfile: string;
+  supremeCommand?: string;
+  masterErrorGuard?: string;
 }
 
 export function buildFinalPayload(parts: PayloadParts, referenceDna?: string): string {
+  const supremeCommandText = parts.supremeCommand || "THẺ LỆNH TỐI CAO: Phân tích tổng thể yêu cầu, đảm bảo cấu trúc nghệ thuật hoàn hảo, không có lỗi cấu trúc, không có lỗi ánh sáng, không có lỗi chi tiết, phản hồi chất lượng cao nhất tuyệt đối.";
+  const cardErrorText = parts.card.errorGuard || "BẮT BUỘC: Kiểm soát tối đa lỗi cho thẻ này, đảm bảo không có vi phạm anatomy hay chi tiết.";
+  const masterErrorText = parts.masterErrorGuard || "ABSOLUTE PROHIBITED ERROR MASTER CARD: Kiểm tra lại toàn bộ ảnh cuối cùng, loại bỏ tuyệt đối bất kỳ lỗi nào còn sót lại từ các bước trước, đảm bảo 100% không có lỗi.";
+
   return `[SYSTEM INSTRUCTIONS — MASTER ART DIRECTOR & PROMPT ARCHITECT]
 
-You are a Master Visual Artist and Technical Art Director.
-Your mission is to synthesize reference technical principles into a NEW, original artistic creation.
+You are a Master Visual Artist and Technical Art Director executing supreme visual intelligence command.
+Your mission is to synthesize reference technical principles into a NEW, original artistic creation with ZERO errors.
 
-### THE DEFINITIVE HIERARCHY OF TRUTH:
+### 👑 SUPREME VISUAL INTELLIGENCE COMMAND (#01):
+${supremeCommandText}
+
+### 🎯 THE DEFINITIVE HIERARCHY OF TRUTH:
 1. **CHARACTER IDENTITY (ABSOLUTE):** Identity, age, and traits from CHARACTER_CANON are unbreakable.
 2. **NARRATIVE TRUTH (ABSOLUTE):** Action and mood from STORY_CANON are absolute.
 3. **ARTISTIC SOUL (ADAPTIVE MASTER):** Technical soul (HOW to draw) is learned from REFERENCE_ARTISTIC_DNA.
+
+### 🛑 CARD-SPECIFIC ERROR GUARD & PROHIBITED ERRORS:
+${cardErrorText}
+
+### 🛡️ ABSOLUTE PROHIBITED ERROR MASTER GUARD (#FINAL):
+${masterErrorText}
 
 ### ART DIRECTION MANDATES:
 - **VISUAL PATH & HIERARCHY:** Use story-relevant props and lighting to create a clear "eye-path". Prioritize focal-point control and intentional asymmetry.

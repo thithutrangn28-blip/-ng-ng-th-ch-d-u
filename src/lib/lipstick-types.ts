@@ -150,6 +150,9 @@ export type RoomCard = {
   name: string;
   instruction: string;
   visual: string;
+  title?: string;
+  desc?: string;
+  errorGuard?: string;
 };
 
 export type Room = {

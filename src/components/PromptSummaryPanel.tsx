@@ -26,7 +26,7 @@ const BunnyCopyButton = ({ totalPrompt, promptRunId, toast }: { totalPrompt: str
     if (!totalPrompt) return [];
     
     // Split by Card Markers or Section Markers
-    const sections = totalPrompt.split(/\[CARD_ID:.*?\]/i).filter(s => s.trim().length > 0);
+    const sections = totalPrompt.split(/(?=\[CARD_ID:.*?\]|\[CARD:.*?\]|\[THẺ:.*?\]|###\s+|(?:\n|^)\*\*(?:\[\d+\/\d+\]|Part \d+:|Mục \d+:|Phần \d+:?))/i).filter(s => s.trim().length > 0);
     
     if (sections.length > 1) return sections;
 
@@ -149,14 +149,19 @@ export const PromptSummaryPanel = ({ apiSignals, promptRunId, orderedVisionRefs,
     let currentContent: string[] = [];
 
     lines.forEach(line => {
+      const cardMatch = line.match(/^\[(?:CARD_ID|CARD|THẺ):\s*(.*?)\]/i);
       const isHeader = line.match(/^\*\*(?:\[\d+\/\d+\]|Part \d+:|Mục \d+:|Phần \d+:?)(.*)\*\*/i) || 
                        line.match(/^###\s*(?:\d+\.)?(.*)/);
-      if (isHeader) {
+      if (cardMatch || isHeader) {
         if (currentTitle || currentContent.length > 0) {
           parsedSections.push({ title: currentTitle || 'Phần không tên', content: currentContent.join('\n').trim() });
         }
-        currentTitle = isHeader[1]?.trim() || line.replace(/\*/g, '').trim();
-        currentContent = [];
+        if (cardMatch) {
+          currentTitle = `Thẻ: ${cardMatch[1]?.trim() || 'Work Card'}`;
+        } else {
+          currentTitle = isHeader![1]?.trim() || line.replace(/\*/g, '').trim();
+        }
+        currentContent = [line];
       } else {
         currentContent.push(line);
       }
