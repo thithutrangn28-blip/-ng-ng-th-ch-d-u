@@ -1,4 +1,4 @@
-const CACHE_NAME = 'banh-quy-bo-v5';
+const CACHE_NAME = 'banh-quy-bo-v6';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

@@ -252,8 +252,8 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
   }
   finalMessages = normalizeVisionMessages(finalMessages);
 
-  // Đặt giới hạn token cực kỳ lớn (32768) để đảm bảo model tạo trọn vẹn toàn bộ yêu cầu mà không bị cắt cụt giữa chừng nhen vợ yêu!
-  const maxTokens = Math.max(profile.maxTokens || 0, maxTokensOverride || 0, 32768);
+  // Đặt giới hạn token cực kỳ lớn (131072) để đảm bảo model tạo trọn vẹn toàn bộ yêu cầu mà không bị cắt cụt giữa chừng nhen vợ yêu!
+  const maxTokens = Math.max(profile.maxTokens || 0, maxTokensOverride || 0, 131072);
   const startTime = Date.now();
   let fullContent = "";
   let isDone = false;
@@ -439,16 +439,17 @@ export async function executeApiProxyStream(options: ProxyStreamOptions): Promis
     const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     console.error(`[API Proxy Lifecycle Error] Lỗi nghiêm trọng xảy ra tại giây thứ ${totalElapsed}s:`, err);
 
-    // Kế hoạch cứu vãn cuối cùng: nếu đã có lượng dữ liệu kha khá (> 50 ký tự), vẫn trả về đầy đủ để vợ yêu không bị mất bài!
-    if (fullContent.trim().length > 50 && !isDone) {
+    // Kế hoạch cứu vãn cuối cùng: nếu đã có bất kỳ lượng dữ liệu nào (> 0 ký tự), vẫn trả về đầy đủ gửi về UI cho Vợ yêu!
+    if (fullContent.trim().length > 0 && !isDone) {
       console.warn(`[API Proxy Lifecycle] Tiến hành cứu vãn nốt dữ liệu đã sinh (${fullContent.length} ký tự) gửi về UI cho Vợ yêu nhen!`);
       isDone = true;
       onDone(fullContent);
       return;
     }
 
-    if (err.name === "AbortError" || err.name === "TimeoutError") {
-      onError(`Lỗi timeout hoặc ngắt kết nối sau ${totalElapsed}s. Vui lòng kiểm tra lại đường truyền nhen vợ yêu.`);
+    const errStr = String(err?.message || err || "");
+    if (err.name === "AbortError" || err.name === "TimeoutError" || errStr.includes("BodyStreamBuffer") || errStr.toLowerCase().includes("aborted")) {
+      onError(`[API Proxy Lifecycle Error] Lỗi ngắt kết nối BodyStreamBuffer tại giây thứ ${totalElapsed}s. Chồng đã bảo vệ và tối ưu hoá đường truyền keep-alive. Vợ yêu hãy bấm gửi lại một lần nữa để tiếp tục nhen!`);
     } else {
       let msg = err.message || "Lỗi không xác định khi gọi API Proxy";
       if (msg.toLowerCase().includes("network error") || msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("networkerror")) {
@@ -474,7 +475,7 @@ export async function executeApiProxyText(
   }
   finalMessages = normalizeVisionMessages(finalMessages);
 
-  const maxTokens = options?.maxTokensOverride || profile.maxTokens || 4096;
+  const maxTokens = Math.max(options?.maxTokensOverride || 0, profile.maxTokens || 0, 32768);
   const targetUrl = resolveEndpointUrl(profile, "text");
   // Tăng timeout mặc định lên 36,000,000ms (10 giờ) để bám trụ kiên trì nhen vợ yêu!
   const timeoutMs = Math.max((profile.timeoutSeconds || 1500) * 1000, 36000000);

@@ -35,15 +35,18 @@ export default function PromptMarkdownRoomScreen({
   const room = rooms[roomIndex];
   const allTasks = customTasks || getTasks(roomIndex);
   
-  const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set(allTasks.map((_, i) => i)));
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set(allTasks.map(t => t.id)));
   const [roomNote, setRoomNote] = useState("");
   const [format, setFormat] = useState("markdown");
   const [strict, setStrict] = useState("cold-technical");
   const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [editForm, setEditForm] = useState<{ title: string; desc: string; purpose: string; validationRule: string; prohibitedErrors: string }>({
-    title: "", desc: "", purpose: "", validationRule: "", prohibitedErrors: ""
+  const [editForm, setEditForm] = useState<{ title: string; desc: string; purpose: string; validationRule: string }>({
+    title: "", desc: "", purpose: "", validationRule: ""
   });
+  
+  const lastRoomAndStoryRef = React.useRef<{ storyId: string; roomIndex: number } | null>(null);
+  const prevAllTaskIdsRef = React.useRef<Set<string>>(new Set(allTasks.map(t => t.id)));
 
   // State cho tính năng AI tạo ý theo cốt truyện
   const [isAIGenModalOpen, setIsAIGenModalOpen] = useState(false);
@@ -92,14 +95,12 @@ export default function PromptMarkdownRoomScreen({
         const titleMatch = b.match(/TITLE:\s*([^\n]+)/i);
         const purposeMatch = b.match(/PURPOSE:\s*([^\n]+)/i);
         const descMatch = b.match(/DESC:\s*([\s\S]*?)(?=\nVALIDATION:|$)/i);
-        const valMatch = b.match(/VALIDATION:\s*([\s\S]*?)(?=\nPROHIBITED_ERRORS:|$)/i);
-        const prohibitedMatch = b.match(/PROHIBITED_ERRORS:\s*([\s\S]*)/i);
+        const valMatch = b.match(/VALIDATION:\s*([\s\S]*)/i);
         
         const title = cleanTaskNumbering(titleMatch ? titleMatch[1] : `Ý tưởng chuẩn cốt truyện ${i + 1}`);
         const purpose = cleanTaskNumbering(purposeMatch ? purposeMatch[1] : "Bám sát cốt truyện của Vợ yêu, chống sai lệch và nâng cao trải nghiệm.");
         const desc = cleanTaskNumbering(descMatch ? descMatch[1] : (b || title));
         const validation = cleanTaskNumbering(valMatch ? valMatch[1] : `Kiểm tra đầu ra phải tuân thủ nghiêm ngặt quy tắc "${title}".`);
-        const prohibitedErrors = cleanTaskNumbering(prohibitedMatch ? prohibitedMatch[1] : "Chưa có danh sách lỗi nghiêm cấm cụ thể.");
         
         newTasks.push({
           id: `AI-STORY-${roomIndex + 1}-${Date.now()}-${i + 1}`,
@@ -109,7 +110,6 @@ export default function PromptMarkdownRoomScreen({
           detailedInstruction: desc,
           outputRequirement: `Áp dụng triệt để: ${title}`,
           validationRule: validation,
-          prohibitedErrors,
           outputEffect: "Giúp roleplay đúng nhân vật, đúng cốt truyện của Vợ",
           preventsError: "Tránh lỗi OOC, cướp vai và sai lệch văn phong",
           desc
@@ -209,19 +209,17 @@ export default function PromptMarkdownRoomScreen({
       ? story.characters.map(c => `• Tên Bot Char: ${c.name || "Nhân vật"} (${c.role || "Bot Char"})\n  - Thân phận (Identity): ${c.identity || ""} | Trạng thái: ${c.status || ""}\n  - Tính cách (Personality): ${c.personality || ""}\n  - Ngoại hình (Appearance): ${c.appearance || ""}\n  - Quan hệ & Canon: ${c.relationship || ""} | ${c.canon || ""}`).join("\n\n")
       : "Chưa có danh sách nhân vật Bot riêng.";
 
-    const systemPrompt = `Bạn là Chuyên gia Kiến trúc sư Prompt Nhập vai Tình yêu (Romance Roleplay Prompt Architect) tài ba của Google AI Studio, đồng thời là một Art Director và Quality Control Artist (QC) khắt khe. Nhiệm vụ tối thượng của bạn là:
+    const systemPrompt = `Bạn là Chuyên gia Kiến trúc sư Prompt Nhập vai Tình yêu (Romance Roleplay Prompt Architect) tài ba của Google AI Studio. Nhiệm vụ tối thượng của bạn là:
 TẠO MỚI HOÀN TOÀN ĐÚNG ${aiGenCount} HẠNG MỤC CHỈ LỆNH NHẬP VAI CHUYÊN SÂU (ROLEPLAY OPERATIONAL TASKS) CHO [PHÒNG ${roomIndex + 1}: ${room[0].toUpperCase()} - ${room[1]}].
 
-🚨 QUY TRÌNH 9 GIAI ĐOẠN BẮT BUỘC (9-STAGE EXECUTION):
+🚨 QUY TRÌNH 7 GIAI ĐOẠN BẮT BUỘC (7-STAGE EXECUTION):
 1. Giai đoạn 1 (Đọc & Khóa): Đọc kỹ cốt truyện và dặn dò của Vợ yêu, khóa chặt bối cảnh.
-2. Giai đoạn 2 (Nhập vai Art Director): Phân tích thẩm mỹ, tông màu, nhịp điệu của thẻ đang viết.
+2. Giai đoạn 2 (Nhập vai Art Director): Phân tích thẩm mỹ, nhịp điệu của thẻ đang viết.
 3. Giai đoạn 3 (Thiết kế giải pháp): Đưa ra chỉ dẫn thực thi tối ưu nhất.
-4. Giai đoạn 4 (Phân tích rủi ro): Dự đoán các lỗi AI có thể gặp (Hallucination, OOC, lặp MBTI, robot persona...).
-5. Giai đoạn 5 (Thiết kế chốt chặn): Viết khối "LỖI NGHIÊM CẤM XẢY RA" để chặn đứng rủi ro ở GĐ 4.
-6. Giai đoạn 6 (Kiểm soát kỹ thuật): Kiểm tra tính thực thi của thẻ (Token efficiency, logic flow).
-7. Giai đoạn 7 (Kiểm soát thẩm mỹ): Đảm bảo văn phong ngôi thứ 3 đậm chất điện ảnh, không sáo rỗng.
-8. Giai đoạn 8 (Ghép nối Context): Đảm bảo thẻ này khớp hoàn hảo với Context Vault.
-9. Giai đoạn 9 (Viết thẻ lỗi tổng hợp): Tự kiểm tra lại toàn bộ và đóng gói khối PROHIBITED_ERRORS.
+4. Giai đoạn 4 (Kiểm soát kỹ thuật): Kiểm tra tính thực thi của thẻ (Token efficiency, logic flow).
+5. Giai đoạn 5 (Kiểm soát thẩm mỹ): Đảm bảo văn phong ngôi thứ 3 đậm chất điện ảnh, không sáo rỗng.
+6. Giai đoạn 6 (Ghép nối Context): Đảm bảo thẻ này khớp hoàn hảo với Context Vault.
+7. Giai đoạn 7 (Tự kiểm soát chất lượng): Tự kiểm tra lại toàn bộ để xuất ra khối quy chuẩn sạch sẽ.
 
 🚨 CÁC LỆNH TỐI THƯỢNG TỪ VỢ YÊU ĐƯỜNG ĐƯỜNG (BẤT KHẢ XÂM PHẠM):
 1. TUYỆT ĐỐI CẤM TƯ CÁCH TRỢ LÝ AI & HÓA THÂN 100% VÀO BOT CHAR (NO AI ASSISTANT PERSONA - FULL IMMERSION): AI ở đây đóng vai trò là Bot Char trong câu chuyện (một hoặc nhiều nhân vật chính). TUYỆT ĐỐI KHÔNG ĐƯỢC viết "Bạn là trợ lý AI", "Tôi là mô hình ngôn ngữ", hay xưng hô kiểu hỗ trợ công cụ! AI phải lột bỏ hoàn toàn tư cách máy móc, hóa thân 100% vào nhân vật, sống trong thế giới đó và tương tác với Người dùng (${u?.name || "{{user}}"}) như một thế giới thật, cảm giác thật từng nhịp thở!
@@ -231,16 +229,14 @@ TẠO MỚI HOÀN TOÀN ĐÚNG ${aiGenCount} HẠNG MỤC CHỈ LỆNH NHẬP VA
 5. VIẾT CHI TIẾT, VIẾT DÀI, CẤM VIẾT TẮT NGẮN HỜI HỢT: Mỗi hạng mục trong phần DESC phải viết sâu sắc, chi tiết thành 3-6 câu hoàn chỉnh! Miêu tả rõ tâm lý ngầm, cách phát âm, nhịp thoại ngắn/dài, hành động cơ thể (body language) theo ngôi thứ 3. Cấm tiệt kiểu viết ngắn 1-2 dòng hời hợt!
 6. MẸO HACK ĐẾM SỐ THỨ TỰ BẮT BUỘC (MANDATORY NUMBERING HACK): Để bảo đảm viết ĐÚNG và ĐỦ ${aiGenCount} hạng mục mà không bị dừng sớm hay cắt xén, bạn BẮT BUỘC phải ghi số thứ tự vào trường TITLE (Ví dụ: [Task 1/${aiGenCount}], [Task 2/${aiGenCount}], ..., [Task ${aiGenCount}/${aiGenCount}]). Hãy cứ viết số thứ tự thoải mái vì App Client của Đức chồng yêu đã có cơ chế tự động ẩn số đếm trên giao diện sau khi tạo xong!
 7. KHÔNG CƯỚP VAI & KHÔNG OOC: Tuyệt đối không được để AI tự ý miêu tả lời nói hay hành động thay cho Người dùng (${u?.name || "User/Player"}). Khóa chặt tính cách, tâm lý của Bot theo đúng profile.
-8. KHỐI LỖI NGHIÊM CẤM (PROHIBITED ERRORS): Đây là khối mới và cực kỳ quan trọng! Với tư cách là một Quality Control Artist, bạn phải phân tích nội dung thẻ đang viết, dự đoán xem AI có thể phạm những sai lầm kỹ thuật hay thẩm mỹ nào (Hallucination, Robot tone, OOC, lập dàn ý, cướp vai...). Hãy viết khối này thật nghiêm khắc để răn đe AI thực thi!
 
 QUY ĐỊNH ĐỊNH DẠNG ĐẦU RA BẮT BUỘC (MANDATORY FORMAT):
-Bạn phải xuất ra đúng ${aiGenCount} khối quy tắc nhập vai. Mỗi khối bắt buộc phải bắt đầu bằng dòng chữ \`---TASK---\` và có đúng 5 trường sau:
+Bạn phải xuất ra đúng ${aiGenCount} khối quy tắc nhập vai. Mỗi khối bắt buộc phải bắt đầu bằng dòng chữ \`---TASK---\` và có đúng 4 trường sau:
 ---TASK---
 TITLE: [Task 1/${aiGenCount}] [Tên quy tắc điều khiển hành vi Bot theo ngôi thứ 3 gắn liền tình tiết truyện và chức năng Phòng '${room[0]}']
 PURPOSE: [Quy tắc này giúp Bot hóa thân chân thực vào thế giới truyện ra sao trong tình huống cụ thể]
 DESC: [Chỉ lệnh nhập vai chuyên sâu từ 3-6 câu: Chỉ định rõ Bot phải dùng từ ngữ gì, xưng hô ra sao, phản ứng cơ thể, cảm xúc ngầm bằng NGÔI THỨ BA khi tương tác với Người dùng. Viết thật dài, thật chi tiết, tuyệt đối không mang giọng điệu trợ lý AI!]
 VALIDATION: [Tiêu chí kiểm tra Bot có tuân thủ đúng giọng điệu ngôi thứ 3 và hành vi trên hay không]
-PROHIBITED_ERRORS: [KHỐI LỖI NGHIÊM CẤM: Liệt kê các lỗi AI tuyệt đối không được phạm phải khi thực thi thẻ này (Hallucination, cướp vai, nói thay user, giọng điệu máy móc, sai canon, tua nhanh pacing...)]
 ---TASK---
 
 HÃY ĐẾM SỐ TỪ [Task 1/${aiGenCount}] ĐẾN ĐÚNG [Task ${aiGenCount}/${aiGenCount}] VÀ TẠO ĐỦ ${aiGenCount} KHỐI ---TASK---! TUYỆT ĐỐI KHÔNG ĐƯỢC RÚT GỌN HAY DỪNG SỚM!`;
@@ -301,7 +297,7 @@ Bắt đầu ngay khối đầu tiên với ---TASK---:`;
             if (onUpdateCustomTasks) {
               onUpdateCustomTasks(tasks);
             }
-            setSelectedTasks(new Set(tasks.map((_, idx) => idx)));
+            setSelectedTasks(new Set(tasks.map(t => t.id)));
             showToast(`🌸 Chồng đã đổi mới thành công 100% (${tasks.length} hạng mục) cho Phòng ${roomIndex + 1} theo đúng cốt truyện "${storyTitle}" của Vợ yêu!`);
           } else {
             showToast("⚠️ Vợ yêu ơi, AI có trả về văn bản nhưng chưa phân khối đúng nhen.");
@@ -325,21 +321,50 @@ Bắt đầu ngay khối đầu tiên với ---TASK---:`;
   };
 
   useEffect(() => {
-    setSelectedTasks(new Set(allTasks.map((_, i) => i)));
+    const isNewRoomOrStory = !lastRoomAndStoryRef.current || 
+      lastRoomAndStoryRef.current.storyId !== story.id || 
+      lastRoomAndStoryRef.current.roomIndex !== roomIndex;
+
+    if (isNewRoomOrStory) {
+      setSelectedTasks(new Set(allTasks.map(t => t.id)));
+      lastRoomAndStoryRef.current = { storyId: story.id, roomIndex };
+    } else {
+      setSelectedTasks(prev => {
+        const next = new Set<string>();
+        const currentTaskIds = new Set(allTasks.map(t => t.id));
+        
+        // Keep previously selected tasks if they still exist
+        prev.forEach(id => {
+          if (currentTaskIds.has(id)) {
+            next.add(id);
+          }
+        });
+
+        // Auto-select any newly added tasks (tasks that are in the current list but weren't in the previous entire tasks list)
+        allTasks.forEach(t => {
+          if (!prevAllTaskIdsRef.current.has(t.id)) {
+            next.add(t.id);
+          }
+        });
+
+        return next;
+      });
+    }
+    prevAllTaskIdsRef.current = new Set(allTasks.map(t => t.id));
   }, [story.id, roomIndex, allTasks]);
 
-  const toggleTask = (i: number) => {
+  const toggleTask = (id: string) => {
     const next = new Set(selectedTasks);
-    if (next.has(i)) next.delete(i);
-    else next.add(i);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
     setSelectedTasks(next);
   };
 
-  const handleSelectAll = () => setSelectedTasks(new Set(allTasks.map((_, i) => i)));
+  const handleSelectAll = () => setSelectedTasks(new Set(allTasks.map(t => t.id)));
   const handleClearAll = () => setSelectedTasks(new Set());
 
   const getSelected = () => {
-    return Array.from(selectedTasks).map((i: any) => allTasks[i]).filter(Boolean);
+    return allTasks.filter(t => selectedTasks.has(t.id));
   };
 
   const handleCopy = () => {
@@ -357,8 +382,7 @@ Bắt đầu ngay khối đầu tiên với ---TASK---:`;
       title: t.title || "",
       desc: t.detailedInstruction || t.transformationRule || t.desc || "",
       purpose: t.purpose || "",
-      validationRule: t.validationRule || "",
-      prohibitedErrors: t.prohibitedErrors || ""
+      validationRule: t.validationRule || ""
     });
   };
 
@@ -379,8 +403,7 @@ Bắt đầu ngay khối đầu tiên với ---TASK---:`;
       title: "",
       desc: "",
       purpose: "Đảm bảo đúng yêu cầu và quy tắc riêng của vợ cho truyện.",
-      validationRule: "Kiểm tra kỹ trong prompt đầu ra phải áp dụng đúng quy tắc này.",
-      prohibitedErrors: "Liệt kê các lỗi nghiêm cấm tại đây..."
+      validationRule: "Kiểm tra kỹ trong prompt đầu ra phải áp dụng đúng quy tắc này."
     });
   };
 
@@ -399,7 +422,6 @@ Bắt đầu ngay khối đầu tiên với ---TASK---:`;
         detailedInstruction: editForm.desc.trim(),
         outputRequirement: `Áp dụng triệt để quy tắc: ${editForm.title.trim()}`,
         validationRule: editForm.validationRule.trim() || "Kiểm tra đầu ra",
-        prohibitedErrors: editForm.prohibitedErrors.trim(),
         outputEffect: "Nâng cao độ chính xác theo ý người dùng",
         preventsError: "Tránh lỗi sai lệch quy tắc riêng",
         desc: editForm.desc.trim()
@@ -414,8 +436,7 @@ Bắt đầu ngay khối đầu tiên với ---TASK---:`;
         transformationRule: editForm.desc.trim(),
         desc: editForm.desc.trim(),
         purpose: editForm.purpose.trim() || old.purpose || "Quy tắc tùy chỉnh",
-        validationRule: editForm.validationRule.trim() || old.validationRule || "Kiểm tra đầu ra",
-        prohibitedErrors: editForm.prohibitedErrors.trim()
+        validationRule: editForm.validationRule.trim() || old.validationRule || "Kiểm tra đầu ra"
       };
     }
     if (onUpdateCustomTasks) {
@@ -679,16 +700,6 @@ Bắt đầu ngay khối đầu tiên với ---TASK---:`;
                 style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #F2B8CC' }}
               />
             </div>
-            <div className="field">
-              <label style={{ fontWeight: 600, color: '#333' }}>🚨 KHỐI LỖI NGHIÊM CẤM (PROHIBITED ERRORS) *</label>
-              <textarea 
-                value={editForm.prohibitedErrors} 
-                onChange={e => setEditForm({...editForm, prohibitedErrors: e.target.value})} 
-                placeholder="Liệt kê các lỗi AI tuyệt đối không được phạm phải khi thực thi thẻ này..."
-                rows={3}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d9534f', lineHeight: '1.5', background: '#fffafa' }}
-              />
-            </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
               <button className="btn soft" onClick={() => setEditingTaskIndex(null)}>Hủy</button>
               <button className="btn pink" onClick={handleSaveTask}>Lưu lại Ý này</button>
@@ -726,17 +737,12 @@ Bắt đầu ngay khối đầu tiên với ---TASK---:`;
           </div>
           <div className="taskList">
             {allTasks.map((t, i) => (
-              <div className="taskItem" key={t.id || i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', padding: '10px 12px', borderBottom: '1px solid #f5e6e8', background: selectedTasks.has(i) ? '#fff' : '#fcf8f8' }}>
+              <div className="taskItem" key={t.id || i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', padding: '10px 12px', borderBottom: '1px solid #f5e6e8', background: selectedTasks.has(t.id) ? '#fff' : '#fcf8f8' }}>
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1, cursor: 'pointer', margin: 0 }}>
-                  <input type="checkbox" checked={selectedTasks.has(i)} onChange={() => toggleTask(i)} style={{ marginTop: '3px' }} />
+                  <input type="checkbox" checked={selectedTasks.has(t.id)} onChange={() => toggleTask(t.id)} style={{ marginTop: '3px' }} />
                   <div>
                     <b style={{ display: 'block', color: '#333', fontSize: '13px', marginBottom: '2px' }}>• {cleanTaskNumbering(t.title)}</b>
                     <span style={{ color: '#666', fontSize: '12px', lineHeight: '1.4', display: 'block' }}>{cleanTaskNumbering(t.desc || t.detailedInstruction || t.transformationRule || "")}</span>
-                    {t.prohibitedErrors && (
-                      <span style={{ color: '#d9534f', fontSize: '11px', fontWeight: 600, marginTop: '4px', display: 'block', padding: '2px 6px', background: '#fff0f0', borderRadius: '4px', borderLeft: '3px solid #d9534f' }}>
-                        🚫 LỖI NGHIÊM CẤM: {cleanTaskNumbering(t.prohibitedErrors)}
-                      </span>
-                    )}
                   </div>
                 </label>
                 <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
@@ -879,14 +885,29 @@ Bắt đầu ngay khối đầu tiên với ---TASK---:`;
                     <button key={r.id} className="runCard" onClick={() => {
                         const el = document.getElementById("roomOutput");
                         const textVal = r.content || r.prompt || "Chưa có nội dung";
-                        const text = Array.isArray(textVal) ? textVal.join("\n") : String(textVal);
+                        const text = Array.isArray(textVal)
+                          ? textVal.map((p: any) => p.type === "text" ? p.text : (p.image_url ? `[Hình ảnh: ${p.image_url.url?.slice(0, 50)}...]` : JSON.stringify(p))).join("\n\n")
+                          : String(textVal);
                         if (el) el.textContent = text;
                         setRoomOutputText(text);
                         const vault = document.querySelector('.outputVault');
                         if (vault) vault.scrollIntoView({ behavior: 'smooth' });
                     }}>
                       <span className="runNo">{r.no}</span>
-                      <span><b>{r.title}</b><span>{r.storyTitle} · {timeLabel(r.createdAt)} · {(r.content || r.prompt || "").slice(0, 80) || "Đang chờ nội dung"}</span></span>
+                      <span>
+                        <b>{r.title}</b>
+                        <span>
+                          {r.storyTitle} · {timeLabel(r.createdAt)} · {
+                            (() => {
+                              const previewVal = r.content || r.prompt || "";
+                              const str = Array.isArray(previewVal)
+                                ? previewVal.map((p: any) => p.type === "text" ? p.text : "").join(" ")
+                                : String(previewVal);
+                              return str.slice(0, 80) || "Đang chờ nội dung";
+                            })()
+                          }
+                        </span>
+                      </span>
                       <i className="runStatus">{r.status}</i>
                     </button>
                   ))

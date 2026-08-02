@@ -1,24 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { LipstickState, LipstickStory, LipstickRoomState, LipstickImageRef } from "../../lib/lipstick-types";
-import { PRESET_BACKGROUNDS, rooms as ROOMS_DATA, errorGuard } from "../../lib/lipstick-rooms-data";
-
-const supremeCommandCard = {
-  id: "supreme_command",
-  title: "THẺ LỆNH TỐI CAO — SUPREME VISUAL INTELLIGENCE COMMAND",
-  desc: "Phân tích, thực thi và tối ưu hóa toàn bộ các thẻ công việc trong phòng để đạt chất lượng cao nhất.",
-  instruction: "Phân tích, thực thi và tối ưu hóa toàn bộ các thẻ công việc trong phòng để đạt chất lượng cao nhất.",
-  visual: "supreme intelligence architecture, analytical perfection, visual masterpiece, high-end quality control, flawless execution",
-  errorGuard: "BẮT BUỘC: Phân tích tổng thể yêu cầu, đảm bảo cấu trúc nghệ thuật hoàn hảo, không có lỗi cấu trúc, không có lỗi ánh sáng, không có lỗi chi tiết, phản hồi chất lượng cao nhất tuyệt đối."
-};
-
-const masterErrorCard = {
-  id: "master_error_card",
-  title: "ABSOLUTE PROHIBITED ERROR MASTER CARD",
-  desc: "Tổng hợp và kiểm soát tất cả các lỗi tiềm ẩn từ các thẻ trước, đảm bảo không có vi phạm nào.",
-  instruction: "Tổng hợp và kiểm soát tất cả các lỗi tiềm ẩn từ các thẻ trước, đảm bảo không có vi phạm nào.",
-  visual: "master error control, flawless correction, absolute quality assurance, error-free final output, perfection guarantee",
-  errorGuard: "BẮT BUỘC: Kiểm tra lại toàn bộ ảnh cuối cùng, loại bỏ tuyệt đối bất kỳ lỗi nào còn sót lại từ các bước trước, đảm bảo không có lỗi anatomy, không có lỗi chi tiết, không có lỗi cấu trúc, hoàn thiện 100%."
-};
+import { PRESET_BACKGROUNDS, rooms as ROOMS_DATA } from "../../lib/lipstick-rooms-data";
 import { callAIText, callAIStream } from "../../lib/api-client";
 import { buildFinalPayload } from "../../utils/promptBuilder";
 import { copyToClipboardSafe } from "../../lib/clipboard";
@@ -738,10 +720,6 @@ const WorkCardItem = React.memo(function WorkCardItem({
       </div>
       <div className="work-body">
         <div className="guide"><b>Nhiệm vụ / từ khóa nhanh của thẻ</b><br/>{c.quick}</div>
-        <div className="error-guard-block" style={{marginTop: '10px', padding: '10px', background: '#fff0f5', border: '1px solid #ffcdd2', borderRadius: '8px'}}>
-          <p style={{color: '#c62828', fontSize: '12px', fontWeight: 'bold'}}>⚠️ Kiểm soát lỗi cho thẻ {c.title || c.name}:</p>
-          <p style={{color: '#d32f2f', fontSize: '12px'}}>{c.errorGuard || errorGuard}</p>
-        </div>
         {c.id === "target" && (
           <div className="target-selector">
             {renderTargetSelector(false)}
@@ -1115,1350 +1093,6 @@ const WorkCardItem = React.memo(function WorkCardItem({
   );
 }, areEqual);
 
-const CINEMATIC_VISUAL_INTELLIGENCE_EXPANSION = `
-
-★ SUPREME ADDITIVE DIRECTIVE: CINEMATIC VISUAL INTELLIGENCE, FOCAL HIERARCHY & REFERENCE-ADAPTIVE ART DIRECTION
-
-This directive is additive. It does not replace Story Canon, Character Canon, room requirements, card requirements, existing style locks, or existing output structure.
-
-Your task is not merely to mention camera terminology, composition terminology, lighting terminology, anatomy terminology, or aesthetic keywords.
-
-You must perform actual visual-direction reasoning before writing the final image prompt.
-
-The image must not merely be correct in subject matter.
-
-It must possess a deliberate focal idea, cinematic spatial organization, coherent body scale, memorable visual rhythm, and an immediately readable artistic priority.
-
-★ PRIMARY FAILURE TO PREVENT
-
-A technically valid image may still fail when:
-
-★ The camera is ordinary and emotionally neutral.
-
-★ The character is centered without purpose.
-
-★ The face occupies too little of the frame to carry expression.
-
-★ The head, neck, shoulders, torso, arms, and hands do not share one coherent proportional system.
-
-★ The environment is populated with many unrelated attractive objects.
-
-★ Hair volume overwhelms the face or body.
-
-★ Glow, particles, bokeh, flowers, paper, notes, butterflies, lens flares, or decorative effects compete equally for attention.
-
-★ Every area has similar contrast, detail, sharpness, and saturation.
-
-★ The prompt describes many elements but does not tell the viewer where to look first.
-
-★ The image is pleasant but visually forgettable.
-
-You must explicitly solve these problems.
-
-★ CINEMATIC DECISION ORDER
-
-Before writing visual details, internally decide the following in this exact order:
-
-★ What is the single primary visual event of this image?
-
-★ What must the viewer notice within the first half-second?
-
-★ What emotional information must become visible within the next two seconds?
-
-★ Which facial feature, gesture, silhouette, object, light boundary, or spatial relationship carries that information?
-
-★ What camera position reveals that information most powerfully?
-
-★ What subject scale is required for that information to remain readable?
-
-★ What composition structure holds the eye inside the frame?
-
-★ What elements should be reduced, softened, cropped, darkened, simplified, or removed?
-
-★ What one memorable visual signature prevents the image from feeling generic?
-
-Do not begin by choosing a lens number.
-
-Do not begin by adding cinematic lighting.
-
-Do not begin by filling the background.
-
-Begin with the visual event and focal hierarchy.
-
-★ THE ONE-DOMINANT-IDEA RULE
-
-Every image must have one dominant visual idea.
-
-Examples of dominant visual ideas include:
-
-★ A face caught at the boundary between warm window light and cool interior shadow.
-
-★ A hand pausing above a meaningful object.
-
-★ A long body silhouette stretched through a dramatic diagonal.
-
-★ A figure framed inside architecture that reveals status or isolation.
-
-★ A pair of characters connected by gaze, touch, distance, or opposing movement.
-
-★ A circular arrangement that encloses a subject without dissolving into decorative clutter.
-
-Only one idea may hold the highest hierarchy.
-
-Secondary elements must support it.
-
-Tertiary elements must provide context.
-
-Decorative elements must remain subordinate.
-
-If everything glows, nothing glows.
-
-If every object is sharp, nothing is focal.
-
-If every color is saturated, no accent color exists.
-
-If every area is detailed, the image has no visual breathing space.
-`;
-
-const CINEMATIC_CAMERA_INTELLIGENCE = `
-
-★ CAMERA INTENTION ENGINE
-
-The camera must be selected according to narrative purpose, not according to fashionable vocabulary.
-
-For every prompt, determine:
-
-★ Camera height relative to the subject’s eyes, chest, waist, hands, or floor.
-
-★ Horizontal position relative to the subject.
-
-★ Distance from subject.
-
-★ Direction of optical axis.
-
-★ Degree of tilt.
-
-★ Crop boundaries.
-
-★ Perspective strength.
-
-★ Foreground obstruction or framing.
-
-★ Subject-to-frame ratio.
-
-★ Relationship between lens behavior and facial/body proportions.
-
-Each choice must have a visual consequence.
-
-★ EYE-LEVEL CAMERA
-
-Use eye level when equality, emotional access, sincerity, calm observation, or direct connection is required.
-
-Do not use eye level as the default merely because it is safe.
-
-An eye-level composition must still establish:
-
-★ Off-center placement.
-
-★ Meaningful negative space.
-
-★ Directional gaze.
-
-★ Foreground framing.
-
-★ Depth layers.
-
-★ A purposeful crop.
-
-★ A contrast boundary around the face.
-
-★ HIGH-ANGLE CAMERA
-
-Use a high angle when the scene benefits from vulnerability, intimacy, intellectual workspace overview, geometric organization, isolation, environmental storytelling, or a visible relationship between hands, objects, and the subject.
-
-A high angle must not simply shrink the subject.
-
-Protect:
-
-★ Facial readability.
-
-★ Neck length.
-
-★ Shoulder width.
-
-★ Torso length.
-
-★ Hand scale.
-
-★ Book, desk, prop, or environmental geometry.
-
-Avoid the common failure where the head becomes disproportionately large and the torso collapses beneath it.
-
-★ LOW-ANGLE CAMERA
-
-Use a low angle when status, scale, power, confidence, monumentality, speed, theatrical presence, fashion impact, or environmental height is important.
-
-Protect the face from excessive chin distortion.
-
-Protect legs and feet from uncontrolled wide-angle enlargement.
-
-Do not use low angle solely to make an image “cinematic.”
-
-★ THREE-QUARTER CAMERA
-
-Use a three-quarter view when facial depth, hair silhouette, shoulder rotation, costume layering, spatial perspective, or character personality benefits from asymmetry.
-
-The three-quarter angle must preserve:
-
-★ Correct far-eye size.
-
-★ Nose bridge direction.
-
-★ Jaw rotation.
-
-★ Ear placement.
-
-★ Neck connection.
-
-★ Shoulder perspective.
-
-★ Hair wrapping around the skull.
-
-★ DUTCH ANGLE
-
-A Dutch angle is a rotation of the camera frame or horizon.
-
-It is not a tilted head.
-
-Use it only for instability, urgency, playfulness, fashion energy, psychological tension, directional momentum, or a deliberately graphic composition.
-
-The angle must influence:
-
-★ Horizon.
-
-★ Vertical architecture.
-
-★ Furniture alignment.
-
-★ Body diagonal.
-
-★ Leading lines.
-
-★ Foreground placement.
-
-Do not label a composition Dutch angle when only the character leans.
-
-★ TOP-DOWN AND OVERHEAD
-
-Use top-down views when the arrangement of body, objects, fabric, hair, books, flowers, tools, or graphic shapes is itself the narrative.
-
-Protect anatomical foreshortening.
-
-Do not flatten the character into disconnected parts.
-
-Hair must spread according to gravity and surface contact, not form a decorative halo without weight.
-
-★ EXTREME CLOSE-UP
-
-Use an extreme close-up only when eyes, lips, fingers, tears, texture, or a meaningful object carries the entire emotional scene.
-
-Do not include a wide environmental description that cannot appear in the crop.
-
-★ MEDIUM CLOSE-UP
-
-Use a medium close-up when facial expression and upper-body gesture share equal importance.
-
-The face should remain large enough to show eye architecture and micro-expression.
-
-The shoulders and hands must not be accidentally cropped at joints.
-
-★ MEDIUM SHOT
-
-Use a medium shot when posture, clothing, hand action, and environment all matter.
-
-Do not allow the face to become too small merely to show more background.
-
-★ FULL-BODY SHOT
-
-Use full body when silhouette, height, fashion, movement, status, or body language is essential.
-
-The character must occupy enough of the frame to preserve identity.
-
-Do not shrink a tall adult into a distant decorative figure.
-
-★ WIDE SHOT
-
-Use a wide shot when the environment carries narrative power.
-
-The subject may be smaller, but must remain identifiable through silhouette, contrast, placement, lighting, or movement.
-
-Do not treat a wide shot as permission to abandon facial and proportional logic.
-
-★ LENS SELECTION MUST MATCH THE DESCRIPTION
-
-A lens value is meaningful only when its visual behavior is described.
-
-★ Wide-angle behavior increases spatial expansion, foreground scale, diagonal energy, depth separation, and edge distortion.
-
-★ Normal-lens behavior preserves natural spatial relationships and balanced environmental context.
-
-★ Short-telephoto behavior compresses depth, stabilizes facial proportions, isolates expression, and reduces spatial exaggeration.
-
-★ Long-telephoto behavior strongly compresses depth and layers distant planes.
-
-Never combine incompatible claims such as:
-
-★ Extreme wide-angle expansion with strong telephoto compression.
-
-★ Deep environmental clarity with very shallow portrait depth of field.
-
-★ Flat graphic illustration with photographic lens artifacts that are not part of the selected visual language.
-`;
-
-const SUBJECT_SCALE_AND_PROPORTION_INTELLIGENCE = `
-
-★ SUBJECT SCALE & FRAME OCCUPANCY ENGINE
-
-The prompt must explicitly determine how large the character appears inside the frame.
-
-Do not leave subject scale implicit.
-
-For every character image, define:
-
-★ Approximate percentage of frame height occupied by the character.
-
-★ Approximate percentage of frame width occupied by the visible silhouette.
-
-★ Face size relative to the full canvas.
-
-★ Headroom.
-
-★ Space below the body.
-
-★ Side negative space.
-
-★ Crop boundaries.
-
-★ Whether hair extends beyond the body silhouette.
-
-★ Whether foreground objects overlap the subject.
-
-★ Whether the environment is subordinate, equal, or dominant.
-
-The chosen scale must serve the visual objective.
-
-★ FACE READABILITY LOCK
-
-When facial emotion is important:
-
-★ The face must remain large enough for eye shape, iris construction, eyelid weight, nose placement, lip shape, cheek volume, and micro-expression to be visible.
-
-★ Do not place the face too far from the viewer while still claiming detailed emotional portraiture.
-
-★ Do not let oversized hair masses reduce the apparent size of the face.
-
-★ Do not allow strong background contrast to overpower the facial region.
-
-★ Create a controlled value, color, edge, or light separation around the face.
-
-★ HEAD-TO-BODY COHERENCE
-
-Before describing beauty details, establish one coherent proportional system.
-
-Check:
-
-★ Head height relative to total body height.
-
-★ Skull width relative to shoulder width.
-
-★ Neck length relative to head height.
-
-★ Neck thickness relative to jaw and shoulders.
-
-★ Shoulder width relative to ribcage and pelvis.
-
-★ Torso length relative to upper and lower limbs.
-
-★ Hand length relative to face and forearm.
-
-★ Pelvis position relative to ribcage.
-
-★ Thigh length relative to lower leg.
-
-★ Foot scale relative to body height.
-
-Do not independently stylize each body part.
-
-The head, neck, shoulders, torso, arms, hands, pelvis, legs, and feet must appear to belong to the same individual.
-
-★ ADULT PROPORTION PROTECTION
-
-For adult or late-teen characters with tall or elegant profiles:
-
-★ Preserve a sufficiently small head relative to body height.
-
-★ Preserve visible neck length.
-
-★ Preserve shoulder structure.
-
-★ Preserve ribcage and torso length.
-
-★ Preserve long limbs when specified.
-
-★ Preserve hand size.
-
-★ Preserve mature facial planes appropriate to the stated age.
-
-Do not accidentally convert a tall adult into:
-
-★ A short schoolgirl body.
-
-★ A chibi-adjacent figure.
-
-★ A doll with an oversized head.
-
-★ A narrow torso beneath a large hairstyle.
-
-★ A character with tiny shoulders and tiny hands.
-
-★ CROPPING SAFETY
-
-Avoid crop lines directly through:
-
-★ Elbows.
-
-★ Wrists.
-
-★ Knees.
-
-★ Ankles.
-
-★ Chin.
-
-★ Top of the skull unless deliberately designed as an extreme close-up.
-
-If a body part is cropped, the remaining anatomy must still communicate its continuation clearly.
-
-★ PERSPECTIVE PROPORTION
-
-Distinguish true anatomical proportion from camera-induced scale.
-
-When a hand is close to the camera, describe intentional foreshortening.
-
-When the head is closer to the camera than the torso, control facial enlargement.
-
-When using high angle, protect torso length.
-
-When using low angle, protect head and chin structure.
-
-When using wide angle, keep edge distortion away from important facial features unless intentionally expressive.
-
-★ CHARACTER-ENVIRONMENT SCALE
-
-The environment must confirm the character’s scale.
-
-Use doors, chairs, desks, books, windows, furniture, stairs, architecture, plants, or props consistently.
-
-Do not make a book, desk, chair, flower, cup, or window vary arbitrarily in size merely to fill the composition.
-`;
-
-const POSE_AND_GESTURE_INTELLIGENCE = `
-
-★ POSE DESIGN IS NOT A LIST OF LIMB POSITIONS
-
-A strong pose must contain:
-
-★ A readable action line.
-
-★ A center of gravity.
-
-★ A weight-bearing structure.
-
-★ A clear relationship between ribcage and pelvis.
-
-★ A shoulder angle.
-
-★ A hip angle.
-
-★ A head direction.
-
-★ A gaze direction.
-
-★ A hand intention.
-
-★ A silhouette that can be understood without facial detail.
-
-The pose must reveal personality, emotion, status, occupation, or narrative action.
-
-★ AVOID DEFAULT ATTRACTIVE POSES
-
-Do not automatically use:
-
-★ One hand near the face.
-
-★ Fingers touching a hair strand.
-
-★ Slight head tilt.
-
-★ Soft smile.
-
-★ Body facing forward with shoulders gently rotated.
-
-★ Book held at chest level.
-
-★ Hands clasped demurely in front.
-
-These poses may be used only when supported by the story and given an exact physical and emotional purpose.
-
-★ POSE-SCENE CONNECTION
-
-The body must respond to the environment.
-
-Examples:
-
-★ A person sewing must have hand positions, shoulder posture, wrist angle, visual focus, and tool interaction consistent with sewing.
-
-★ A person reading must have a believable grip, page support, eye line, torso orientation, and book weight.
-
-★ A person standing in wind must show directional response in clothing and hair without losing balance.
-
-★ A person leaning over a desk must show compression at the waist, shoulder displacement, elbow support, and changed head-to-camera distance.
-
-★ A seated subject must visibly transfer weight into the chair, floor, cushion, bed, or surface.
-
-★ HAND STORYTELLING
-
-Hands must not be decorative accessories.
-
-For every visible hand, specify:
-
-★ Function.
-
-★ Contact point.
-
-★ Palm orientation.
-
-★ Finger grouping.
-
-★ Joint bend.
-
-★ Grip pressure.
-
-★ Tension or relaxation.
-
-★ Relationship with sleeves, objects, hair, another person, or the body.
-
-★ Whether the hand leads the viewer’s eye toward the focal point.
-
-Avoid:
-
-★ Floating hands.
-
-★ Identical mirrored hand poses.
-
-★ Fingers resting on objects without believable contact.
-
-★ Unnecessary hair-touching gestures.
-
-★ Hands hidden solely because anatomy is difficult.
-
-★ Silky generic fingers with no joints.
-
-★ BODY SILHOUETTE HIERARCHY
-
-The pose should create a dominant silhouette shape.
-
-Possible silhouette logic:
-
-★ Long diagonal.
-
-★ S-curve.
-
-★ C-curve.
-
-★ Triangular stability.
-
-★ Open expansive gesture.
-
-★ Closed protective gesture.
-
-★ Vertical authority.
-
-★ Compressed intimate shape.
-
-Do not mix several contradictory pose rhythms in one figure.
-
-★ EXPRESSION AND BODY MUST AGREE
-
-A gentle face with highly tense shoulders is a contradiction unless narratively intentional.
-
-A confident expression with collapsed posture weakens status.
-
-A melancholic gaze with an energetic advertising pose weakens emotion.
-
-The facial expression, head tilt, shoulders, spine, arms, hands, and lower body must express the same emotional event.
-`;
-
-const HAIR_FACE_AND_ANTI_PLASTIC_INTELLIGENCE = `
-
-★ HAIR MUST SUPPORT THE FACE, NOT CONSUME THE IMAGE
-
-Hair is a designed mass system.
-
-Before describing strands, determine:
-
-★ Overall silhouette.
-
-★ Skull-following root structure.
-
-★ Parting.
-
-★ Primary mass direction.
-
-★ Secondary locks.
-
-★ Weight distribution.
-
-★ Density around the face.
-
-★ Density behind shoulders.
-
-★ Relationship with neck and clothing.
-
-★ Areas of compression.
-
-★ Areas of separation.
-
-★ Gravity and airflow.
-
-★ Highlight hierarchy.
-
-Do not solve weak hair design by adding more shine, more flyaways, more ribbons, more highlights, or more volume.
-
-★ ANTI-INFLATED-CROWN LOCK
-
-Prevent:
-
-★ Artificially inflated crown height.
-
-★ Hair beginning too far above the skull.
-
-★ A helmet-like rounded upper mass.
-
-★ Excessive root lift unrelated to hairstyle or gravity.
-
-★ A face appearing tiny beneath an oversized dome of hair.
-
-The hairline and crown must follow believable skull volume.
-
-★ ANTI-RIBBON-HAIR LOCK
-
-Prevent:
-
-★ Every lock having the same width.
-
-★ Repeated S-curves.
-
-★ Long glossy ribbons wrapping around the body without gravity.
-
-★ Identical pointed tips.
-
-★ Highlight stripes repeated on every lock.
-
-★ Hair forming decorative loops unrelated to motion.
-
-Use varied mass sizes, overlap depth, compression, lost edges, controlled separation, and purposeful contour rhythm.
-
-★ HIGHLIGHT DISCIPLINE
-
-Hair highlights must be caused by light and material behavior.
-
-Define:
-
-★ Source direction.
-
-★ Width.
-
-★ Edge softness.
-
-★ Value.
-
-★ Color.
-
-★ Continuity.
-
-★ Interruption by form changes.
-
-★ Whether the selected art medium uses broad graphic shapes, narrow strips, broken brush marks, watercolor gaps, ink hatching, or realistic specular response.
-
-Do not automatically use:
-
-★ Angel-ring highlights.
-
-★ Metallic shine.
-
-★ Wet gloss.
-
-★ White edge outlines.
-
-★ Pink-purple reflective bands.
-
-★ FACE SIZE AND HAIR BALANCE
-
-The facial region must retain visual authority.
-
-Hair must frame the face through:
-
-★ Controlled value contrast.
-
-★ Contour opening.
-
-★ Directional locks.
-
-★ Reduced detail near critical facial landmarks.
-
-★ Deliberate separation between cheek contour and hair edge.
-
-Do not let black hair merge into a single dark mass that shrinks the face.
-
-Do not surround the face with equally sharp strands on every side.
-
-★ FACE CONSTRUCTION
-
-A detailed face requires more than large glossy eyes.
-
-Describe:
-
-★ Cranial direction.
-
-★ Forehead-to-brow transition.
-
-★ Eye socket placement.
-
-★ Cheek plane.
-
-★ Nose bridge.
-
-★ Mouth plane.
-
-★ Jaw transition.
-
-★ Chin projection.
-
-★ Far-side facial compression in three-quarter view.
-
-★ Ear position relative to brow and nose.
-
-★ Neck attachment.
-
-★ EYE ARCHITECTURE
-
-Control:
-
-★ Eye width.
-
-★ Eye spacing.
-
-★ Upper and lower lid shape.
-
-★ Iris size.
-
-★ Pupil size.
-
-★ Catchlight count.
-
-★ Catchlight placement.
-
-★ Lash grouping.
-
-★ Tear-line visibility.
-
-★ Gaze convergence.
-
-★ Asymmetry caused by perspective.
-
-Do not replace depth with oversized irises, excessive sparkles, wet gloss, star reflections, or many catchlights.
-
-★ SKIN MATERIAL LOCK
-
-Skin rendering must match the medium.
-
-For anime, manga, cel shading, watercolor, graphic illustration, or painterly art:
-
-★ Use medium-appropriate color planes.
-
-★ Use controlled blush.
-
-★ Use deliberate edge transitions.
-
-★ Preserve facial structure.
-
-Avoid:
-
-★ Wax skin.
-
-★ Porcelain doll skin.
-
-★ Translucent plastic skin.
-
-★ Full-face peach glow.
-
-★ Wet highlights on nose, lips, cheeks, and chin simultaneously.
-
-★ Photographic subsurface scattering pasted onto flat illustration.
-`;
-
-const COMPOSITION_AND_FOCAL_HIERARCHY_INTELLIGENCE = `
-
-★ FOCAL HIERARCHY MUST BE EXPLICIT
-
-Every final prompt must identify:
-
-★ Primary focal point.
-
-★ Secondary focal point.
-
-★ Tertiary supporting information.
-
-★ Visual resting area.
-
-★ Lowest-priority decorative area.
-
-The prompt must state how hierarchy is created through:
-
-★ Scale.
-
-★ Contrast.
-
-★ Sharpness.
-
-★ Saturation.
-
-★ Edge density.
-
-★ Light.
-
-★ Color temperature.
-
-★ Placement.
-
-★ Isolation.
-
-★ Gesture.
-
-★ Gaze.
-
-★ Leading lines.
-
-★ Overlap.
-
-★ Negative space.
-
-★ FIRST-READ TEST
-
-The primary focal point must be readable in less than half a second.
-
-If the primary focal point is the face:
-
-★ Preserve facial scale.
-
-★ Create local contrast.
-
-★ Direct gaze, hands, hair flow, architecture, or light toward it.
-
-★ Reduce competing highlights elsewhere.
-
-If the primary focal point is a gesture:
-
-★ Make the hand-object relationship readable.
-
-★ Avoid background overlap.
-
-★ Use directional lighting or edge separation.
-
-If the primary focal point is a full-body silhouette:
-
-★ Preserve subject scale.
-
-★ Simplify the background immediately around the silhouette.
-
-★ Use vertical, diagonal, circular, or architectural framing intentionally.
-
-★ VISUAL PATH
-
-The viewer’s eye must have a designed route.
-
-Possible route:
-
-★ Foreground object to hand to face to background clue.
-
-★ Face to gaze target to meaningful prop.
-
-★ Hair curve to shoulder to hand to object.
-
-★ Architectural diagonal to subject to light source.
-
-★ Circular frame to face to costume detail to environment.
-
-The eye path must not lead outside the frame immediately.
-
-Avoid unrelated lines that point away from the subject.
-
-★ FOREGROUND INTELLIGENCE
-
-Foreground blur or obstruction can create cinematic depth when it:
-
-★ Frames the subject.
-
-★ Establishes location.
-
-★ Creates scale.
-
-★ Leads the eye.
-
-★ Separates spatial planes.
-
-Do not place large blurred objects randomly at the edges simply to imitate photography.
-
-Foreground elements must have identifiable environmental logic.
-
-★ NEGATIVE SPACE
-
-Negative space is not empty failure.
-
-Use it to:
-
-★ Isolate the face.
-
-★ Support typography.
-
-★ Clarify silhouette.
-
-★ Create emotional distance.
-
-★ Balance a dense area.
-
-★ Allow light to breathe.
-
-Do not fill every quiet area with flowers, particles, notes, books, papers, butterflies, ribbons, sparkles, frames, symbols, or floating objects.
-
-★ DETAIL DENSITY MAP
-
-The most important area receives:
-
-★ Highest edge precision.
-
-★ Strongest meaningful contrast.
-
-★ Most specific texture.
-
-★ Most controlled color variation.
-
-Supporting areas receive reduced detail.
-
-Distant areas receive simplified shapes and atmospheric grouping.
-
-Do not render every book, flower, hair tip, fabric edge, note, wall object, and particle with equal sharpness.
-
-★ TANGENCY CONTROL
-
-Prevent:
-
-★ Lines touching the top of the head.
-
-★ Objects growing from shoulders.
-
-★ Window frames cutting through facial features.
-
-★ Flowers touching eyes or lips.
-
-★ Hair merging into background frames.
-
-★ Fingers aligning with book edges ambiguously.
-
-★ Circular motifs forming accidental halos unless intentionally symbolic.
-
-★ Furniture edges intersecting joints.
-
-★ CENTERED COMPOSITION
-
-Centered composition is allowed only when it creates:
-
-★ Formality.
-
-★ Symmetry.
-
-★ Iconic presence.
-
-★ Ritual.
-
-★ Poster hierarchy.
-
-★ Stillness.
-
-★ Divine or ceremonial framing.
-
-A centered subject must not be used simply because the model cannot design asymmetry.
-`;
-
-const LIGHTING_COLOR_AND_EFFECT_CONTROL = `
-
-★ LIGHTING MUST SHAPE FORM AND HIERARCHY
-
-Lighting is not a decorative overlay.
-
-For each scene, define:
-
-★ Source type.
-
-★ Source position.
-
-★ Source size.
-
-★ Direction.
-
-★ Intensity.
-
-★ Color temperature.
-
-★ Shadow direction.
-
-★ Shadow edge behavior.
-
-★ Bounce environment.
-
-★ Material response.
-
-★ Focal function.
-
-The key light must explain:
-
-★ Facial planes.
-
-★ Hair mass.
-
-★ Shoulder and torso volume.
-
-★ Hand-object contact.
-
-★ Fabric folds.
-
-★ Environmental depth.
-
-★ WARM WINDOW LIGHT CONTROL
-
-Warm sunset or window light must not become a full-image yellow filter.
-
-Preserve:
-
-★ Local skin color.
-
-★ Hair undertones.
-
-★ Cool interior shadows.
-
-★ Neutral material colors.
-
-★ Separation between lit and unlit planes.
-
-★ Contact shadows.
-
-★ Shadow color variation.
-
-★ RIM-LIGHT DISCIPLINE
-
-Use rim light only where the subject is backlit.
-
-The rim must follow the silhouette facing the source.
-
-Do not outline the entire body uniformly.
-
-Do not place bright white rims on both sides without multiple justified sources.
-
-★ GLOW CONTROL
-
-Glow must originate from a luminous object or intense reflected source.
-
-Prevent:
-
-★ Glow from ordinary flowers.
-
-★ Glow from paper without magic.
-
-★ Glow from every strand of hair.
-
-★ Glow around the entire face.
-
-★ Glow covering structural line art.
-
-★ Bloom that erases textile detail.
-
-★ PARTICLE CONTROL
-
-Particles, dust, petals, sparkles, floating notes, butterflies, and paper must have:
-
-★ A narrative reason.
-
-★ A physical or magical force.
-
-★ A direction.
-
-★ A depth layer.
-
-★ A density limit.
-
-★ A hierarchy.
-
-Do not scatter luminous dots uniformly across the canvas.
-
-Do not use particles to make a weak composition appear rich.
-
-★ COLOR HIERARCHY
-
-Define:
-
-★ Dominant color family.
-
-★ Supporting color family.
-
-★ Accent color.
-
-★ Shadow family.
-
-★ Highlight family.
-
-★ Skin color behavior.
-
-★ Hair color behavior.
-
-★ Background restraint.
-
-The accent color must occupy a limited area.
-
-Do not allow purple, pink, blue, gold, white, and black to compete at equal intensity.
-
-★ CONTRAST MAP
-
-Highest contrast belongs near the primary focal point.
-
-Medium contrast belongs to secondary information.
-
-Low contrast belongs to atmosphere and distant background.
-
-Do not place the brightest white simultaneously on:
-
-★ Hair.
-
-★ Eyes.
-
-★ Skin.
-
-★ Dress.
-
-★ Flowers.
-
-★ Window.
-
-★ Particles.
-
-★ Decorative frames.
-
-Choose a hierarchy.
-`;
-
-const REFERENCE_ADAPTIVE_CINEMATIC_LEARNING = `
-
-★ LEARN THE VISUAL DECISION, NOT THE LITERAL ARRANGEMENT
-
-A reference image contains both transferable visual intelligence and instance-specific content.
-
-Transferable visual intelligence includes:
-
-★ Why the camera is placed at that height.
-
-★ Why the subject occupies that amount of the frame.
-
-★ Why the face remains readable.
-
-★ How foreground and background create depth.
-
-★ How leading lines guide the eye.
-
-★ How contrast is concentrated.
-
-★ How hair supports silhouette.
-
-★ How pose communicates action.
-
-★ How light separates planes.
-
-★ How detail density is distributed.
-
-★ How negative space creates emphasis.
-
-★ How color accents are limited.
-
-Instance-specific content includes:
-
-★ The exact person.
-
-★ The exact face.
-
-★ The exact outfit.
-
-★ The exact prop.
-
-★ The exact room.
-
-★ The exact flower.
-
-★ The exact book.
-
-★ The exact camera coordinates.
-
-★ The exact placement of every object.
-
-★ The exact decorative symbol.
-
-Learn the first category deeply.
-
-Rebuild the second category for the new story.
-
-★ REFERENCE FUNCTION ASSIGNMENT
-
-For each reference, internally assign one or more functions:
-
-★ Camera language.
-
-★ Subject scale.
-
-★ Pose mechanics.
-
-★ Face rendering.
-
-★ Eye rendering.
-
-★ Hair architecture.
-
-★ Line-art language.
-
-★ Color logic.
-
-★ Lighting logic.
-
-★ Material treatment.
-
-★ Environmental depth.
-
-★ Graphic layout.
-
-Do not allow one reference to control every domain unless it genuinely supplies a coherent complete direction.
-
-★ CAMERA LEARNING WITHOUT CAMERA COPYING
-
-Do not blindly copy the exact camera angle.
-
-Instead identify:
-
-★ What visual problem the camera solved.
-
-★ What emotion it produced.
-
-★ What body part or object it emphasized.
-
-★ How it controlled scale.
-
-★ How it organized foreground and background.
-
-★ How it created asymmetry or depth.
-
-Then choose the most suitable camera for the new scene that solves the same type of visual problem.
-
-★ COMPOSITION LEARNING WITHOUT LAYOUT COPYING
-
-Do not duplicate the exact position of character, books, flowers, windows, frames, or props.
-
-Extract:
-
-★ Shape balance.
-
-★ Focal hierarchy.
-
-★ Negative-space proportion.
-
-★ Eye-path logic.
-
-★ Overlap strategy.
-
-★ Depth structure.
-
-★ Density map.
-
-Reconstruct these principles with new scene-specific content.
-
-★ QUALITY PARITY WITHOUT GENERIC ENHANCEMENT
-
-Do not attempt to surpass a reference by merely adding:
-
-★ More glow.
-
-★ More hair.
-
-★ More detail.
-
-★ More jewelry.
-
-★ More flowers.
-
-★ More particles.
-
-★ More contrast.
-
-★ More saturation.
-
-★ More cinematic vocabulary.
-
-Match or exceed quality through:
-
-★ Better decision clarity.
-
-★ Stronger silhouette.
-
-★ More coherent anatomy.
-
-★ More deliberate edge control.
-
-★ More precise focal hierarchy.
-
-★ More meaningful environmental storytelling.
-
-★ Cleaner material separation.
-
-★ More disciplined color.
-
-★ More intentional composition.
-
-★ REFERENCE-ABSENT MODE
-
-When no reference image is supplied:
-
-★ Do not weaken the artistic direction.
-
-★ Build a complete visual strategy from the Story Canon, Character Canon, room purpose, selected mode, emotional objective, and image format.
-
-★ Choose one coherent medium.
-
-★ Choose one clear focal idea.
-
-★ Choose a scene-appropriate camera.
-
-★ Establish a deliberate subject scale.
-
-★ Build a controlled color and lighting system.
-
-★ Do not fall back to generic centered anime portraiture.
-`;
-
 export default function RoomView({ roomDef, roomState, currentStory, state, save, toast, onBack, onHome, onOpenDrawer, progress, setProgress, isCompactHeader, onToggleCompact, onOpenStoryForm }: any) {
 
   const [, setTick] = useState(0);
@@ -2585,7 +1219,7 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
     try {
       // Sử dụng bộ đệm tạm thời thay vì clone toàn bộ object lớn
       const updatedCards: any = {};
-      const parts = text.split(/\[CARD_ID:\s*([a-zA-Z0-9_\-]+)\]/);
+      const parts = text.split(/\[(?:CARD_ID|CARD):\s*([a-zA-Z0-9_\-]+)\]/i);
       
       let hasChanged = false;
 
@@ -2595,42 +1229,124 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
           await new Promise(r => setTimeout(r, 16));
         }
 
-        const cardId = parts[i]?.trim();
+        let rawCardId = parts[i]?.trim();
         const cardContent = parts[i + 1] || "";
-        if (!cardId) continue;
+        if (!rawCardId) continue;
 
-        const finalPromptMarker = "[FINAL PROMPT]";
-        const markerIndex = cardContent.indexOf(finalPromptMarker);
-
-        let report = "";
-        let output = "";
-
-        if (markerIndex !== -1) {
-          report = cardContent.slice(0, markerIndex);
-          output = cardContent.slice(markerIndex + finalPromptMarker.length);
-        } else {
-          const firstHashIndex = cardContent.indexOf("###");
-          if (firstHashIndex !== -1) {
-            report = cardContent.slice(0, firstHashIndex);
-            output = cardContent.slice(firstHashIndex);
-          } else {
-            report = cardContent;
-            output = "";
-          }
+        // Chuẩn hóa cardId để map chính xác giữa marker [CARD: ...] và ID nội bộ của thẻ
+        let cardId = rawCardId;
+        const upperId = rawCardId.toUpperCase();
+        if (upperId === 'BEAUTIFUL_HAIR' || upperId === 'BEAUTIFUL_HAIR_ART' || upperId === 'HAIR') {
+          cardId = 'beautiful_hair_art';
+        } else if (upperId === 'CINEMATIC_VISUAL_DIRECTION' || upperId === 'CINEMATIC_VISUAL_ART' || upperId === 'CINEMATIC_VISUAL' || upperId === 'CINEMATIC') {
+          cardId = 'cinematic_visual_art';
+        } else if (upperId === 'ERROR_PREVENTION' || upperId === 'MISTAKE_PREVENTION' || upperId === 'MISTAKE_PREVENTION_CARD' || upperId === 'ERROR' || upperId === 'ERROR_PREVENTION_CARD') {
+          cardId = 'mistake_prevention_card';
         }
 
-        report = report.replace("[REFERENCE FIDELITY REPORT]", "").trim();
-        report = report.replace(/---+$/, "").trim();
-        output = output.trim();
+        if (cardId === 'mistake_prevention_card' && !roomState.cards?.['mistake_prevention_card'] && roomState.cards?.['error_prevention']) {
+          cardId = 'error_prevention';
+        }
 
         const oldCard = roomState.cards?.[cardId] || {};
-        if (oldCard.report !== report || oldCard.output !== output) {
-          updatedCards[cardId] = {
-            ...oldCard,
-            report: report || oldCard.report || "",
-            output: output || oldCard.output || ""
+
+        if (cardId === 'beautiful_hair_art' || cardId === 'cinematic_visual_art' || cardId === 'mistake_prevention_card' || cardId === 'error_prevention') {
+          const extractBlock = (text: string, startTag: string, endTag: string, alternateStartTag?: string, alternateEndTag?: string) => {
+              let s = text.indexOf(startTag);
+              let startTagLen = startTag.length;
+              if (s === -1 && alternateStartTag) {
+                  s = text.indexOf(alternateStartTag);
+                  startTagLen = alternateStartTag.length;
+              }
+              if (s === -1) return "";
+              const bodyStart = s + startTagLen;
+              let e = text.indexOf(endTag, bodyStart);
+              if (e === -1 && alternateEndTag) {
+                  e = text.indexOf(alternateEndTag, bodyStart);
+              }
+              if (e === -1) return text.substring(bodyStart).trim();
+              return text.substring(bodyStart, e).trim();
           };
-          hasChanged = true;
+          
+          const content = extractBlock(cardContent, "[CARD_CONTENT]", "[/CARD_CONTENT]", "[CARD CONTENT]", "[/CARD CONTENT]");
+          let finalPrompt = extractBlock(cardContent, "[FINAL_PROMPT]", "[/FINAL_PROMPT]", "[FINAL PROMPT]", "[/FINAL PROMPT]");
+          
+          if (!finalPrompt && cardContent.includes("[FINAL_PROMPT]")) {
+            const idx = cardContent.indexOf("[FINAL_PROMPT]");
+            finalPrompt = cardContent.slice(idx + "[FINAL_PROMPT]".length).replace(/\[CARD_END\]/gi, "").trim();
+          } else if (!finalPrompt && cardContent.includes("[FINAL PROMPT]")) {
+            const idx = cardContent.indexOf("[FINAL PROMPT]");
+            finalPrompt = cardContent.slice(idx + "[FINAL PROMPT]".length).replace(/\[CARD_END\]/gi, "").trim();
+          } else if (finalPrompt) {
+            finalPrompt = finalPrompt.replace(/\[CARD_END\]/gi, "").trim();
+          }
+
+          const posConstraints = extractBlock(cardContent, "[POSITIVE_CONSTRAINTS]", "[/POSITIVE_CONSTRAINTS]", "[POSITIVE CONSTRAINTS]", "[/POSITIVE CONSTRAINTS]");
+          const negConstraints = extractBlock(cardContent, "[NEGATIVE_CONSTRAINTS]", "[/NEGATIVE_CONSTRAINTS]", "[NEGATIVE CONSTRAINTS]", "[/NEGATIVE CONSTRAINTS]");
+          const finalValidation = extractBlock(cardContent, "[FINAL_VALIDATION]", "[/FINAL_VALIDATION]", "[FINAL VALIDATION]", "[/FINAL VALIDATION]");
+          
+          const isComplete = (content.length > 30 || posConstraints.length > 30) && finalPrompt.length > 20;
+
+          const combinedReport = [
+              content ? `[CARD_CONTENT]\n${content}` : "",
+              posConstraints ? `[POSITIVE_CONSTRAINTS]\n${posConstraints}` : "",
+              negConstraints ? `[NEGATIVE_CONSTRAINTS]\n${negConstraints}` : "",
+              finalValidation ? `[FINAL_VALIDATION]\n${finalValidation}` : ""
+          ].filter(Boolean).join("\n\n");
+
+          if (oldCard.report !== combinedReport || oldCard.output !== finalPrompt || oldCard.cardContent !== content) {
+             updatedCards[cardId] = {
+                ...oldCard,
+                report: combinedReport || oldCard.report || "",
+                output: finalPrompt || oldCard.output || "",
+                cardContent: content,
+                finalPrompt: finalPrompt,
+                positiveConstraints: posConstraints,
+                negativeConstraints: negConstraints,
+                finalValidation: finalValidation,
+                isValidated: isComplete
+             };
+             hasChanged = true;
+          }
+        } else {
+          const finalPromptMarker = "[FINAL PROMPT]";
+          const altMarker = "[FINAL_PROMPT]";
+          let markerIndex = cardContent.indexOf(finalPromptMarker);
+          let markerLen = finalPromptMarker.length;
+          if (markerIndex === -1) {
+            markerIndex = cardContent.indexOf(altMarker);
+            markerLen = altMarker.length;
+          }
+
+          let report = "";
+          let output = "";
+
+          if (markerIndex !== -1) {
+            report = cardContent.slice(0, markerIndex);
+            output = cardContent.slice(markerIndex + markerLen).replace(/\[CARD_END\]/gi, "").trim();
+          } else {
+            const firstHashIndex = cardContent.indexOf("###");
+            if (firstHashIndex !== -1) {
+              report = cardContent.slice(0, firstHashIndex);
+              output = cardContent.slice(firstHashIndex).replace(/\[CARD_END\]/gi, "").trim();
+            } else {
+              report = cardContent;
+              output = "";
+            }
+          }
+
+          report = report.replace("[REFERENCE FIDELITY REPORT]", "").trim();
+          report = report.replace(/---+$/, "").trim();
+          output = output.trim();
+
+          if (oldCard.report !== report || oldCard.output !== output) {
+            updatedCards[cardId] = {
+              ...oldCard,
+              report: report || oldCard.report || "",
+              output: output || oldCard.output || report || ""
+            };
+            hasChanged = true;
+          }
         }
       }
 
@@ -3398,6 +2114,8 @@ export default function RoomView({ roomDef, roomState, currentStory, state, save
         const idLower = (c.id || "").toLowerCase();
         const titleLower = (c.title || "").toLowerCase();
         if (idLower.includes('hair') || titleLower.includes('tóc')) purp = "hair_reference (kiểu tóc, màu tóc, độ dài, mái)";
+        else if (idLower.includes('cinematic') || idLower.includes('camera') || titleLower.includes('góc chụp') || titleLower.includes('bố cục') || titleLower.includes('điện ảnh')) purp = "cinematic_visual_reference (góc chụp kỹ thuật số, camera, màu sắc nghệ thuật, tỉ lệ, điện ảnh, thị giác, bố cục hội họa)";
+        else if (idLower.includes('mistake') || idLower.includes('prevention') || titleLower.includes('phòng tránh lỗi') || titleLower.includes('lỗi')) purp = "error_prevention_reference (quy tắc triệt tiêu vĩnh viễn lỗi bàn tay biến dị, da nhựa, mắt đơ, tóc rác, dáng sượng và bối cảnh bệ rạc)";
         else if (idLower.includes('pose') || titleLower.includes('dáng') || titleLower.includes('pose')) purp = "pose_reference (tư thế, góc máy, chuyển động)";
         else if (idLower.includes('outfit') || titleLower.includes('trang phục') || titleLower.includes('áo') || titleLower.includes('dada') || titleLower.includes('outfit')) purp = "outfit_reference (trang phục, chất liệu, phụ kiện)";
         else if (idLower.includes('face') || idLower.includes('mat') || titleLower.includes('mặt') || titleLower.includes('khuôn mặt')) purp = "face_reference (phong cách vẽ mặt, makeup, biểu cảm)";
@@ -4455,16 +3173,18 @@ You MUST strictly enforce the following style locks, especially when the referen
 }
 
 ==================================================
-IV. HOW TO PROCESS MULTIPLE REFERENCES (PHÂN TÍCH NHIỀU ẢNH)
+IV. HOW TO PROCESS MULTIPLE REFERENCES & WORK CARDS
 ==================================================
 
-When given multiple references mapped to specific "Cards" (e.g., Hair Card, Pose Card, Outfit Card), you must extract ONLY the relevant information from that specific image:
-- If an image is in the 'Hair Card': Study ONLY the hair texture, shape, color, and rendering style. IGNORE the character's face, clothes, or pose.
+When given multiple references or work cards, you must extract ONLY the relevant information from that specific card and generate a complete output for it:
+- If processing 'TÓC XINH ĐẸP ♥︎' [CARD_ID: beautiful_hair_art] or [CARD: BEAUTIFUL_HAIR]: Study ONLY the hair texture, locks, parting, bangs structure, volume clumps, flow, highlights, and rendering style. IGNORE face, clothes, or pose.
+- If processing 'GÓC CHỤP / KỸ THUẬT SỐ / CAMERA / MÀU SẮC / TỈ LỆ / ĐIỆN ẢNH / THỊ GIÁC / BỐ CỤC / HỘI HỌA' [CARD_ID: cinematic_visual_art] or [CARD: CINEMATIC_VISUAL_DIRECTION]: Study camera angles (eye-level, low-angle, Dutch angle), focal lengths (85mm, 35mm, 24mm), aspect ratio, color grading, cinematic lighting, leading lines, and visual composition.
+- If processing 'PHÒNG TRÁNH LỖI' [CARD_ID: mistake_prevention_card] or [CARD: ERROR_PREVENTION]: Detail strict rules and negative guards to permanently prevent mutated hands, wax skin, dead eyes, messy hair, awkward poses, and cluttered backgrounds.
 - If an image is in the 'Pose Card': Study ONLY the camera angle, body mechanics, perspective, and dynamics. IGNORE the character's identity, clothes, or background.
 - If an image is in the 'Outfit Card': Study ONLY the clothing design, fabric, and layering. IGNORE the character wearing it.
 - If an image is in the 'Style/Overall Card': Study the global brushwork, rendering, lighting, and overall aesthetic.
 
-Synthesize these separated elements perfectly into the final prompt.
+Synthesize these separated elements perfectly into the final prompt for each card.
 
 ==================================================
 V. OUTPUT CLEANLINESS MANDATE
@@ -4507,6 +3227,431 @@ ${cards.map((c: any) => {
       story: currentStory.story || "No story provided.",
       characterProfile: currentStory.userProfile || "No character profile provided."
     });
+  } else if (c.id === 'beautiful_hair_art') {
+    return `[CARD_START]
+[CARD_ID: beautiful_hair_art]
+[CARD_TITLE: TÓC XINH ĐẸP ♥︎]
+
+[CARD_CONTENT]
+🚨 QUY TẮC BẮT BUỘC VỀ ĐỘ DÀI VÀ CHIỀU SÂU 🚨
+TUYỆT ĐỐI KHÔNG VIẾT 1-2 CÂU CHUNG CHUNG! ĐÂY LÀ WORK CARD SẢN XUẤT PROMPT CHUYÊN SÂU.
+Mỗi heading dưới đây PHẢI được viết thành một đoạn văn dài, cực kỳ chi tiết, giải thích rõ:
+1. Cấu trúc cụ thể được tạo ra như thế nào?
+2. Kỹ thuật/cách render là gì?
+3. Tại sao lại dùng kỹ thuật đó để phù hợp với nhân vật?
+Ví dụ, thay vì nói "Large, heavy graphic clumps", BẠN PHẢI MÔ TẢ "Các mảng tóc lớn được chia khối đồ họa, đổ bóng mảng lớn theo kỹ thuật cel-shading dứt khoát, phần ngọn tỉa mỏng dần tạo cảm giác đan xen nhưng không vỡ khối..."
+
+[01. CHARACTER CANON & HAIR IDENTITY]
+(Phải xác định đầy đủ: Tên nhân vật, Tuổi, Chiều cao, Mức độ trưởng thành, Dáng người, Hình dạng khuôn mặt, Trán, Gò má, Hàm, Cằm, Màu da, Tính cách, Trạng thái cảm xúc hiện tại, Màu tóc Canon, Độ dài tóc Canon, Mật độ tóc Canon, Chất tóc Canon, Kiểu mái, Kiểu ngôi, Phụ kiện tóc, Những đặc điểm không được thay đổi. Không lặp hồ sơ, giải thích ảnh hưởng đến thiết kế tóc)
+
+[02. HAIR BEAUTY CONCEPT]
+(Phải xác định: Mái tóc đẹp theo ngôn ngữ nào, Vẻ đẹp thanh lịch/tự nhiên/lãng mạn/mạnh mẽ/sắc sảo, Mức độ cách điệu, Mức độ trưởng thành, Mức độ mềm mại, Mức độ chuyển động, Ấn tượng khi nhìn xa/gần, Cách hỗ trợ thần thái/tính cách)
+
+[03. SKULL CONSTRUCTION]
+(Phải mô tả: Hình khối hộp sọ, Đỉnh đầu, Xương trán, Vùng thái dương, Sau đầu, Gáy, Vị trí tai, Cách tóc bọc quanh hộp sọ, Khoảng cách da đầu và khối tóc, Vùng ép sát/có volume)
+
+[04. HAIRLINE DESIGN]
+(Phải mô tả: Độ cao chân tóc, Đường cong chân tóc, Điểm giữa trán, Góc thái dương, Sideburn, Chân tóc gần tai/gáy, Mật độ tóc con, Mức độ bất đối xứng, Cách thay đổi theo góc camera)
+
+[05. PARTING & ROOT DIRECTION]
+(Phải xác định: Vị trí ngôi tóc, Độ rộng ngôi, Hướng tóc mọc, Vị trí xoáy tóc, Hướng rẽ mái, Độ nâng chân tóc, Vùng root lift, Vùng tóc nằm sát, Cách chân tóc chuyển khối, Cách giữ ngôi khi có gió)
+
+[06. PRIMARY HAIR MASS ARCHITECTURE]
+(Phải chia rõ: Khối mái, Khối tóc trái/phải, Khối sau đầu, Khối phủ vai, Khối rơi trước ngực/sau lưng, Khối gần/xa camera, Trọng lượng từng khối, Điểm bắt/kết thúc, Quan hệ overlap. Đừng nói chung chung)
+
+[07. SECONDARY CLUMP DESIGN]
+(Phải xác định: Số lượng nhóm tóc trung bình, Kích thước, Hướng cong, Độ xoắn, Độ taper, Overlap, Khoảng âm giữa các mảng, Điểm phá nhịp, Mảng đơn giản/chi tiết)
+
+[08. SILHOUETTE DESIGN]
+(Phải xác định: Silhouette tổng, Điểm rộng/hẹp nhất, Nhịp phồng và thu, Đường cong chính/phụ, Vùng tóc phá silhouette, Vùng giữ sạch, Quan hệ với khuôn mặt/vai/cổ/negative space)
+
+[09. FACE-FRAMING HAIR]
+(Phải xác định: Mái che trán bao nhiêu, Tóc che mắt hay không, Lọn tóc ôm má/hàm, Khoảng hở quanh mặt, Cách làm nổi bật mắt/hỗ trợ mặt, Vùng tuyệt đối không che biểu cảm)
+
+[10. HAIR FLOW & PHYSICS]
+(Phải xác định: Trọng lực, Hướng chuyển động, Ảnh hưởng pose/tốc độ/gió, Độ trễ tóc, Quán tính khối nặng, Chuyển động lọn nhẹ/tóc con, Vùng giữ bởi vai/trang phục, Phản ứng môi trường. Không mặc định tóc bay)
+
+[11. AGE-APPROPRIATE HAIR DESIGN]
+(Phải kiểm tra: Đúng tuổi không, Tỉ lệ tóc/đầu, Độ phồng, Mức trưởng thành/trẻ con, Phụ kiện, Kiểu mái, Độ bóng, Mức độ cầu kỳ)
+
+[12. PERSONALITY-BASED HAIR DIRECTION]
+(Tính cách chuyển thành: Độ gọn gàng/tự nhiên, Mức độ chủ động tạo kiểu, Cách chăm sóc, Phản ứng tình huống, Mức che mặt, Kiểm soát/buông lỏng)
+
+[13. EMOTIONAL HAIR BEHAVIOR]
+(Tóc hỗ trợ cảm xúc bằng: Nhịp đường cong, Độ căng/rơi, Mức che mặt/chuyển động, Silhouette, Ánh sáng)
+
+[14. HAIR LINE-ART DNA]
+(Mô tả: Loại/màu nét, Độ dày silhouette/nét trong/phía sáng/tối, Nét gần/xa camera, Taper đầu/cuối, Độ rung, Texture, Stroke rhythm, Cách line ôm form, Lost edge, Tránh outline đen toàn bộ)
+
+[15. HAIR SKETCH TECHNIQUE]
+(Mô tả: Brush sketch, Kích thước, Opacity, Flow, Pressure, Smoothing, Cách dựng hộp sọ/khối tóc, Sửa trước khi clean line)
+
+[16. HAIR CLEAN-LINE TECHNIQUE]
+(Mô tả: Đầu/ngòi bút, Pressure-size/opacity, Stabilization, Stroke dài/ngắn, Cách vẽ đường cong/tách khối/tóc con/giữ sống động)
+
+[17. HAIR BRUSH SYSTEM]
+(Xác định: Brush dựng khối/line-art/flat color/shadow/blending/highlight/texture/tóc con. Mỗi brush cần: Hình dạng, Độ cứng, Flow, Opacity, Pressure, Texture, Stabilization, Vùng dùng/không dùng)
+
+[18. BASE COLOR STRUCTURE]
+(Xác định: Hue/Value/Saturation chính, Nhiệt độ màu, Màu chân/thân/ngọn tóc, Variation nhỏ, Giữ Canon dưới ánh sáng)
+
+[19. VALUE ARCHITECTURE]
+(Xác định: Vùng tối/sáng nhất, Mid-tone chính, Core shadow, Cast shadow, Ambient occlusion, Bóng giữa khối/gần chân tóc/dưới mái/lên mặt/cổ/trang phục, Tách value với background)
+
+[20. HAIR SHADING METHOD]
+(Chọn/giải thích: Cel-shading/Painterly/Watercolor/Graphic/Mixed. Rõ: Mảng bóng bắt đầu ở đâu, Cạnh cứng/mềm, Màu bóng, Cách ôm form, Vùng blur/detail/giản lược)
+
+[21. HAIR COLOR TRANSITIONS]
+(Mô tả: Chuyển base sang shadow, Shadow sang reflected light, Mid-tone sang highlight, Nhiệt độ sáng/tối, Color variation môi trường)
+
+[22. HIGHLIGHT DESIGN]
+(Xác định: Nguồn sáng, Loại, Vị trí, Hướng, Độ rộng/dài, Độ đứt đoạn, Màu, Opacity, Hard/Soft edge, Highlight mảng trước/sau/theo độ cong. Không mặc định angel-ring)
+
+[23. RIM LIGHT & BACKLIGHT]
+(Xác định: Cần không, Nguồn sáng, Màu, Độ dày, Vùng xuất hiện/ngắt)
+
+[24. ENVIRONMENTAL COLOR RESPONSE]
+(Tóc nhận màu từ: Bầu trời, Tường, Nền, Trang phục, Ánh sáng phụ, Không khí. Giới hạn contamination)
+
+[25. HAIR MATERIAL]
+(Mô tả: Độ mềm/nặng/mượt/khô/ẩm, Matte/glossy, Cạnh tóc thay đổi, Phản ứng ánh sáng, Phân biệt với da/vải)
+
+[26. STRAND-LEVEL DETAIL]
+(Xác định: Vùng phép có sợi đơn, Số lượng, Độ dài/dày/tương phản/hướng/màu, Vùng cấm)
+
+[27. FLYAWAYS CONTROL]
+(Xác định: Cần không, Lý do, Vị trí, Số lượng, Hướng, Độ sáng, Mức độ nét. Không mặc định ethereal flyaways)
+
+[28. HAIR & CAMERA]
+(Xác định: Góc camera, Khối gần/xa camera, Foreshortening, Overlap, Vùng nét/mềm nhất, Thay đổi theo cỡ cảnh, Tránh che mắt)
+
+[29. HAIR & COMPOSITION]
+(Xác định: Vai trò eye path, Tóc dẫn mắt về đâu, Cân bằng nhân vật/background, Chiếm negative space, Tương tác typography, Vùng không che chữ/mặt/vượt frame)
+
+[30. HAIR & UI INTEGRATION]
+(Xác định: Vùng UI an toàn, Khoảng cách với chữ, Tóc phá frame không, Nằm dưới/trên graphic, Shadow giữa tóc/UI)
+
+[31. REFERENCE TECHNIQUE ASSIMILATION]
+(Xác định: Kỹ thuật học từ ảnh tham chiếu, Cách áp dụng)
+[/CARD_CONTENT]
+
+[POSITIVE_CONSTRAINTS]
+(Bắt buộc tối thiểu 30 ràng buộc - Positive constraints)
+[/POSITIVE_CONSTRAINTS]
+
+[NEGATIVE_CONSTRAINTS]
+(Bắt buộc tối thiểu 40 lỗi cấm - Negative constraints)
+[/NEGATIVE_CONSTRAINTS]
+
+[FINAL_VALIDATION]
+(Bắt buộc tối thiểu 30 tiêu chí kiểm tra - Final validation criteria)
+[/FINAL_VALIDATION]
+
+[FINAL_PROMPT]
+(Một Final Hair Prompt hoàn chỉnh, độ dài tối thiểu 1.200 từ, thống nhất và có thể sao chép sử dụng ngay)
+[/FINAL_PROMPT]
+[CARD_END]`;
+  } else if (c.id === 'expressive_eye_art') {
+    return `[CARD_START]
+[CARD_ID: expressive_eye_art]
+[CARD_TITLE: ĐÔI MẮT CÓ HỒN ♥︎]
+
+[CARD_CONTENT]
+🚨 QUY TẮC BẮT BUỘC VỀ ĐỘ DÀI VÀ CHIỀU SÂU 🚨
+TUYỆT ĐỐI KHÔNG VIẾT 1-2 CÂU CHUNG CHUNG! ĐÂY LÀ WORK CARD SẢN XUẤT PROMPT CHUYÊN SÂU.
+Mỗi heading dưới đây PHẢI được viết thành một đoạn văn dài, cực kỳ chi tiết, giải thích rõ kỹ thuật dựng hình, ánh sáng, màu sắc và cảm xúc của đôi mắt.
+
+[01. EYE SHAPE & ANATOMY]
+(Phải mô tả chi tiết: Chiều ngang/cao, độ cong mí trên/dưới, góc trong/ngoài, độ mở, khoảng cách hai mắt, cách mí ôm nhãn cầu)
+
+[02. EYEBALL STRUCTURE]
+(Phải mô tả chi tiết: Thể tích khối cầu, độ dày mí dưới, cách nhãn cầu nằm trong hốc mắt, góc mắt không đóng bằng line cứng)
+
+[03. IRIS ARCHITECTURE]
+(Phải mô tả chi tiết: Base hue, outer limbal ring, inner ring, mid-zone color, radial texture, vùng tối dưới mí trên, vùng phản sáng)
+
+[04. COLOR LAYERING]
+(Phải mô tả chi tiết: Màu nền, màu phụ, bóng, màu nhấn, phản xạ môi trường, màu catchlight, độ bão hòa)
+
+[05. PUPIL & GAZE]
+(Phải mô tả chi tiết: Kích thước đồng tử, hướng nhìn khóa vào đâu, ánh mắt trực diện hay né tránh, tương quan với tâm lý)
+
+[06. CATCHLIGHT]
+(Phải mô tả chi tiết: Nguồn sáng, hình dạng phản xạ, vị trí, không che iris, không đối xứng máy móc, không giống đèn LED)
+
+[07. EYELASHES]
+(Phải mô tả chi tiết: Phân cụm lớn/phụ, taper, hướng mi, độ thưa mí dưới, không outline thành mảng đen)
+
+[08. EYEBROWS & MICRO-EMOTION]
+(Phải mô tả chi tiết: Độ cao, độ cong, độ căng, bất đối xứng nhỏ, quan hệ với cơ má/khóe miệng/cảm xúc)
+[/CARD_CONTENT]
+
+[POSITIVE_CONSTRAINTS]
+(Bắt buộc tối thiểu 10 ràng buộc - Positive constraints)
+[/POSITIVE_CONSTRAINTS]
+
+[NEGATIVE_CONSTRAINTS]
+(Bắt buộc tối thiểu 10 lỗi cấm - Negative constraints)
+[/NEGATIVE_CONSTRAINTS]
+
+[FINAL_VALIDATION]
+(Bắt buộc tối thiểu 10 tiêu chí kiểm tra mắt - Validation)
+[/FINAL_VALIDATION]
+
+[FINAL_PROMPT]
+(Một Final Prompt hoàn chỉnh, cực kỳ chi tiết về đôi mắt, thống nhất và có thể sao chép sử dụng ngay)
+[/FINAL_PROMPT]
+[CARD_END]`;
+  } else if (c.id === 'face_aura_art') {
+    return `[CARD_START]
+[CARD_ID: face_aura_art]
+[CARD_TITLE: KHUÔN MẶT & THẦN THÁI NHÂN VẬT]
+
+[CARD_CONTENT]
+🚨 QUY TẮC BẮT BUỘC VỀ ĐỘ DÀI VÀ CHIỀU SÂU 🚨
+TUYỆT ĐỐI KHÔNG VIẾT 1-2 CÂU CHUNG CHUNG!
+
+[01. FACE IDENTITY & STRUCTURE]
+(Phải mô tả chi tiết: Độ rộng trán, độ đầy má, vị trí gò má, độ rộng hàm, hình cằm, tỷ lệ khuôn mặt)
+
+[02. FACIAL PLANES & SHADING]
+(Phải mô tả chi tiết: Mặt phẳng trán, thái dương, gò má, mặt bên, cằm. Shading bám khối, KHÔNG airbrush thành búp bê nhựa)
+
+[03. NOSE & MOUTH DETAIL]
+(Phải mô tả chi tiết: Cầu mũi, chóp mũi, cánh mũi; Hình môi, khóe miệng, độ mở, độ căng, màu môi, highlight nhỏ)
+
+[04. AGE & CHARACTER PRESENCE]
+(Phải mô tả chi tiết: Tuổi thị giác, sự hiện diện qua value contrast, edge sharpness, và detail density quanh mặt)
+[/CARD_CONTENT]
+
+[POSITIVE_CONSTRAINTS]
+(Bắt buộc tối thiểu 10 ràng buộc)
+[/POSITIVE_CONSTRAINTS]
+
+[NEGATIVE_CONSTRAINTS]
+(Bắt buộc tối thiểu 10 lỗi cấm)
+[/NEGATIVE_CONSTRAINTS]
+
+[FINAL_VALIDATION]
+(Bắt buộc tối thiểu 10 tiêu chí kiểm tra khuôn mặt)
+[/FINAL_VALIDATION]
+
+[FINAL_PROMPT]
+(Một Final Prompt hoàn chỉnh về khuôn mặt, thống nhất và có thể sao chép sử dụng ngay)
+[/FINAL_PROMPT]
+[CARD_END]`;
+  } else if (c.id === 'body_scale_placement_art') {
+    return `[CARD_START]
+[CARD_ID: body_scale_placement_art]
+[CARD_TITLE: TỈ LỆ CƠ THỂ & VỊ TRÍ NHÂN VẬT]
+
+[CARD_CONTENT]
+🚨 QUY TẮC BẮT BUỘC VỀ ĐỘ DÀI VÀ CHIỀU SÂU 🚨
+TUYỆT ĐỐI KHÔNG VIẾT 1-2 CÂU CHUNG CHUNG!
+
+[01. BODY PROPORTION & AGE]
+(Phải mô tả chi tiết: Tỷ lệ đầu-thân, độ rộng vai, chiều dài cổ/tay/chân, kích thước bàn tay/chân phù hợp tuổi)
+
+[02. STRUCTURAL LANDMARKS & POSE]
+(Phải mô tả chi tiết: Trục đầu, trục vai, lồng ngực, trục hông, các khớp, chân chịu lực, trọng tâm, mức độ căng/thả lỏng)
+
+[03. HANDS & INTERACTIONS]
+(Phải mô tả chi tiết: Lòng bàn tay, gốc ngón, chiều dài ngón có taper, độ dày, tương tác vật lý đúng, cấm lỗi AI dị dạng)
+
+[04. CHARACTER SCALE & PLACEMENT]
+(Phải mô tả chi tiết: Nhân vật chiếm bao nhiêu % chiều cao khung, khoảng cách tới 4 cạnh, focal point, eye path, negative space)
+[/CARD_CONTENT]
+
+[POSITIVE_CONSTRAINTS]
+(Bắt buộc tối thiểu 10 ràng buộc)
+[/POSITIVE_CONSTRAINTS]
+
+[NEGATIVE_CONSTRAINTS]
+(Bắt buộc tối thiểu 10 lỗi cấm)
+[/NEGATIVE_CONSTRAINTS]
+
+[FINAL_VALIDATION]
+(Bắt buộc tối thiểu 10 tiêu chí kiểm tra giải phẫu và bố cục)
+[/FINAL_VALIDATION]
+
+[FINAL_PROMPT]
+(Một Final Prompt hoàn chỉnh về cơ thể và bố cục, thống nhất và có thể sao chép sử dụng ngay)
+[/FINAL_PROMPT]
+[CARD_END]`;
+  } else if (c.id === 'reference_visual_translation') {
+    return `[CARD_START]
+[CARD_ID: reference_visual_translation]
+[CARD_TITLE: CHUYỂN HÓA NGÔN NGỮ NGHỆ THUẬT]
+
+[CARD_CONTENT]
+🚨 QUY TẮC BẮT BUỘC VỀ ĐỘ DÀI VÀ CHIỀU SÂU 🚨
+TUYỆT ĐỐI KHÔNG COPY NỘI DUNG. Phân tích CHỨC NĂNG và THAY THẾ bằng Canon.
+
+[01. REFERENCE ROLE MAPPING]
+(Xác định rõ ảnh tham chiếu đóng vai trò gì: line-art, composition, color, lighting, hay edge-control)
+
+[02. HIGH TECHNICAL FIDELITY]
+(Phân tích chi tiết: Kỹ thuật line-art, cách tổ chức mảng lớn, silhouette, value hierarchy, saturation, detail density)
+
+[03. COLOR & LIGHTING ASSIMILATION]
+(Phân tích chi tiết: Hue hierarchy, local color, nguồn sáng key/fill/rim/bounce, material response của da/tóc/vải)
+
+[04. CONTENT EXCLUSION & REPLACEMENT]
+(Loại bỏ: Danh tính, pose, quần áo, background cụ thể của mẫu. Thay thế: Giữ chức năng (ví dụ tạo khung, dẫn mắt) bằng nội dung phù hợp cốt truyện)
+[/CARD_CONTENT]
+
+[POSITIVE_CONSTRAINTS]
+(Bắt buộc tối thiểu 10 ràng buộc)
+[/POSITIVE_CONSTRAINTS]
+
+[NEGATIVE_CONSTRAINTS]
+(Bắt buộc tối thiểu 10 lỗi cấm)
+[/NEGATIVE_CONSTRAINTS]
+
+[FINAL_VALIDATION]
+(Bắt buộc tối thiểu 10 tiêu chí kiểm tra chuyển hóa)
+[/FINAL_VALIDATION]
+
+[FINAL_PROMPT]
+(Một Final Prompt hoàn chỉnh chuyển hóa nghệ thuật, thống nhất và có thể sao chép sử dụng ngay)
+[/FINAL_PROMPT]
+[CARD_END]`;
+  } else if (c.id === 'cinematic_visual_art') {
+    return `[CARD_START]
+[CARD_ID: cinematic_visual_art]
+[CARD_TITLE: GÓC CHỤP / KỸ THUẬT SỐ / CAMERA / MÀU SẮC / TỈ LỆ / ĐIỆN ẢNH / THỊ GIÁC / BỐ CỤC / HỘI HỌA]
+
+[CARD_CONTENT]
+[VISUAL INTENT]
+(Nội dung cụ thể)
+
+[PAINTING LANGUAGE]
+(Nội dung cụ thể)
+
+[DIGITAL TECHNIQUE]
+(Nội dung cụ thể)
+
+[CAMERA PURPOSE]
+(Nội dung cụ thể)
+
+[CAMERA ANGLE]
+(Nội dung cụ thể)
+
+[SHOT TYPE]
+(Nội dung cụ thể)
+
+[LENS & FOCAL IMPRESSION]
+(Nội dung cụ thể)
+
+[CAMERA DISTANCE]
+(Nội dung cụ thể)
+
+[PERSPECTIVE]
+(Nội dung cụ thể)
+
+[BODY SCALE & PROPORTION]
+(Nội dung cụ thể)
+
+[POSE & GESTURE]
+(Nội dung cụ thể)
+
+[CHARACTER PLACEMENT]
+(Nội dung cụ thể)
+
+[COMPOSITION SYSTEM]
+(Nội dung cụ thể)
+
+[VISUAL HIERARCHY & EYE PATH]
+(Nội dung cụ thể)
+
+[NEGATIVE SPACE]
+(Nội dung cụ thể)
+
+[SPATIAL LAYERS]
+(Nội dung cụ thể)
+
+[CINEMATIC BLOCKING]
+(Nội dung cụ thể)
+
+[LIGHTING DESIGN]
+(Nội dung cụ thể)
+
+[CINEMATIC CONTRAST]
+(Nội dung cụ thể)
+
+[COLOR SCRIPT]
+(Nội dung cụ thể)
+
+[HUE HIERARCHY]
+(Nội dung cụ thể)
+
+[VALUE HIERARCHY]
+(Nội dung cụ thể)
+
+[SATURATION HIERARCHY]
+(Nội dung cụ thể)
+
+[COLOR GRADING]
+(Nội dung cụ thể)
+
+[MATERIAL RESPONSE]
+(Nội dung cụ thể)
+
+[UI & GRAPHIC COMPOSITION]
+(Nội dung cụ thể)
+
+[VISUAL STORYTELLING]
+(Nội dung cụ thể)
+[/CARD_CONTENT]
+
+[POSITIVE_CONSTRAINTS]
+(Danh sách bắt buộc phải có)
+[/POSITIVE_CONSTRAINTS]
+
+[NEGATIVE_CONSTRAINTS]
+(Danh sách lỗi và nội dung cấm)
+[/NEGATIVE_CONSTRAINTS]
+
+[FINAL_VALIDATION]
+(Bắt buộc tối thiểu 30 tiêu chí kiểm tra - Final validation criteria)
+[/FINAL_VALIDATION]
+
+[FINAL_PROMPT]
+(Một Final Cinematic Visual Prompt hoàn chỉnh, dài, thống nhất và có thể sao chép sử dụng ngay)
+[/FINAL_PROMPT]
+[CARD_END]`;
+  } else if (c.id === 'mistake_prevention_card' || c.id === 'error_guard_analysis') {
+    return `[CARD_START]
+[CARD_ID: mistake_prevention_card]
+[CARD_TITLE: PHÒNG TRÁNH LỖI]
+
+[CARD_CONTENT]
+[ERROR ANALYSIS]
+(Phân tích lỗi)
+
+[ROOT CAUSE]
+(Nguyên nhân)
+
+[CORRECTION STRATEGY]
+(Cách sửa)
+[/CARD_CONTENT]
+
+[POSITIVE_CONSTRAINTS]
+(Danh sách Positive Defense)
+[/POSITIVE_CONSTRAINTS]
+
+[NEGATIVE_CONSTRAINTS]
+(Danh sách Negative Defense)
+[/NEGATIVE_CONSTRAINTS]
+
+[FINAL_VALIDATION]
+(Bắt buộc tối thiểu 30 tiêu chí kiểm tra - Final validation criteria)
+[/FINAL_VALIDATION]
+
+[FINAL_PROMPT]
+(Một Final Error-Prevention Prompt hoàn chỉnh, dài, thống nhất và có thể sao chép sử dụng ngay)
+[/FINAL_PROMPT]
+[CARD_END]`;
   }
   
   return `[CARD_ID: ${c.id}]
@@ -4568,15 +3713,88 @@ Structure exactly as follows:
 
 ---
 ### 🚫 BẢN PHÒNG CHỐNG LỖI TẠO ẢNH CHUYÊN SÂU & CAM KẾT CHẤT LƯỢNG (ANTI-GLITCH PROTOCOL & QUALITY GUARANTEE)
-- **TỔNG HỢP TOÀN BỘ CÁC LỖI CẤM PHÉP XẢY RA (Absolute Zero-Tolerance Error List)**:
-  + *Lỗi giải phẫu cơ thể (Anatomical Glitches)*: Cấm thừa ngón tay/ngón chân, biến dạng bàn tay/bàn chân, lệch khớp xương vai/cổ, lệch tâm mắt (asymmetric eyes), méo mồm hoặc biểu cảm đờ đẫn mất tự nhiên.
-  + *Lỗi phong cách nét vẽ (Style Drift/AI Bleed)*: Cấm tuyệt đối pha trộn nét vẽ mặc định của AI (generic, overly airbrushed/plastic render styles). Nét vẽ phải đi đúng lineart rõ ràng, thô nháp hoặc mượt mà chính xác bám sát toàn bộ ảnh gốc tham chiếu.
-  + *Lỗi bối cảnh và rác hình ảnh (Background Pollution & Artifacts)*: Cấm các chi tiết vật lý phi lý (cốc nước bay, bàn ghế dính liền người, vũ khí mọc sai chỗ), các đốm mờ, nhiễu hạt, chữ viết lộn xộn (nonsense text) xuất hiện bừa bãi trong tranh trừ SFX được ghi cụ thể.
-  + *Lỗi bỏ quên tư liệu tham chiếu (Reference Neglect)*: Cấm chỉ học từ ảnh đầu tiên và ngó lơ các ảnh tiếp theo! Phải phân bổ rõ vai trò từng ảnh (ví dụ: ảnh 1 lấy tóc, ảnh 2 lấy dáng, ảnh 3 lấy bối cảnh, ảnh 4 lấy cách tô màu bão hòa). Nếu bỏ sót bất cứ đặc trưng visual nào từ bất kỳ ảnh nào đã được gom đều bị coi là lỗi nghiêm trọng.
-- **CHỈ DẪN VÀ CÚ PHÁP ĐỀ PHÒNG & KHẮC PHỤC LỖI CHI TIẾT (Strict Prevention Prompts & Negative Weights)**:
-  [Cung cấp chi tiết hướng giải quyết, câu lệnh bổ trợ cụ thể bằng cả tiếng Việt và tiếng Anh (Negative Prompts như: "multiple limbs, deformed hands, poorly drawn face, bad anatomy, blurry, worst quality, low quality...") bám sát từng phân cảnh của thẻ này để người dùng dán vào Midjourney/Niji/DALL-E phòng ngừa lỗi triệt để].
-- **LỜI NHẮC NHỞ NGHIÊM NGẶT CHO HỌA SĨ AI (Strict Quality Assurance Mandate)**:
-  [Viết một đoạn thông điệp cam kết chất lượng cực kỳ dài, chi tiết, nhắc nhở từng phân đoạn, nhắc nhở kĩ càng từng chi tiết nhỏ của tóc, mắt, trang phục, góc máy không được phép sai lệch so với nguồn cảm hứng nguyên bản].
+- **GIAO THỨC LỖI CẤM TUYỆT ĐỐI TỐI CAO (ABSOLUTE PROHIBITED ERROR MASTER PROTOCOL)**: [Bạn phải viết một tuyên bố cam kết kỹ thuật cực kỳ nghiêm ngặt và đanh thép bộc lộ tinh thần "Không dung thứ cho bất kỳ sai sót kỹ thuật nào", bảo mật 100% ADN hình ảnh gốc, bám sát cốt truyện, không rác dữ liệu nội bộ].
+- **PHÒNG CHỐNG LỖI THEO 13 HẠNG MỤC CHUYÊN MÔN (13 PROFESSIONAL DOMAINS ERROR PREVENTION)**: [Sinh ra một hệ thống lỗi riêng, chi tiết và có thể dùng thật cho TỪNG hạng mục trong 13 hạng mục chuyên môn dưới đây. Với mỗi hạng mục, KHÔNG viết chung chung, KHÔNG dùng mẫu sáo rỗng hay lặp lại các card khác, mà phải dựa trên bối cảnh cốt truyện hiện tại, nhân vật, và ảnh tham chiếu để phân tích thật sâu ít nhất 5-10 dòng cho mỗi phần:
+  1. **Character (Nhân vật)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Phân tích chi tiết rủi ro ngoại hình, quần áo, khí chất...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Mệnh lệnh cấm hành vi vẽ sai lệch...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn kỹ thuật phòng ngừa...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng đắn cần đạt...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist 3-5 tiêu chí kiểm tra...]
+  2. **Face (Khuôn mặt)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Phân tích tỷ lệ khuôn mặt, gò má, cằm...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Mệnh lệnh cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  3. **Eyes (Đôi mắt)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Lệch tâm mắt, màu mắt sai cốt truyện...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  4. **Hair (Mái tóc)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Bết tóc, sai hướng gió...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  5. **Body (Thân thể)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Sai tỷ lệ giải phẫu học...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  6. **Pose (Tạo dáng & Dáng điệu)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Sai khớp xương, thừa ngón tay (cần chính xác 5 ngón), dáng pose cứng nhắc...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  7. **Camera (Góc máy & Tiêu cự)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Sai góc chụp, nhòe tiêu cự...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  8. **Composition (Bố cục & Khung hình)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Sai tỷ lệ khung, mất điểm nhìn...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  9. **Lighting (Ánh sáng & Bóng đổ)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Bóng đổ phi vật lý, thiếu khối...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  10. **Color (Màu sắc & Hue shifts)**:
+      * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Màu sắc bẩn, bão hòa quá đà...]
+      * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+      * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+      * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+      * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  11. **Line Art (Nét vẽ & Đi nét)**:
+      * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Nét vẽ thô kệch, mất lineart gốc...]
+      * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+      * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+      * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+      * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  12. **Render (Chất lượng render & Hoàn thiện)**:
+      * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Bề mặt lem nhem, cảm giác tranh rẻ tiền...]
+      * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+      * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+      * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+      * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  13. **Materials (Chất liệu & Vật lý bề mặt)**:
+      * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Nhầm lẫn chất liệu bề mặt da/vải...]
+      * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+      * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+      * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+      * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+]
+- **CHỈ DẪN VÀ CÚ PHÁP ĐỀ PHÒNG & KHẮC PHỤC LỖI CHI TIẾT (Strict Prevention Prompts & Negative Weights)**: [Cung cấp chi tiết hướng giải quyết, câu lệnh bổ trợ cụ thể bằng cả tiếng Việt và tiếng Anh (Negative Prompts như: "multiple limbs, deformed hands, poorly drawn face, bad anatomy, blurry, worst quality, low quality...") bám sát từng phân cảnh của thẻ này để người dùng dán vào Midjourney/Niji/DALL-E phòng ngừa lỗi triệt để].
 
 ---
 ### 🔒 [CHARACTER VISUAL DETAIL LOCK] (KHÓA CHI TIẾT THỊ GIÁC NHÂN VẬT)
@@ -4669,15 +3887,88 @@ Bao gồm: 117. Setting/Location, 118. Weather/Atmosphere, 119. Environmental St
 
 ---
 ### 🚫 BẢN PHÒNG CHỐNG LỖI TẠO ẢNH CHUYÊN SÂU & CAM KẾT CHẤT LƯỢNG (ANTI-GLITCH PROTOCOL & QUALITY GUARANTEE)
-- **TỔNG HỢP TOÀN BỘ CÁC LỖI CẤM PHÉP XẢY RA (Absolute Zero-Tolerance Error List)**:
-  + *Lỗi giải phẫu cơ thể (Anatomical Glitches)*: Cấm thừa ngón tay/ngón chân, biến dạng bàn tay/bàn chân, lệch khớp xương vai/cổ, lệch tâm mắt (asymmetric eyes), méo mồm hoặc biểu cảm đờ đẫn mất tự nhiên.
-  + *Lỗi phong cách nét vẽ (Style Drift/AI Bleed)*: Cấm tuyệt đối pha trộn nét vẽ mặc định của AI (generic, overly airbrushed/plastic render styles). Nét vẽ phải đi đúng lineart rõ ràng, thô nháp hoặc mượt mà chính xác bám sát toàn bộ ảnh gốc tham chiếu.
-  + *Lỗi bối cảnh và rác hình ảnh (Background Pollution & Artifacts)*: Cấm các chi tiết vật lý phi lý (cốc nước bay, bàn ghế dính liền người, vũ khí mọc sai chỗ), các đốm mờ, nhiễu hạt, chữ viết lộn xộn (nonsense text) xuất hiện bừa bãi trong tranh trừ SFX được ghi cụ thể.
-  + *Lỗi bỏ quên tư liệu tham chiếu (Reference Neglect)*: Cấm chỉ học từ ảnh đầu tiên và ngó lơ các ảnh tiếp theo! Phải phân bổ rõ vai trò từng ảnh (ví dụ: ảnh 1 lấy tóc, ảnh 2 lấy dáng, ảnh 3 lấy bối cảnh, ảnh 4 lấy cách tô màu bão hòa). Nếu bỏ sót bất cứ đặc trưng visual nào từ bất kỳ ảnh nào đã được gom đều bị coi là lỗi nghiêm trọng.
-- **CHỈ DẪN VÀ CÚ PHÁP ĐỀ PHÒNG & KHẮC PHỤC LỖI CHI TIẾT (Strict Prevention Prompts & Negative Weights)**:
-  [Cung cấp chi tiết hướng giải quyết, câu lệnh bổ trợ cụ thể bằng cả tiếng Việt và tiếng Anh (Negative Prompts như: "multiple limbs, deformed hands, poorly drawn face, bad anatomy, blurry, worst quality, low quality...") bám sát từng phân cảnh của thẻ này để người dùng dán vào Midjourney/Niji/DALL-E phòng ngừa lỗi triệt để].
-- **LỜI NHẮC NHỞ NGHIÊM NGẶT CHO HỌA SĨ AI (Strict Quality Assurance Mandate)**:
-  [Viết một đoạn thông điệp cam kết chất lượng cực kỳ dài, chi tiết, nhắc nhở từng phân đoạn, nhắc nhở kĩ càng từng chi tiết nhỏ của tóc, mắt, trang phục, góc máy không được phép sai lệch so với nguồn cảm hứng nguyên bản].
+- **GIAO THỨC LỖI CẤM TUYỆT ĐỐI TỐI CAO (ABSOLUTE PROHIBITED ERROR MASTER PROTOCOL)**: [Bạn phải viết một tuyên bố cam kết kỹ thuật cực kỳ nghiêm ngặt và đanh thép bộc lộ tinh thần "Không dung thứ cho bất kỳ sai sót kỹ thuật nào", bảo mật 100% ADN hình ảnh gốc, bám sát cốt truyện, không rác dữ liệu nội bộ].
+- **PHÒNG CHỐNG LỖI THEO 13 HẠNG MỤC CHUYÊN MÔN (13 PROFESSIONAL DOMAINS ERROR PREVENTION)**: [Sinh ra một hệ thống lỗi riêng, chi tiết và có thể dùng thật cho TỪNG hạng mục trong 13 hạng mục chuyên môn dưới đây. Với mỗi hạng mục, KHÔNG viết chung chung, KHÔNG dùng mẫu sáo rỗng hay lặp lại các card khác, mà phải dựa trên bối cảnh cốt truyện hiện tại, nhân vật, và ảnh tham chiếu để phân tích thật sâu ít nhất 5-10 dòng cho mỗi phần:
+  1. **Character (Nhân vật)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Phân tích chi tiết rủi ro ngoại hình, quần áo, khí chất...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Mệnh lệnh cấm hành vi vẽ sai lệch...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn kỹ thuật phòng ngừa...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng đắn cần đạt...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist 3-5 tiêu chí kiểm tra...]
+  2. **Face (Khuôn mặt)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Phân tích tỷ lệ khuôn mặt, gò má, cằm...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Mệnh lệnh cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  3. **Eyes (Đôi mắt)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Lệch tâm mắt, màu mắt sai cốt truyện...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  4. **Hair (Mái tóc)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Bết tóc, sai hướng gió...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  5. **Body (Thân thể)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Sai tỷ lệ giải phẫu học...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  6. **Pose (Tạo dáng & Dáng điệu)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Sai khớp xương, thừa ngón tay (cần chính xác 5 ngón), dáng pose cứng nhắc...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  7. **Camera (Góc máy & Tiêu cự)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Sai góc chụp, nhòe tiêu cự...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  8. **Composition (Bố cục & Khung hình)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Sai tỷ lệ khung, mất điểm nhìn...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  9. **Lighting (Ánh sáng & Bóng đổ)**:
+     * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Bóng đổ phi vật lý, thiếu khối...]
+     * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+     * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+     * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+     * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  10. **Color (Màu sắc & Hue shifts)**:
+      * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Màu sắc bẩn, bão hòa quá đà...]
+      * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+      * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+      * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+      * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  11. **Line Art (Nét vẽ & Đi nét)**:
+      * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Nét vẽ thô kệch, mất lineart gốc...]
+      * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+      * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+      * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+      * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  12. **Render (Chất lượng render & Hoàn thiện)**:
+      * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Bề mặt lem nhem, cảm giác tranh rẻ tiền...]
+      * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+      * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+      * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+      * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+  13. **Materials (Chất liệu & Vật lý bề mặt)**:
+      * **PHÂN TÍCH LỖI CÓ THỂ XẢY RA TRONG HẠNG MỤC HIỆN TẠI (Failure Analysis)**: [Nhầm lẫn chất liệu bề mặt da/vải...]
+      * **ĐIỀU NGHIÊM CẤM (Absolute Prohibitions)**: [Cấm...]
+      * **CÁCH PHÒNG TRÁNH (Strict Prevention)**: [Chỉ dẫn...]
+      * **YÊU CẦU ĐÚNG THAY THẾ (Correct Replacement)**: [Trạng thái đúng...]
+      * **CHECKLIST KIỂM TRA (Checklist)**: [Checklist...]
+]
+- **CHỈ DẪN VÀ CÚ PHÁP ĐỀ PHÒNG & KHẮC PHỤC LỖI CHI TIẾT (Strict Prevention Prompts & Negative Weights)**: [Cung cấp chi tiết hướng giải quyết, câu lệnh bổ trợ cụ thể bằng cả tiếng Việt và tiếng Anh (Negative Prompts như: "multiple limbs, deformed hands, poorly drawn face, bad anatomy, blurry, worst quality, low quality...") bám sát từng phân cảnh của thẻ này để người dùng dán vào Midjourney/Niji/DALL-E phòng ngừa lỗi triệt để].
 
 ---
 ### 🔒 [CHARACTER VISUAL DETAIL LOCK] (KHÓA CHI TIẾT TẠO HÌNH NHÂN VẬT CHÍNH TRONG CẢNH)
@@ -5182,7 +4473,20 @@ When given multiple references mapped to specific "Cards" (e.g., Hair Card, Pose
 Synthesize these separated elements perfectly into the final prompt.
 
 ==================================================
-V. OUTPUT CLEANLINESS MANDATE
+V. SUPREME MANDATE FOR SPECIALIZED CARDS (ĐẶC BIỆT LÀ TÓC, MẮT, TỈ LỆ)
+==================================================
+
+When processing specialized, deep-dive Work Cards (such as 'beautiful_hair_art' or any card focused on Eye Art, Face Aura, or Body Scale), YOU ARE STRICTLY FORBIDDEN from outputting short, 1-2 sentence summaries.
+
+1. EXTREME DEPTH (CHIỀU SÂU CỰC HẠN): For every single heading within these specialized cards, you MUST write a long, exhaustive paragraph (at least 4-6 highly detailed sentences). 
+2. NO GENERIC FLUFF: Do not write "Hair is beautifully rendered" or "Perfectly proportioned". You MUST explain the EXACT technical execution.
+3. TECHNICAL EXPLANATION: How is the structure created? What is the brushwork? How does light interact with the volume? How does this specific rendering match the character's personality/story?
+4. VISUAL INTELLIGENCE: Apply elite knowledge of facial anatomy, hair physics, skull geometry, eye architecture (iris depth, catchlights, tear ducts), and body scaling (perspective foreshortening, center of gravity).
+
+You must act as a master art teacher explaining the exact technical execution of these elements to a senior illustrator. ANY short or generic response in these specialized cards is a critical failure.
+
+==================================================
+VI. OUTPUT CLEANLINESS MANDATE
 ==================================================
 
 1. Your output MUST be the final, descriptive prompt ready for an image generation AI.
@@ -5396,79 +4700,85 @@ ${currentStory?.userProfile || "No character profile provided."}
             "  - Stealth Professional Art Formulation (Mô tả nghệ thuật ẩn danh chuyên nghiệp): Describe the camera angles, visual path/lines (đường thị giác, điểm nhìn, tầm nhìn), light source vectors, perspective depth, and artistic brushstrokes with 100% precision using professional visual art terminology, while keeping the prompt itself beautifully original. No reader should ever be able to guess or trace back the original reference image from the prompt text alone, yet the generative AI reading the prompt will reproduce the exact same composition framework, line-weight DNA, perspective structure, and color theory as the reference image, matching 100% the story characters!\n\n" +
             "🚨 SUPREME COMMAND FOR HIGH-FIDELITY DETAILS (MỆNH LỆNH THỐNG TRỊ CHI TIẾT TỰA THỰC 100%): Write incredibly long, precise, and vivid paragraphs for each part! Use advanced terminology such as 'Fujifilm Superia color space, Hasselblad HC 80mm color accuracy, Arri Alexa cinematic tone, 0.05mm ultra-fine rotring ink brush, meticulous cross-hatching shade layers, anatomically flawless hands with five long slender digits, perfect fabric drape tension folds' in every description. Ensure that every item—whether adapted or invented—is rendered with the same technical excellence, EXACT LINEWORK, and EXACT COLORS as the reference DNA!\n\n" +
             "🚨 MANDATE #10: ABSOLUTE AVOIDANCE OF GENERIC AI STYLE (TUYỆT ĐỐI KHÔNG SỬ DỤNG PHONG CÁCH AI MẶC ĐỊNH) 🚨: YOU ARE STRICTLY FORBIDDEN FROM PRODUCING GENERIC, PLASTIC, OVERLY-SMOOTH, OR TYPICAL 'AI-ART' LOOKS. The artwork must NOT feel digital, synthetic, or generic. You must ONLY produce artwork that looks like it was created by a master human artist using the specific medium and linework defined in the reference images. If the reference is watercolor, the AI output MUST look like 100% genuine watercolor with authentic paper texture, ink bleeds, and organic brush strokes. If the reference is ink, it MUST look like authentic, hand-drawn ink with variable line weight and organic human imperfections! Reject all smooth, artificial, shiny, or 'AI-looking' aesthetic conventions immediately!\n\n" +
-            "🚨 NO COGNITIVE ANALYSIS FLUFF (BẮT BUỘC BỎ QUA PHẦN PHÂN TÍCH SUY NGHĨ TIẾNG VIỆT) 🚨: To maintain ultimate stream efficiency, YOU MUST NOT output any [REFERENCE FIDELITY REPORT] or Vietnamese thinking/analysis text. Start the response immediately with [FINAL PROMPT] followed by the requested parts. Just write the highly detailed prompt ready for direct image creation! Each card must start immediately with '[FINAL PROMPT]'.\n\n" +
+            "🚨 NO COGNITIVE ANALYSIS FLUFF (BẮT BUỘC BỎ QUA PHẦN PHÂN TÍCH SUY NGHĨ TIẾNG VIỆT) 🚨: To maintain ultimate stream efficiency, YOU MUST NOT output any [REFERENCE FIDELITY REPORT] or Vietnamese thinking/analysis text. Start the response immediately with [CARD_ID: <the_card_id>] followed by [FINAL PROMPT].\n\n" +
             "CRITICAL RULE ON REFERENCE IMAGES (OUTPUT PHẢI ĐỘC LẬP VÀ SẠCH): When studying reference images in the Context Window, achieve ABSOLUTE FIDELITY in 'Visual Vision' (Art style, medium texture, color palette, technical lighting, and EXACT camera perspective/angle/framing). However, you MUST practice 'Creative Adaptation' for the subject matter: replace literal props, specific tools, and background objects with new elements that make sense for the STORY CHARACTER. The final output must be standalone. You MUST NOT include ANY of the following in the generated prompt: CARD_ID, Room ID, UUID, reference image ID, filenames, storage key, attachment report, variable names, internal data, or phrases asking the image generator to 'look at the attached reference image'. The prompt must describe the visuals entirely in text so the image generator doesn't need the reference image!\n\n" +
-            "For EACH Work Card, you MUST directly start with '[FINAL PROMPT]' with the standalone descriptive instruction ready for direct image generation! In [FINAL PROMPT], you MUST structure the output into exactly 18 STANDALONE PARTS:\n" +
-"### 1. Mục tiêu cảnh (Scene Goal)\n" +
+            "For EACH Work Card, you MUST directly start with '[CARD_ID: <the_card_id>]' and then '[FINAL PROMPT]' with the standalone descriptive instruction ready for direct image generation! In [FINAL PROMPT], you MUST structure the output into exactly 20 STANDALONE PARTS (Note: For the specialized cards like 'beautiful_hair_art', 'expressive_eye_art', 'face_aura_art', 'body_scale_placement_art', 'reference_visual_translation', 'cinematic_visual_art', and 'mistake_prevention_card', YOU MUST STILL use this exact 20-part structure, BUT for the parts relevant to their domain—such as Hair, Eyes, Face, Proportions—you MUST apply the EXTREME DEPTH mandated in 'V. SUPREME MANDATE FOR SPECIALIZED CARDS', writing exhaustive, highly technical paragraphs instead of short sentences):\n" +
+"### 1. THẺ LỆNH TỐI CAO — SUPREME VISUAL INTELLIGENCE COMMAND\n" +
+"- [WHAT (Supreme Command): Apply the 120-module STUDIO AAA framework and 20-item visual lock.]\n" +
+"- [HOW (Visual Intelligence): Enforce absolute fidelity to the Reference DNA and Story Soul.]\n" +
+"- [Ref Analysis: Perform a surgical deconstruction of the visual DNA across all 10 Chapters of the Studio AAA framework. Lock the 20 critical visual points (Total Character, Face Structure, Eyes, Eyebrows, Nose, Mouth/Lips, Skin, Hair, Ears, Neck/Shoulders, Arms/Hands, Body Proportions, Outfit, Expression, Material Physics, Lighting, Color Grading, Camera Angle, Composition, Global Aesthetic). This analysis governs all subsequent cards.]\n\n" +
+"### 2. Mục tiêu cảnh (Scene Goal)\n" +
 "- [WHAT (Locked Story/Character): Lock narrative intent, character action, and story-accurate scene goals.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn focal hierarchy, visual urgency, and compositional impact from reference.]\n" +
 "- [Ref Analysis: Deconstruct the reference's focal point hierarchy, visual flow (leading lines), and compositional weight. Apply identical spatial urgency and viewer engagement logic to this scene, ensuring the narrative intent is conveyed with the same artistic impact. Identify primary/secondary/tertiary focal points and replicate the composition strategy to anchor the viewer's eye.]\n\n" +
-"### 2. Nhân vật (Character)\n" +
+"### 3. Nhân vật (Character)\n" +
 "- [WHAT (Locked Story/Character): Maintain character identity, story-specific features, and anatomical consistency.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn technical anatomical rendering, facial structure, and bone volume from reference. Avoid generic rounded faces.]\n" +
 "- [Ref Analysis: Analyze facial geometry, jawline sharpness, and the technical rendering of facial planes. Apply the reference's technical anatomical rendering and proportion philosophy to the character, maintaining story-specific identity. Focus on how the reference constructs human volume and skeletal framing.]\n\n" +
-"### 3. Biểu cảm & Đôi mắt (Expression & Eye Architecture)\n" +
+"### 4. Biểu cảm & Đôi mắt (Expression & Eye Architecture)\n" +
 "- [WHAT (Locked Story/Character): Maintain character emotional state and expression depth.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn facial rendering, eye shape geometry, iris architecture, catchlight placement, pupil detail, and lash rendering from reference.]\n" +
 "- [Ref Analysis: Deconstruct facial rendering, eye gloss, catchlight, pupil detail, and expression depth. Study the iris color layers and the sharpness of the eyelids. Apply the same technical approach to facial structure, bone rendering, and emotional resonance, ensuring the eyes/expression have the exact same depth, allure, and artistic 'soul' as the reference.]\n\n" +
-"### 4. Pose (Posture & Hands)\n" +
+"### 5. Pose (Posture & Hands)\n" +
 "- [WHAT (Locked Story/Character): Maintain character action, story-specific movement, and hand gestures.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn pose dynamics, weight distribution, center of gravity, and limb articulation logic from reference. Replicate the 'Pose Line' and silhouette.]\n" +
 "- [Ref Analysis: Deconstruct pose dynamics, center of gravity, weight distribution, and limb articulation. Apply the reference's kinetic energy and balance to the pose, ensuring movement, weight, and hand gesture sophistication (long slender fingers, precise joints) look physically and artistically correct.]\n\n" +
-"### 5. Tỷ lệ cơ thể (Body Proportions)\n" +
+"### 6. Tỷ lệ cơ thể (Body Proportions)\n" +
 "- [WHAT (Locked Story/Character): Maintain character identity and story-specific proportions.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn subject scale, subject-to-frame ratio, limb-to-torso ratios, and spatial proportioning logic from reference.]\n" +
 "- [Ref Analysis: Analyze subject scale, subject-to-frame ratio, and spatial proportioning. Apply the reference's logic of anatomy/body proportion scale, ensuring character identity remains consistent while matching the reference's elite anatomical rendering style and height-to-width balance.]\n\n" +
-"### 6. Góc máy & Phối cảnh (Camera Angle & Perspective)\n" +
+"### 7. Góc máy & Phối cảnh (Camera Angle & Perspective)\n" +
 "- [WHAT (Locked Story/Character): Maintain scene-appropriate viewpoint.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn camera philosophy, shot distance, camera tilt (Dutch tilt), focal length (35mm, 50mm, 85mm), and perspective vanishing points from reference.]\n" +
 "- [Ref Analysis: Analyze shot distance, camera tilt, camera lens/focal length, and framing/crop. Apply the reference's camera philosophy to this scene, capturing identical depth, perspective, and scale to replicate the reference's cinematic viewpoint and spatial compression.]\n\n" +
-"### 7. Bố cục & Đường thị giác (Composition & Visual Flow)\n" +
+"### 8. Bố cục & Đường thị giác (Composition & Visual Flow)\n" +
 "- [WHAT (Locked Story/Character): Maintain narrative scene arrangement.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn geometric scaffolding, rule of thirds, golden ratio, leading lines, and visual flow hierarchy from reference.]\n" +
 "- [Ref Analysis: Analyze geometric scaffolding, visual flow, and how the eye is led through the image. Apply identical structural logic to organize foreground/midground/background, replicating the visual hierarchy and spatial arrangement strategy that makes the reference look artistic.]\n\n" +
-"### 8. Line-art construction (Nét vẽ)\n" +
+"### 9. Line-art construction (Nét vẽ)\n" +
 "- [WHAT (Locked Story/Character): Maintain character silhouette and defining features.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn line weight variation, ink/pencil/brush texture, sharpness, and intersection handling from reference. No generic AI outlines.]\n" +
 "- [Ref Analysis: Analyze line weight (thick vs thin), ink/pencil/brush texture, and intersection handling (where lines join/taper). Apply identical line-art DNA to ensure professional, human-quality line art with extreme detail and deliberate line-weight variation that defines the character's volume.]\n\n" +
-"### 9. Tóc & Mảng tóc (Hair & Strands Architecture)\n" +
+"### 10. Tóc & Mảng tóc (Hair & Strands Architecture)\n" +
 "- [WHAT (Locked Story/Character): Maintain hair style and character appearance.]\n" +
 "- [HOW (Reference-Derived Art Direction): Strictly analyze the reference image's specific hair rendering style, clumping geometry, block-shading, and highlight logic. Define hair flow, gravity, and wind direction.]\n" +
 "- [Ref Analysis: Detect the core styling technique: cel-shading blocks, painterly brushwork, or realistic high-fidelity fine-lines. Replicate the hair's silhouette, density, and root-to-tip flow. If the reference utilizes stylized large blocks, describe the hair in solid shapes and clean contours. Avoid generic 'silky strands' if the reference has thick clumps. Highlight treatment must be 100% inherited from reference.]\n\n" +
-"### 10. Trang phục & Nếp nhăn (Outfit & Folds Physics)\n" +
+"### 11. Trang phục & Nếp nhăn (Outfit & Folds Physics)\n" +
 "- [WHAT (Locked Story/Character): Maintain character costume and story-specific details.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn fabric physics, draping, folds, wrinkles, and material tension logic from reference.]\n" +
 "- [Ref Analysis: Analyze fabric physics, draping, folds, and material tension. Apply identical wrinkle/ripple/tension logic to this outfit, ensuring weight, movement, and material interaction (stretching over body parts) look physically and artistically correct.]\n\n" +
-"### 11. Ánh sáng & Đổ bóng (Lighting & Shading)\n" +
+"### 12. Ánh sáng & Đổ bóng (Lighting & Shading)\n" +
 "- [WHAT (Locked Story/Character): Maintain narrative lighting requirements.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn lighting direction, main light, rim light, shadow contrast, ambient occlusion, and bounce light logic from reference.]\n" +
 "- [Ref Analysis: Analyze lighting logic, light-color temperature, contrast levels, and shadow/rim-light positioning. Apply identical cinematic lighting to achieve volume, drama, and atmosphere, replicating the light-shaping strategy and shadow sharpness/softness.]\n\n" +
-"### 12. Màu sắc (Color Palette & Grading)\n" +
+"### 13. Màu sắc (Color Palette & Grading)\n" +
 "- [WHAT (Locked Story/Character): Maintain character color scheme and setting mood.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn color palette logic, dominant/secondary/accent colors, saturation, and contrast levels, and color grading philosophy from reference.]\n" +
 "- [Ref Analysis: Analyze color palette logic, saturation levels, and color grading philosophy. Apply identical chromaticity, tone, and saturation philosophy to ensure absolute color harmony and mood-matching with the reference, inheriting the specific 'feel' of the colors.]\n\n" +
-"### 13. Chất liệu & Bề mặt (Materials & Surfaces)\n" +
+"### 14. Chất liệu & Bề mặt (Materials & Surfaces)\n" +
 "- [WHAT (Locked Story/Character): Maintain character and environment surface details.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn surface reflectivity, roughness, texture, and translucency physics (Subsurface scattering) from reference.]\n" +
 "- [Ref Analysis: Analyze surface reflectivity, roughness, texture, and translucency. Apply identical material logic, ensuring tactile realism for skin, fabric, and objects by replicating the surface-light-interaction physics and micro-textures of the reference.]\n\n" +
-"### 14. Background & Chiều sâu (Setting & Spatial Depth)\n" +
+"### 15. Background & Chiều sâu (Setting & Spatial Depth)\n" +
 "- [WHAT (Locked Story/Character): Maintain story-specific environmental setting.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn depth of field (bokeh), background organization, and spatial depth logic (foreground/midground/background separation) from reference.]\n" +
 "- [Ref Analysis: Analyze depth of field, background organization, and spatial separation. Apply identical spatial logic and organizational depth, ensuring the background enhances the subject through the reference's specific environmental-design strategy and atmospheric perspective.]\n\n" +
-"### 15. Chất lượng render & Kỹ thuật vẽ (Render Quality & Technique)\n" +
+"### 16. Chất lượng render & Kỹ thuật vẽ (Render Quality & Technique)\n" +
 "- [WHAT (Locked Story/Character): Maintain overall story atmosphere.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn rendering technique (Painterly, Watercolor, Digital, Ink), medium texture, and detail distribution logic from reference.]\n" +
 "- [Ref Analysis: Analyze rendering technique, medium texture, and detail distribution. Apply identical finishing logic to achieve an elite, professional art piece that mimics the reference's final polish, brushstroke texture, and rendering-depth level.]\n\n" +
-"### 16. Negative constraints (Lỗi cần tránh)\n" +
+"### 17. Negative constraints (Lỗi cần tránh)\n" +
 "- [WHAT (Locked Story/Character): Maintain character integrity and avoid story-breaking elements.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn anti-generic/anti-AI style constraints from reference. Specifically avoid 'AI-face', 'AI-lighting', and 'AI-hair'.]\n" +
 "- [Ref Analysis: Analyze specific anti-generic/anti-AI style constraints (e.g., avoid plastic textures, smooth-over-detail, or default-AI-lighting). Strictly reject any AI-default look by mirroring the reference's sophisticated rendering and high-quality aesthetic constraints.]\n\n" +
-"### 17. Reference application rules (Quy tắc áp dụng tham chiếu)\n" +
+"### 18. Reference application rules (Quy tắc áp dụng tham chiếu)\n" +
 "- [WHAT (Locked Story/Character): Maintain story character fidelity and narrative accuracy.]\n" +
 "- [HOW (Reference-Derived Art Direction): Learn art/technical/visual logic for transformation from reference. Perform 'Visual DNA Inheritance'.]\n" +
 "- [Ref Analysis: Apply strict logic transformation: learn the reference's art/technical/visual logic (DNA) while maintaining story character fidelity. 100% reference-based line-art, hair geometry, eye architecture, and composition logic. Reject all literal content copying. Final output must be 100% original, story-accurate work with elite, high-fidelity art-direction.]\n\n" +
-"### 18. PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)\n" +
-"Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...].";
+"### 19. PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)\n" +
+"Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...].\n\n" +
+"### 20. MASTER NEGATIVE PROMPT (LỆNH LOẠI TRỪ ẢNH LỖI)\n" +
+"Write the absolute most comprehensive, professional negative prompt (comma separated list of terms) derived from the negative constraints and mistake prevention rules.";
 
           finalSystemPrompt += "\n\n🚨 SUPREME MANDATE: ANTI-GENERIC HAIR EXPANSION & STRUCTURAL DEPTH 🚨\n" +
           "Every time a character is present in the prompt, you MUST AUTOMATICALLY expand the hair description into a deep, visually sophisticated block. You are STRICTLY FORBIDDEN from using generic, short, or cliché hair descriptions like 'long black hair', 'flowing hair', 'soft bangs', or 'silky hair'.\n" +
@@ -5490,16 +4800,6 @@ ${currentStory?.userProfile || "No character profile provided."}
           "   - VISUAL QUALITY, ARTISTIC LANGUAGE, COMPOSITIONAL INTELLIGENCE, and HOW TO DRAW are dictated by the Reference Image.\n" +
           "   - CREATIVITY is how you adapt these elements into a beautiful, logical new composition that fits the story without losing the reference's artistic spirit.\n" +
           "\n🚨 CRITICAL OUTPUT CLEANLINESS: You MUST NOT include any internal analysis metadata, reference notes, or meta-commentary in the FINAL PROMPT. Never use phrases like 'inspired by reference', 'learning from image', 'anti-copy', 'from reference', 'image 1', or 'analysis'. The FINAL PROMPT must be a 100% clean, independent, and copy-pasteable image generation prompt that directly dictates the visual elements.\n\n";
-
-          finalSystemPrompt +=
-            CINEMATIC_VISUAL_INTELLIGENCE_EXPANSION +
-            CINEMATIC_CAMERA_INTELLIGENCE +
-            SUBJECT_SCALE_AND_PROPORTION_INTELLIGENCE +
-            POSE_AND_GESTURE_INTELLIGENCE +
-            HAIR_FACE_AND_ANTI_PLASTIC_INTELLIGENCE +
-            COMPOSITION_AND_FOCAL_HIERARCHY_INTELLIGENCE +
-            LIGHTING_COLOR_AND_EFFECT_CONTROL +
-            REFERENCE_ADAPTIVE_CINEMATIC_LEARNING;
 
           console.log("=== FINAL SYSTEM PROMPT ===\n", finalSystemPrompt);
           console.log("=== CONTENT ARRAY ===\n", JSON.stringify(contentArray, null, 2));
@@ -6107,7 +5407,7 @@ ${currentStory?.userProfile || "No character profile provided."}
 
         {!isWorkListCollapsed && (
           <div className="work-list" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px'}}>
-            {[supremeCommandCard, ...roomDef.cards, masterErrorCard].map((c: any, i: number) => (
+            {roomDef.cards.map((c: any, i: number) => (
               <WorkCardItem
                 key={`card_${roomDef.id}_${c.id}_${i}`}
                 c={c}

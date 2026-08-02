@@ -1,7 +1,10 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { setGlobalDispatcher, Agent, request as undiciRequest } from "undici";
+import http from "http";
+import https from "https";
+import { URL } from "url";
+import { setGlobalDispatcher, Agent } from "undici";
 import { JWT } from "google-auth-library";
 
 // Disable any internal timeouts in Node's native fetch (undici) for massive streaming requests
@@ -255,9 +258,6 @@ async function startServer() {
     req.setTimeout(0); // Disable request timeout
 
     let keepAliveInterval: any = null;
-    req.on("close", () => {
-      if (keepAliveInterval) clearInterval(keepAliveInterval);
-    });
 
     try {
       const { profile, messages, systemPrompt } = req.body;
@@ -265,10 +265,8 @@ async function startServer() {
         return res.status(400).json({ ok: false, error: "Missing endpoint or key" });
       }
 
-      let url = profile.endpoint;
+      let url = profile.endpoint.trim();
       if (!url.startsWith("http")) url = "https://" + url;
-      
-      // Remove trailing slash
       url = url.replace(/\/$/, "");
       
       // Auto-append /v1 if missing and format is openai and pathMode is v1/auto
@@ -286,7 +284,7 @@ async function startServer() {
         "Content-Type": "application/json",
         "Accept": "text/event-stream",
         "Connection": "keep-alive",
-        ...profile.extraHeaders,
+        ...(profile.extraHeaders || {}),
       };
 
       const payload: any = {
@@ -295,12 +293,9 @@ async function startServer() {
         stream: true,
       };
 
-      // Chỉ gửi max_tokens khi thật sự cần thiết hoặc người dùng cấu hình
-      // Tránh việc gửi mặc định 65536 làm model bị lỗi "max tokens limit reached"
-      const finalMaxTokens = req.body.maxTokensOverride || profile.maxTokens;
-      if (finalMaxTokens) {
-        payload.max_tokens = finalMaxTokens;
-      }
+      const finalMaxTokens = Math.max(req.body.maxTokensOverride || 0, profile.maxTokens || 0, 131072);
+      payload.max_tokens = finalMaxTokens;
+      payload.max_completion_tokens = finalMaxTokens;
 
       // Ensure underlying socket stays alive
       req.socket.setKeepAlive(true, 5000);
@@ -325,7 +320,6 @@ async function startServer() {
       keepAliveInterval = setInterval(() => {
         try {
           if (!res.writableEnded) {
-            // Luôn gửi heartbeat mỗi 1.5 giây nếu không có dữ liệu thực sự đang truyền
             if (Date.now() - lastWriteTime >= 1500) {
                res.write(": keep-alive heartbeat (staying firm for wife)\n\n");
                if (typeof (res as any).flush === 'function') {
@@ -338,99 +332,98 @@ async function startServer() {
         }
       }, 1500);
 
-      res.on('close', () => {
+      const cleanupKeepAlive = () => {
         if (keepAliveInterval) {
           clearInterval(keepAliveInterval);
           keepAliveInterval = null;
         }
-      });
-      res.on('finish', () => {
-        if (keepAliveInterval) {
-          clearInterval(keepAliveInterval);
-          keepAliveInterval = null;
-        }
-      });
+      };
 
-      let firstDataChunk = true;
-      
-      // TUYỆT ĐỐI KHÔNG RETRY - Một vòng đời duy nhất, bám trụ tới cùng như vợ yêu cầu nhen!
-      try {
-        console.log(`[STREAM-FETCH] Fetching upstream using undiciRequest for model: ${profile.model || "unknown"}`);
-        const { body: responseBody, statusCode, headers: respHeaders } = await undiciRequest(testUrl, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(payload),
-          bodyTimeout: 0,
-          headersTimeout: 0,
+      req.on('close', cleanupKeepAlive);
+      res.on('close', cleanupKeepAlive);
+      res.on('finish', cleanupKeepAlive);
+
+      // SỬ DỤNG HTTP/HTTPS NATIVE CỦA NODE.JS CHO STREAMING UPSTREAM - KHÔNG BAO GIỜ BỊ DÙNG BODYSTREAMBUFFER CỦA UNDICI VÀ KHÔNG BAO GIỜ BỊ TỰ HỦY KẾT NỐI SỚM!
+      const targetParsedUrl = new URL(testUrl);
+      const isHttps = targetParsedUrl.protocol === "https:";
+      const httpModule = isHttps ? https : http;
+
+      const bodyData = JSON.stringify(payload);
+      const reqOptions: http.RequestOptions = {
+        method: "POST",
+        headers: {
+          ...headers,
+          "Content-Length": Buffer.byteLength(bodyData).toString(),
+        },
+        timeout: 0,
+      };
+
+      await new Promise<void>((resolve, reject) => {
+        const upstreamReq = httpModule.request(targetParsedUrl, reqOptions, (upstreamRes) => {
+          upstreamRes.setTimeout(0);
+
+          if (upstreamRes.statusCode && upstreamRes.statusCode >= 400) {
+            let errText = "";
+            upstreamRes.on("data", (chunk) => {
+              errText += chunk.toString();
+            });
+            upstreamRes.on("end", () => {
+              console.error(`[/api/ai-stream Upstream Error] HTTP ${upstreamRes.statusCode}: ${errText}`);
+              reject(new Error(`Upstream error ${upstreamRes.statusCode}: ${errText}`));
+            });
+            return;
+          }
+
+          let firstChunk = true;
+          upstreamRes.on("data", (chunk: Buffer) => {
+            if (firstChunk) {
+              console.log(`[STREAM-FIRST-DATA] Received first actual data chunk at ${new Date().toISOString()}`);
+              firstChunk = false;
+            }
+            if (!res.writableEnded) {
+              lastWriteTime = Date.now();
+              res.write(chunk);
+              if (typeof (res as any).flush === 'function') {
+                (res as any).flush();
+              }
+            }
+          });
+
+          upstreamRes.on("end", () => {
+            console.log(`[STREAM-DONE] Upstream stream ended naturally at ${new Date().toISOString()}`);
+            resolve();
+          });
+
+          upstreamRes.on("error", (err) => {
+            console.error(`[STREAM-RES-ERROR] Upstream response error:`, err);
+            reject(err);
+          });
         });
 
-        console.log(`[STREAM-RESPONSE] Upstream response status: ${statusCode}`);
+        upstreamReq.setTimeout(0);
+        upstreamReq.on("error", (err) => {
+          console.error(`[STREAM-REQ-ERROR] Upstream request error:`, err);
+          reject(err);
+        });
 
-        if (statusCode >= 400) {
-          let errText = "";
-          try {
-            errText = await responseBody.text();
-          } catch (e) {
-            // Fallback for older undici or if text() is not available
-            try {
-              const chunks = [];
-              for await (const chunk of responseBody) {
-                chunks.push(chunk);
-              }
-              errText = Buffer.concat(chunks).toString();
-            } catch (e2) {
-              errText = "Could not read error body";
-            }
-          }
-          console.error(`[/api/ai-stream Upstream Error] ❌ HTTP ${statusCode}\nBody: ${errText}`);
-          throw new Error(`Upstream error ${statusCode}: ${errText}`);
-        }
+        upstreamReq.write(bodyData);
+        upstreamReq.end();
+      });
 
-        if (responseBody) {
-          try {
-            for await (const chunk of responseBody) {
-              if (firstDataChunk) {
-                console.log(`[STREAM-FIRST-DATA] Received first actual data chunk at ${new Date().toISOString()}`);
-                firstDataChunk = false;
-              }
-              if (!res.writableEnded) {
-                lastWriteTime = Date.now();
-                res.write(chunk);
-                if (typeof (res as any).flush === "function") {
-                  (res as any).flush();
-                }
-              }
-            }
-            console.log(`[STREAM-DONE] Upstream finished naturally at ${new Date().toISOString()}`);
-          } catch (streamReadErr: any) {
-            console.error(`[STREAM-READ-ERROR] Error reading upstream stream:`, streamReadErr);
-            throw streamReadErr;
-          }
-        } else {
-          throw new Error("Response body is empty or null from upstream");
-        }
-      } catch (err: any) {
-        console.error(`[STREAM-FATAL-ERROR] API Proxy stream failed:`, err.message);
-        throw err;
-      }
-
-      if (keepAliveInterval) {
-        clearInterval(keepAliveInterval);
-        keepAliveInterval = null;
-      }
+      cleanupKeepAlive();
       if (!res.writableEnded) {
         res.end();
       }
     } catch (err: any) {
-      console.error(err);
+      console.error("[/api/ai-stream FATAL]", err?.message || err);
       if (keepAliveInterval) {
         clearInterval(keepAliveInterval);
         keepAliveInterval = null;
       }
       if (!res.headersSent) {
-        res.status(500).json({ ok: false, error: err.message });
+        res.status(500).json({ ok: false, error: err.message || "Unknown proxy error" });
       } else if (!res.writableEnded) {
-        res.write(`data: {"error": ${JSON.stringify(err.message)}}\n\n`);
+        res.write(`data: {"error": ${JSON.stringify(err.message || "Stream error")}}\n\n`);
         res.end();
       }
     }

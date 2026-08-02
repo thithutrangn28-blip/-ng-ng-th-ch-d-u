@@ -445,9 +445,7 @@ export function getRoomCatalog(roomIdx: number): RoomCatalog {
   const meta = roomMetadata[roomIdx] || roomMetadata[0];
   const realTasks = getRealTasksForRoom(meta.id);
   
-  // Prepend SUPREME_VISUAL_TASK to the tasks list
-  const baseTasks = realTasks && realTasks.length > 0 ? [...realTasks] : generate100UniqueTasks(roomIdx);
-  const tasks = [SUPREME_VISUAL_TASK, ...baseTasks];
+  const tasks = realTasks && realTasks.length > 0 ? [...realTasks] : generate100UniqueTasks(roomIdx);
   
   const catalog: RoomCatalog = {
     roomId: meta.id,
@@ -472,14 +470,12 @@ export function validateRoomCatalog(tasks: RoomTask[]): { valid: boolean; error?
   if (!tasks || tasks.length === 0) {
     return { valid: false, error: `Phòng này hiện chưa có ý nào (hiện có 0 ý). Vui lòng thêm hoặc chọn ít nhất 1 ý để gọi API.` };
   }
-  for (const t of tasks) {
-    const transRule = t.transformationRule || t.detailedInstruction || t.desc || "";
-    if (!t.title || !transRule) {
-      return { valid: false, error: `Ý [${t.id || "unknown"}] bị thiếu Tên ý hoặc Nội dung quy tắc. Vui lòng bổ sung đầy đủ trước khi gọi API.` };
-    }
-    if (transRule.length < 5) {
-      return { valid: false, error: `Ý "${t.title}" có nội dung quy tắc quá ngắn. Vui lòng viết chi tiết hơn để AI hiểu chính xác.` };
-    }
+  const validTasks = tasks.filter(t => {
+    const rule = t.transformationRule || t.detailedInstruction || t.desc || "";
+    return t.title && t.title.trim() !== "" && rule.trim().length >= 1;
+  });
+  if (validTasks.length === 0) {
+     return { valid: false, error: `Các ý đã chọn đều bị trống. Vui lòng viết nội dung quy tắc để AI hiểu nhen vợ yêu!` };
   }
   return { valid: true };
 }

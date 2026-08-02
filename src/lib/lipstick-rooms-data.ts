@@ -28,82 +28,2062 @@ export const PRESET_BACKGROUNDS = [
   "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80",
   "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=800&auto=format&fit=crop&q=80",
   "https://images.unsplash.com/photo-1490730141103-6cac27aaab94?w=800&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80"
+  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80",
 ];
 
-export const card = (id: string, name: string, instruction: string, visual: string): RoomCard => ({ id, name, instruction, visual });
+export const card = (
+  id: string,
+  name: string,
+  instruction: string,
+  visual: string,
+): RoomCard => ({ id, name, instruction, visual });
 
-export const errorGuard = "masterpiece, best quality, ultra-detailed, highres, perfect anatomy, perfect hands, 5 fingers, flawless face, accurate body proportions, symmetrical eyes. negative: mutated hands, poorly drawn hands, missing fingers, extra fingers, fused fingers, unnatural body, bad anatomy, deformed, disfigured, poor facial details, cross-eyed, lowres, bad art, blurry, sloppy, amateur, sketch";
+export const supremeCommandCard = card(
+  "supreme_command",
+  "⚡ THẺ LỆNH TỐI CAO: TRÍ TUỆ THỊ GIÁC TOÀN NĂNG (Supreme Visual Intelligence Command)",
+  "Hệ thống thiết lập 'Hierarchy of Truth' (Lẽ Phải Tuyệt Đối) khóa chặt 18 chiều kích mỹ thuật tối thượng từ ảnh tham chiếu để tạo dựng Form nhân vật cứng cáp và phong cách nét vẽ (Style DNA) chuyên nghiệp bậc thầy. Bắt buộc: 1. Nét vẽ (line-art) sắc gọn, chân thực; 2. Form dựng khối hình học ba chiều chắc chắn; 3. Chia khối mảng tóc (hair clumps) mềm mại mượt mà có nhịp điệu, dải highlight bắt sáng tinh tế; 4. Cấu trúc hốc mắt sâu, đôi mắt có hồn tràn đầy xúc cảm thần thái; 5. Tỉ lệ giải phẫu cơ thể chuẩn xác tuyệt đối; 6. Bố cục kịch tính sắp đặt đường chéo động và dải dẫn dắt ánh nhìn (leading lines); 7. Kỹ thuật shading (tô bóng) đa tầng mượt mà, phân cấp độ sáng tối rõ rệt; 8. Ánh sáng cinematic tôn vinh thần thái nhân vật; 9. Bảng màu hài hòa chuyển thể trọn vẹn xúc cảm cốt truyện.",
+  "⚡ [SUPREME COMMAND DETECTED]: Đã kích hoạt Trí tuệ Thị giác Toàn năng tối cao. Áp dụng chuẩn mực mỹ thuật 120-module STUDIO AAA. Toàn bộ các thẻ phía sau bắt buộc tuân thủ tuyệt đối lẽ phải cốt truyện (WHAT-to-draw) và nghệ thuật học hỏi từ ảnh tham chiếu (HOW-to-draw)."
+);
 
-export const STYLE_GROUPS: StyleGroup[] = [{group:"1. Nhóm nét vẽ theo độ sạch của đường line",items:[{name:"Clean Line Art — nét sạch, gọn, chuyên nghiệp",keywords:"clean line art, crisp linework, smooth outlines, polished anime lineart, refined contour lines, neat drawing, precise linework, high-quality character sheet lines"},{name:"Thin Line Art — nét mảnh, nhẹ, thanh thoát",keywords:"thin delicate lineart, fine line drawing, soft thin outlines, airy linework, elegant fine lines, fragile lineart, subtle contour lines"},{name:"Thick Line Art — nét dày, mạnh, cá tính",keywords:"bold lineart, thick outlines, strong contour lines, graphic linework, heavy ink lines, striking black outlines, expressive bold strokes"},{name:"Rough Sketch Line — nét phác thảo thô, sống động",keywords:"rough sketch, sketchy lineart, loose linework, expressive sketch lines, unfinished sketch aesthetic, raw pencil lines, dynamic draft lines"},{name:"Messy Line Art — nét rối có chủ đích",keywords:"messy lineart, chaotic sketch lines, emotional linework, scratchy ink lines, tangled outlines, expressive messy strokes"},{name:"No Line / Lineless Art — tranh không viền",keywords:"lineless art, painterly rendering, soft edge painting, no outlines, color-blocked forms, seamless shading, delicate painted edges"}]},{group:"2. Nhóm nét vẽ theo chất liệu bút",items:[{name:"Pencil Line — nét chì",keywords:"pencil sketch, graphite lines, soft pencil texture, hand-drawn pencil linework, light pencil shading, rough graphite strokes"},{name:"Ink Line — nét mực manga",keywords:"inked manga lines, black ink lineart, traditional manga inking, sharp ink strokes, expressive ink drawing, monochrome ink art"},{name:"G-Pen Manga Line — nét bút G manga",keywords:"G-pen linework, manga G-pen inking, pressure-sensitive ink lines, tapered ink strokes, dynamic manga pen lines"},{name:"Brush Pen Line — nét cọ mực",keywords:"brush pen lineart, expressive brush strokes, sumi ink lines, calligraphic linework, bold brush ink, tapered brush lines"},{name:"Marker Line — nét bút marker",keywords:"marker drawing, alcohol marker texture, fashion marker sketch, bold marker outlines, clean marker strokes, copic marker style"},{name:"Ballpoint Pen Line — nét bút bi",keywords:"ballpoint pen sketch, blue pen linework, thin pen scratches, notebook doodle style, casual pen drawing"},{name:"Crayon / Pastel Line — nét sáp, phấn",keywords:"crayon texture, pastel chalk lines, soft crayon drawing, powdery pastel strokes, childlike soft linework"},{name:"Watercolor Line — nét màu nước",keywords:"watercolor lineart, soft watercolor edges, translucent brush lines, delicate watercolor strokes, washed ink outlines"},{name:"Digital Brush Line — nét cọ kỹ thuật số",keywords:"digital brush lineart, pressure-sensitive digital lines, clean digital strokes, soft digital pen, polished digital illustration"}]},{group:"3. Nhóm nét theo phong cách Anime",items:[{name:"Modern Anime Style — anime hiện đại",keywords:"modern anime style, clean anime lineart, soft cel shading, polished character illustration, luminous eyes, smooth digital coloring"},{name:"Soft Pastel Anime — anime pastel mềm",keywords:"soft pastel anime style, delicate thin lineart, low contrast colors, gentle watercolor shading, dreamy atmosphere, airy composition"},{name:"Cinematic Anime — anime điện ảnh",keywords:"cinematic anime illustration, dramatic lighting, film-like composition, depth of field, atmospheric background, emotional close-up"},{name:"90s Anime Style — anime thập niên 90",keywords:"90s anime style, retro cel animation, vintage anime lineart, hand-painted cel look, soft grain, nostalgic anime colors"},{name:"2000s Anime Style — anime đầu 2000",keywords:"early 2000s anime style, visual novel character art, glossy eyes, clean cel shading, nostalgic digital anime coloring"},{name:"Moe Anime Style — nét moe dễ thương",keywords:"moe anime style, cute rounded features, big sparkling eyes, soft lineart, adorable expression, gentle pastel colors"},{name:"Shounen Anime Style — anime hành động",keywords:"shounen anime style, dynamic action lines, bold lineart, strong cel shading, intense expression, energetic composition"},{name:"Josei Anime Style — anime trưởng thành",keywords:"josei anime style, mature elegant character design, refined lineart, subtle facial expression, graceful proportions, sophisticated mood"},{name:"Shoujo Anime Style — anime thiếu nữ lãng mạn",keywords:"shoujo anime style, romantic delicate lineart, sparkling eyes, floral background, dreamy highlights, graceful feminine composition"}]},{group:"4. Nhóm nét Manga",items:[{name:"Classic Manga Black & White",keywords:"classic black and white manga, screentone shading, inked manga lineart, monochrome panel art, traditional manga texture"},{name:"Shoujo Manga Line",keywords:"shoujo manga lineart, delicate eyelashes, sparkling eyes, flowing hair lines, romantic screentone, floral manga background"},{name:"Seinen Manga Line",keywords:"seinen manga style, realistic manga anatomy, gritty ink shading, detailed hatching, mature monochrome atmosphere"},{name:"Horror Manga Line",keywords:"horror manga lineart, scratchy ink lines, heavy black shadows, unsettling facial detail, eerie hatching, dark manga atmosphere"},{name:"Gekiga Style",keywords:"gekiga manga style, dramatic ink shading, realistic facial lines, heavy monochrome contrast, mature graphic storytelling"},{name:"Minimal Manga",keywords:"minimal manga style, simple clean lineart, sparse background, subtle expression, elegant monochrome composition"}]},{group:"5. Nhóm nét Manhwa Hàn Quốc",items:[{name:"Romance Manhwa Style",keywords:"Korean romance manhwa style, elegant clean lineart, glossy hair, luminous skin, sparkling eyes, soft gradient coloring, luxurious atmosphere"},{name:"Villainess Manhwa Style",keywords:"villainess manhwa style, aristocratic character design, ornate dress details, elegant sharp eyes, polished webtoon rendering, luxurious palace background"},{name:"Modern Webtoon Style",keywords:"modern Korean webtoon style, clean digital lineart, smooth gradient shading, mobile webtoon composition, polished character rendering"},{name:"Dark Manhwa Style",keywords:"dark Korean manhwa style, cold dramatic lighting, sharp elegant lineart, moody shadows, intense gaze, noir webtoon atmosphere"},{name:"Soft Healing Manhwa",keywords:"soft healing manhwa style, warm pastel tones, gentle clean lineart, cozy background, soft sunlight, calm emotional atmosphere"}]},{group:"6. Nhóm nét Manhua Trung Quốc",items:[{name:"Modern Manhua Style",keywords:"modern Chinese manhua style, elegant sharp lineart, tall slender proportions, glossy digital coloring, dramatic romantic lighting"},{name:"Ancient Chinese Manhua / Cổ trang",keywords:"ancient Chinese manhua style, flowing hanfu, delicate ink-like lineart, elegant long hair, poetic composition, soft fantasy atmosphere"},{name:"Xianxia / Wuxia Art",keywords:"xianxia fantasy art, wuxia character design, flowing robes, ethereal ink brush lines, misty mountains, celestial lighting"},{name:"Danmei / BL Manhua Style",keywords:"danmei manhua style, elegant male beauty, refined delicate lineart, graceful long proportions, romantic soft lighting, poetic atmosphere"}]},{group:"7. Nhóm nét AI Art / Niji / Digital Illustration",items:[{name:"Niji Anime Style",keywords:"niji anime style, polished anime illustration, beautiful character design, luminous eyes, detailed hair, cinematic composition, high-quality anime key visual"},{name:"AI Semi-Realistic Anime",keywords:"semi-realistic anime art, realistic lighting, soft painterly rendering, detailed facial features, cinematic portrait, anime-realism fusion"},{name:"Painterly AI Art",keywords:"painterly anime illustration, soft brush rendering, visible brush strokes, artistic digital painting, atmospheric color blending"},{name:"Hyper-Detailed AI Art",keywords:"ultra-detailed anime art, intricate costume details, highly detailed eyes, elaborate accessories, sharp focus, 8k illustration"},{name:"Minimal AI Anime",keywords:"minimal anime illustration, clean white background, simple lineart, elegant negative space, refined character silhouette"}]},{group:"8. Nhóm nét theo cách tô màu",items:[{name:"Cel Shading",keywords:"cel shading, hard shadow edges, anime flat coloring, clean highlight shapes, crisp shadow blocks"},{name:"Soft Shading",keywords:"soft shading, smooth gradients, gentle shadow transitions, soft light rendering, delicate skin shading"},{name:"Watercolor Coloring",keywords:"watercolor coloring, translucent washes, soft color bleeding, delicate paper texture, pastel watercolor tones"},{name:"Gouache Style",keywords:"gouache painting style, matte colors, soft opaque brushwork, painterly texture, gentle hand-painted look"},{name:"Oil Painting Anime",keywords:"anime oil painting style, rich brush texture, dramatic painterly lighting, thick painted strokes, classical portrait mood"},{name:"Flat Color Illustration",keywords:"flat color illustration, simple color blocks, clean graphic shapes, minimal shading, modern poster style"},{name:"Gradient Webtoon Coloring",keywords:"smooth gradient coloring, webtoon rendering, soft airbrush shadows, polished digital gradients, glossy highlights"},{name:"Airbrush Rendering",keywords:"airbrush shading, soft digital airbrush, smooth skin rendering, blurred shadow transitions, glossy soft highlights"}]},{group:"9. Nhóm texture bề mặt",items:[{name:"Paper Texture",keywords:"paper texture, subtle grain, traditional paper background, hand-drawn texture, soft analog feel"},{name:"Canvas Texture",keywords:"canvas texture, visible fabric grain, painterly canvas surface, traditional painting feel"},{name:"Grainy Texture",keywords:"subtle grain, soft film grain, textured shading, muted grain overlay, vintage noise texture"},{name:"Screentone Texture",keywords:"manga screentone, halftone dots, monochrome tone shading, printed manga texture"},{name:"Risograph Texture",keywords:"risograph print texture, offset colors, grainy print effect, retro poster texture"},{name:"VHS / Retro Texture",keywords:"VHS anime texture, retro scanlines, old TV grain, nostalgic analog effect, faded colors"}]},{group:"10. Nhóm nét theo hình dáng nhân vật",items:[{name:"Bishounen Line — nam đẹp kiểu manga",keywords:"bishounen character design, elegant male beauty, sharp jawline, delicate facial features, graceful slim proportions"},{name:"Ikemen Style — trai đẹp hiện đại",keywords:"ikemen anime style, handsome male character, stylish hair, sharp eyes, fashionable outfit, clean modern lineart"},{name:"Pretty Boy Soft Style",keywords:"soft pretty boy, gentle facial features, delicate eyes, soft fluffy hair, tender expression, pastel anime style"},{name:"Cold Beauty Style",keywords:"cold beauty character design, distant gaze, sharp elegant eyes, pale tones, refined linework, aloof atmosphere"},{name:"Cute Girl Moe Style",keywords:"cute anime girl, round soft face, big eyes, fluffy hair, adorable expression, soft pastel colors"},{name:"Elegant Lady Style",keywords:"elegant anime woman, refined mature beauty, graceful posture, delicate lineart, sophisticated outfit, soft cinematic lighting"}]},{group:"11. Nhóm nét tóc",items:[{name:"Clean Hair Strands",keywords:"clean hair strands, neatly separated hair locks, polished anime hair, smooth hair linework"},{name:"Fluffy Hair",keywords:"fluffy hair, soft layered hair, airy hair volume, gentle hair strands, cute soft hairstyle"},{name:"Messy Hair",keywords:"messy hair, tousled hair strands, casual bedhead, expressive hair movement, loose uneven bangs"},{name:"Glossy Manhwa Hair",keywords:"glossy manhwa hair, smooth shiny hair, elegant hair highlights, polished digital hair rendering"},{name:"Watercolor Hair",keywords:"watercolor hair shading, soft translucent hair, gentle color bleeding, pastel hair gradients"},{name:"Ink Manga Hair",keywords:"inked manga hair, black hair shadows, sharp hair lineart, monochrome hair rendering"}]},{group:"12. Nhóm nét mắt",items:[{name:"Sparkling Shoujo Eyes",keywords:"sparkling shoujo eyes, large luminous eyes, multiple eye highlights, romantic glossy gaze"},{name:"Sharp Anime Eyes",keywords:"sharp anime eyes, narrow intense gaze, clean eyelash line, cool expression"},{name:"Soft Melancholic Eyes",keywords:"soft melancholic eyes, watery gaze, subtle sadness, delicate lower eyelashes, emotional eye highlights"},{name:"Cold Manhwa Eyes",keywords:"cold manhwa eyes, elegant sharp gaze, pale iris, calm intimidating expression"},{name:"Cute Round Eyes",keywords:"round cute eyes, innocent gaze, soft blush, adorable eye shape, gentle highlights"}]},{group:"13. Nhóm thời trang / outfit",items:[{name:"Streetwear Anime",keywords:"anime streetwear, oversized hoodie, baggy pants, headphones, sneakers, casual cool outfit, sketchy fashion illustration"},{name:"Y2K Anime",keywords:"Y2K anime fashion, retro techwear, baggy pants, cropped jacket, headphones, chunky sneakers, graphic accessories"},{name:"Techwear Anime",keywords:"anime techwear, black layered outfit, tactical straps, oversized jacket, futuristic street fashion, sharp graphic linework"},{name:"Idol Stage Outfit",keywords:"idol stage outfit, ornate uniform, headset microphone, sparkling accessories, stage costume, polished anime key visual"},{name:"School Uniform Manga",keywords:"anime school uniform, clean manga lineart, youthful character design, soft everyday atmosphere"},{name:"Aristocratic Manhwa Outfit",keywords:"aristocratic manhwa outfit, ornate dress, lace details, pearl accessories, royal elegance, luxurious fabric rendering"},{name:"Hanfu / Cổ trang",keywords:"flowing hanfu, layered silk robes, ancient Chinese fashion, elegant sleeves, delicate embroidery, poetic linework"}]},{group:"14. Nhóm bố cục tranh",items:[{name:"Character Sheet",keywords:"character sheet, full body design, multiple expressions, outfit details, clean white background, reference sheet"},{name:"Sticker Sheet / Collage",keywords:"anime sticker sheet, collage layout, doodle icons, character cutouts, graphic design composition, playful layout"},{name:"Poster Key Visual",keywords:"anime key visual poster, cinematic composition, dramatic lighting, centered character, title space, official illustration"},{name:"Manga Panel Layout",keywords:"manga panel composition, speech bubbles, screentone background, dynamic paneling, monochrome storytelling"},{name:"Webtoon Vertical Layout",keywords:"vertical webtoon composition, mobile scrolling format, clean panel spacing, cinematic close-up, webtoon-style rendering"},{name:"Fashion Illustration Layout",keywords:"fashion illustration, full body pose, minimal background, stylish outfit focus, loose sketch linework"}]},{group:"15. Nhóm cảm xúc / vibe",items:[{name:"Cute / Adorable",keywords:"cute anime style, soft rounded lineart, pastel colors, innocent expression, adorable details, gentle blush"},{name:"Cool / Stylish",keywords:"cool anime style, sharp lineart, stylish streetwear, confident pose, clean graphic composition"},{name:"Melancholic / Buồn đẹp",keywords:"melancholic anime art, soft sorrowful gaze, muted colors, delicate lineart, quiet emotional atmosphere"},{name:"Dark Romance",keywords:"dark romance anime style, moody shadows, intense gaze, elegant tension, black and red palette, dramatic lighting"},{name:"Healing / Dịu dàng",keywords:"healing anime illustration, warm sunlight, soft pastel tones, cozy background, gentle emotional expression"},{name:"Chaotic / Cá tính rối",keywords:"chaotic sketch style, messy expressive linework, energetic pose, bold graphic shapes, rebellious fashion"}]}];
+export const errorGuardCard = card(
+  "error_guard_analysis",
+  "🛡️ Hệ Thống Phân Tích & Phòng Bị Lỗi Chuyên Sâu (Comprehensive Visual Error Analysis)",
+  "Thiết lập ma trận triệt tiêu vĩnh viễn các lỗi vẽ mặc định lỗi thời của AI (AI-slop) và biến dạng cơ thể. Bắt buộc phòng chống và kiểm soát: 1. Lỗi bàn tay biến dị (mutated hands), ngón tay dính chùm, mọc thừa thiếu (Khóa chặt bàn tay 5 ngón thuôn dài rõ rệt); 2. Lỗi da nhựa vô hồn bóng nhão sáp nến (Khóa dải texture da mịn màng, dải sáng tối rõ rệt); 3. Lỗi mắt đơ cứng không thần thái, mắt lác hay trợn ngược (Khóa dải đồng tử tinh anh, mi mắt sắc mảnh lấp lánh); 4. Lỗi tóc bệt rít như dính keo hoặc sợi tóc rời rạc rác nét làm loãng bố cục (Khóa mảng khối tóc chắc chắn có nếp gấp tự nhiên); 5. Lỗi dáng đứng sượng sùng mất trọng tâm (Khóa đường pose line chuẩn nhân trắc học); 6. Lỗi bẹt phẳng không gian bối cảnh hoặc bối cảnh lộn xộn cướp spotlight.",
+  "🛡️ [ERROR SHIELD ACTIVE]: Đã kích hoạt Khiên Phòng Bị Lỗi Chuyên Sâu. Mọi dải mô tả prompt phía sau phải được gia cố bằng Ma Trận Triệt Tiêu Lỗi Tối Cao để cam kết ảnh hoàn chỉnh không có khuyết tật giải phẫu và bệ rạc mỹ thuật."
+);
 
-export const rooms: Room[] = [
-{id:"camera",icon:"⌁",title:"Điểm Nhìn Và Góc Chụp",subtitle:"Góc máy / lens / phối cảnh / tỉ lệ / shot size",seed:1,cards:[card("eye","Góc ngang tầm mắt","Tự nhiên, gần gũi, đối diện nhân vật.","eye-level angle, intimate frontal view, soft direct gaze"),card("high","Góc từ trên xuống","Mong manh, nhỏ bé, chịu áp lực.","high angle shot, looking down at the character, fragile emotional mood"),card("low","Góc từ dưới lên","Quyền lực, cao lớn, áp đảo.","low angle shot, powerful silhouette, dominant presence, cinematic tension"),card("dutch","Góc nghiêng máy","Tâm lý bất ổn, drama, căng thẳng.","Dutch angle, unstable emotional composition, dramatic visual tension"),card("shoulder","Góc qua vai / ngoái nhìn","Thân mật, lưu luyến, bị bắt gặp.","over-the-shoulder shot, looking back at viewer, intimate cinematic framing"),card("fullbody","Toàn thân / fashion framing","Outfit, dáng đứng, giày, phụ kiện.","full body shot, fashion illustration framing, clean white background"),card("medium","Medium close-up","Tập trung mắt, tay, cảm xúc.","medium close-up, intimate portrait framing, focus on eyes and hands"),card("extreme","Extreme close-up","Cận mắt/môi/tay/vật thể.","extreme close-up, detailed eye reflection, cinematic emotional tension"),card("wide","Wide shot","Nhân vật nhỏ giữa không gian lớn.","wide shot, small figure in a vast environment, poetic loneliness"),card("aspect","Tỉ lệ khung ảnh","Dọc poster, ngang điện ảnh, vuông album cover.","vertical 9:16 poster composition, cinematic 16:9 widescreen frame, square album cover composition"),card("lens","Ống kính / lens","85mm chân dung, 24mm phối cảnh mạnh, 35mm đời thường.","85mm portrait lens, shallow depth of field, creamy bokeh; 24mm wide-angle lens; 35mm documentary lens"),card("perspective","Phối cảnh / đa giác","Một điểm tụ, forced perspective, multi-perspective collage.","multi-perspective composition, one-point perspective, forced perspective, dynamic anime composition")]},
-{id:"focal",icon:"✦",title:"Trung Tâm Thị Giác / Đường Thị Giác",subtitle:"Focal point / leading lines / gaze / flow",seed:2,cards:[card("hierarchy","Trung tâm thị giác chính","Mắt, tay, gương mặt, đạo cụ nào là trọng tâm.","strong visual hierarchy, eyes as primary focal point, hands as secondary focal point"),card("leading","Đường dẫn mắt","Đường trong ảnh dẫn về gương mặt / vật chủ.","strong leading lines guiding the viewer’s eye toward the character’s face"),card("s","S-curve / nhịp mềm","Tóc, cơ thể, váy, ribbon tạo dòng chảy mềm.","S-curve body line, flowing hair, elegant compositional rhythm"),card("diag","Đường chéo động","Pose ngầu, streetwear, action, thời trang.","diagonal visual flow, dynamic streetwear pose, strong line of action"),card("direct","Ánh nhìn trực diện","Half-lidded, tự tin, hút mắt.","half-lidded eyes, direct eye contact, lazy confident gaze"),card("down","Ánh nhìn u buồn","Nhìn xuống, mắt ướt, mong manh.","melancholic downward gaze, soft watery eyes, fragile expression"),card("over","Ánh nhìn qua vai","Thân mật, cinematic, lưu luyến.","over-the-shoulder gaze, intimate emotional tension, cinematic portrait"),card("hand","Tay gần mặt / foreshortened","Tay biểu cảm, gần máy, cần guard lỗi tay.","hand near face, foreshortened hand in foreground, dynamic perspective, expressive gesture")]},
-{id:"face",icon:"☾",title:"Dung Mạo / Ngũ Quan / Makeup",subtitle:"Mắt / mũi / môi / mi mắt / da / biểu cảm",seed:3,cards:[card("beauty","Dung mạo tổng thể","Kiểu đẹp mềm, sắc, lạnh, ngọt, búp bê, phi giới tính.","delicate facial features, refined face structure, elegant beauty, soft symmetrical face"),card("eyes","Mắt / màu mắt / highlight","Hình dáng mắt, màu mắt, ánh nhìn, catchlight.","beautiful expressive eyes, detailed iris, luminous eyes, glossy eye highlights"),card("eyelids","Mi mắt / lông mi","Mi trên, mi dưới, mí lờ đờ, mí buồn.","delicate eyelids, soft upper eyelid crease, refined lower eyelashes, long elegant lashes"),card("nose","Mũi","Mũi anime tối giản, mũi cao thanh, profile đẹp.","small delicate nose, refined nose bridge, soft nose shading, elegant facial profile"),card("lips","Miệng / môi","Màu môi, dáng môi, cười nhẹ, môi hé, môi buồn.","soft rose-tinted lips, subtle parted mouth, delicate lip highlights"),card("expression","Biểu cảm khuôn mặt","Buồn đẹp, lạnh, dịu, sủng nịnh, bất ổn.","subtle emotional expression, restrained feelings, complex gaze, cinematic expression"),card("makeup","Makeup","Tone makeup, mắt, má, môi, da.","soft pastel makeup, peach blush, subtle eyeshadow, glossy rose lips"),card("skin","Da / skin rendering","Anime skin, manhwa glossy, porcelain, semi-real.","luminous skin, soft skin shading, porcelain skin, subtle skin texture")]},
-{id:"hair",icon:"〰",title:"Tóc / Chất Tóc / Lỗi Tóc",subtitle:"Hair reference / structure / error guard",seed:4,cards:[card("hair-ref","Ảnh tham chiếu tóc","Học hỏi kiểu tóc từ ảnh, nhưng áp dụng theo mô tả cốt truyện.","hair reference analysis, visual style DNA learning, apply story-driven hair description, prioritize character profile over reference identity"),card("shape","Form tóc / khối tóc","3-5 khối tóc rõ, tự nhiên, không rối như chổi.","3-5 clear hair masses, controlled strand rhythm, natural uneven locks"),card("color","Màu tóc / highlight","Màu tóc theo hồ sơ, tránh sáng chấm quá đà.","black hair, silver hair, burgundy hair, glossy but controlled highlights"),card("errors","Tránh lỗi tóc","Không song song đều tăm tắp, không nhọn hoắt, không flyaway dày đặc.","avoid broom-like hair, excessive flyaway strands, identical parallel locks, needle-like tips")]},
-{id:"pose",icon:"♧",title:"Pose Dáng X3",subtitle:"3 pose outputs trong cùng một phòng",seed:5,cards:[card("pose1","Pose 1 · chính diện / chân dung","Dáng chính, rõ mặt và khí chất.","pose variation 1, medium portrait, hand gesture, emotional face focus"),card("pose2","Pose 2 · fashion / full body","Dáng toàn thân, outfit, silhouette.","pose variation 2, full-body fashion pose, contrapposto, stylish silhouette"),card("pose3","Pose 3 · điện ảnh / phối cảnh","Dáng có chiều sâu, foreground, tay gần máy hoặc ngoái nhìn.","pose variation 3, cinematic perspective, over-the-shoulder, foreshortened hand"),card("hand-guard","Guard lỗi tay","Bắt buộc chống thiếu/thừa/dính ngón tay.","correct five-finger hands, natural grip, no fused fingers, no extra fingers")]},
-{id:"outfit",icon:"✧",title:"Trang Phục / Phụ Kiện",subtitle:"Outfit / props / fabric / accessories",seed:6,cards:[card("outfit","Trang phục chính","Style, form, silhouette, chất liệu.","detailed outfit design, layered fashion, fabric texture, strong silhouette"),card("accessories","Phụ kiện","Nơ, hoa, micro, trang sức, túi, kính, vật kỷ niệm.","meaningful accessories, ribbon, jewelry, microphone, bag, glass, symbolic item"),card("fabric","Chất liệu","Ren, satin, lụa, leather, vinyl, knit.","delicate lace texture, satin sheen, silk fabric, black leather, shiny vinyl"),card("props","Vật thể kể chuyện","Đạo cụ có ý nghĩa trong cốt truyện.","symbolic props, story-driven objects, carefully placed objects")]},
-{id:"art",icon:"🪄",title:"Phòng Tranh Nghệ Thuật",subtitle:"Bắt sáng, bố cục, góc chụp, concept nghệ thuật",seed:10,cards:[card("art-concept","🎨 Vibe Nghệ Thuật (Art Concept)","Bạn muốn bức tranh mang cảm giác gì? Sự tĩnh lặng của một buổi chiều tà (Melancholic sunset), sự bí ẩn của đêm khuya (Mysterious dark vibe), sự trong trẻo của sương sớm (Ethereal morning), hay rực rỡ như một giấc mơ (Dreamcore).","concept art, cinematic aesthetic, highly detailed masterpiece, breathtaking illustration"),card("art-lighting","✨ Kỹ Thuật Ánh Sáng (Lighting)","Ánh sáng quyết định 80% cảm xúc bức tranh. Có thể là ánh sáng vàng xuyên qua kẽ lá (Dappled sunlight), ánh sáng ngược phía sau tạo viền thiên thần (Rim light/Backlighting), hay ánh sáng mờ ảo của neon (Cyberpunk neon glow).","volumetric lighting, cinematic lighting, god rays, soft ethereal glow, rim light, dramatic shadows"),card("art-camera","📷 Góc Máy & Bố Cục (Camera & Layout)","Từ dưới nhìn lên thể hiện sự uy nghi (Low angle), từ trên nhìn xuống tạo cảm giác bé nhỏ (High angle), hay góc nhìn qua vai lén lút (Over the shoulder). Bố cục đường dẫn (Leading lines) hút mắt người xem.","dynamic angle, wide angle shot, extreme close-up, rule of thirds, perfect composition, depth of field"),card("art-details","💎 Chi Tiết Chạm Trổ (Intricate Details)","Từng giọt mồ hôi, giọt nước mắt lăn dài, sợi tóc bay trong gió, hoa văn thêu chìm trên áo, hay bụi phấn bay lơ lửng trong không khí. Những chi tiết nhỏ làm nên tuyệt tác.","intricate details, hyper-detailed, 8k resolution, crisp lines, delicate rendering"),card("art-style","🖌️ Nét Vẽ / Họa Phong (Art Style)","Màu nước mềm mại (Watercolor), sơn dầu cọ dày (Thick impasto oil painting), anime thập niên 90 (Retro 90s anime), hay nét vẽ sắc sảo của manhwa Hàn Quốc (Korean webtoon style).","distinctive art style, polished illustration, studio ghibli inspired, high-end comic art")]},
-{id:"pose_interact",icon:"🤸",title:"Tạo Dáng & Tương Tác",subtitle:"Chuyển động, ánh mắt, chạm, tư thế độc đáo",seed:11,cards:[card("pose-action","🏃 Chuyển Động & Tư Thế (Dynamic Action)","Đang chạy dưới mưa, ngả người ra sau khi cười, tay chống cằm suy tư, ôm gối cuộn tròn, vươn vai đón nắng, hay một tư thế chiến đấu siêu ngầu trong anime (Dynamic combat pose).","dynamic pose, natural movement, fluid body language, expressive posture"),card("pose-eyes","👀 Ánh Mắt & Biểu Cảm (Eye Contact)","Ánh mắt là cửa sổ tâm hồn. Đang nhìn thẳng đắm đuối (Deep eye contact), liếc nhìn ngại ngùng (Shy sidelong glance), nhắm mắt tận hưởng (Eyes closed in peace), hay một giọt nước mắt vương trên mi (Tearful gaze).","expressive eyes, deep eye contact, subtle micro-expressions, emotional gaze"),card("pose-touch","🤝 Tương Tác Cặp Đôi (Couple Interaction)","Nếu vẽ hai người, sự tương tác là quan trọng nhất: Chạm trán (Forehead touch), nắm chặt tay, tựa lưng vào nhau (Back to back), một cái ôm từ phía sau (Back hug), hay ánh mắt vô tình giao nhau.","intimate couple interaction, gentle touch, holding hands, back hug, natural chemistry"),card("pose-hands","🤲 Ngôn Ngữ Đôi Bàn Tay (Hand Gestures)","Đôi tay tạo nên sự tinh tế: Tay vén tóc mai, tay tháo nơ áo, tay đút túi quần hờ hững, ngón tay đan vào nhau, hay một bàn tay to che chở bàn tay nhỏ.","expressive hand gestures, delicate fingers, elegant hand placement, holding object naturally"),card("pose-guard","🛡️ Chống Lỗi Giải Phẫu (Anatomy Guard)","Lưu ý bắt buộc để AI không vẽ sai: Tay phải có đủ 5 ngón, khớp xương tự nhiên, tỷ lệ cơ thể chuẩn, không bị gãy gập kỳ lạ, chân không bị xoắn vào nhau.","perfect anatomy, accurate proportions, correct hand anatomy, 5 fingers, flawless structural logic")]},
-{id:"clothes",icon:"👗",title:"Thời Trang & Phụ Kiện",subtitle:"Chất liệu vải, kiểu dáng, trang sức, phong cách",seed:12,cards:[card("clothes-style","👗 Phong Cách Thời Trang (Fashion Style)","Bạn chọn phong cách nào: Dạ hội hoàng gia lộng lẫy (Royal ballgown), Cyberpunk cool ngầu (Techwear), Y2K năng động, Học đường Nhật Bản (Japanese school uniform), hay Cổ trang thanh tao (Hanfu/Kimono)?","fashion aesthetic, high-fashion editorial, stylish outfit, perfectly coordinated clothing"),card("clothes-material","🧵 Chất Liệu & Texture (Fabric Texture)","Vải lụa mỏng tang bay trong gió (Flowing silk), nhung tuyết bắt sáng (Velvet), da thuộc cá tính (Leather jacket), ren mờ ảo (Delicate lace), hay lớp áo choàng dệt kim ấm áp (Knit sweater).","detailed fabric texture, flowing silk, shiny leather, soft knit, intricate lace pattern"),card("clothes-accessories","💍 Trang Sức & Phụ Kiện (Accessories)","Kính gọng vàng tri thức (Gold-rimmed glasses), khuyên tai ngọc trai đung đưa (Pearl drop earrings), vòng cổ choker cá tính, găng tay lụa dài, băng đô cài tóc, hay một chiếc dù trong mưa.","stylish accessories, elegant jewelry, matching fashion items, intricate accessory design"),card("clothes-details","✨ Chi Tiết Trang Phục (Clothing Details)","Nếp gấp quần áo (Clothing folds), viền ren, cúc áo mạ vàng, họa tiết thêu nổi trên cổ tay áo, ruy băng thắt nơ, hay áo khoác hờ hững rớt một bên vai.","realistic clothing folds, intricate tailoring, precise fashion details, flowing garments"),card("clothes-fit","✂️ Độ Vừa Vặn & Tôn Dáng (Fit & Silhouette)","Quần áo ôm sát tôn đường cong (Form-fitting), áo oversized rộng rãi dễ thương, áo choàng dài quét đất tạo sự quyền lực, hay chân váy xếp ly xòe rộng khi xoay vòng.","flattering silhouette, perfect fit, dynamic clothing shape, strong fashion statement")]},
-{id:"space",icon:"🌌",title:"Không Gian & Kiến Trúc",subtitle:"Bối cảnh, thời tiết, môi trường xung quanh",seed:13,cards:[card("space-setting","🌌 Bối Cảnh Chính (Main Setting)","Một quán cafe ấm cúng ngày mưa (Cozy rainy cafe), cung điện bỏ hoang ngập dây leo (Overgrown ruined palace), phòng ngủ lộn xộn ngập nắng (Messy sunlit bedroom), hay một tinh cầu vỡ nát giữa vũ trụ.","immersive environment, distinct setting, atmospheric background, detailed surroundings"),card("space-weather","⛅ Thời Tiết & Khí Hậu (Weather & Climate)","Bầu trời hoàng hôn tím biếc (Purple sunset sky), cơn mưa rào mùa hạ (Summer rain), bão tuyết mịt mù (Blinding snowstorm), sương mù giăng lối (Foggy morning), hay ánh trăng tròn rực rỡ (Full moon night).","atmospheric weather, dramatic sky, weather effects, environmental mood setter"),card("space-objects","🛋️ Đồ Vật Xung Quanh (Props & Objects)","Trang trí không gian: Cuốn sách đang đọc dở trên bàn, tách trà nghi ngút khói, chiếc đèn chùm pha lê lấp lánh, rèm cửa bằng voan mỏng bay phấp phới, hay những cánh hoa đào rơi rụng.","environmental storytelling props, detailed background objects, aesthetic room decor"),card("space-depth","📏 Chiều Sâu & Không Gian (Depth of Field)","Tạo hiệu ứng xóa phông mờ ảo (Bokeh) cho các vật ở gần hoặc xa, tiền cảnh (Foreground) có một cành hoa che khuất một phần ống kính, hậu cảnh (Background) kéo dài vô tận tạo chiều sâu.","depth of field, beautiful bokeh, foreground framing, deep perspective, cinematic depth"),card("space-magic","✨ Yếu Tố Huyền Ảo (Magical Elements)","Thêm chút phép màu: Đom đóm phát sáng (Glowing fireflies), bụi phép thuật bay lơ lửng (Magical stardust), mặt nước phản chiếu như gương, hay những đám mây ngũ sắc.","magical atmosphere, glowing elements, fantasy environmental effects, ethereal environment")]},
-{id:"sticker",icon:"💖",title:"Chibi & Sticker Dễ Thương",subtitle:"Mặt bư, nựng má, siêu cute, chibi tỉ lệ 2-3 đầu",seed:14,cards:[card("chibi-style","💖 Phong Cách Chibi (Chibi Style)","Vẽ theo tỷ lệ đầu to người nhỏ (2-3 đầu) cực kỳ dễ thương. Có thể chọn nét vẽ pastel mềm mại, nét manga siêu quậy, hoặc phong cách sticker trong suốt viền trắng.","chibi style, super cute, kawaii aesthetic, big head small body, anime sticker style"),card("chibi-face","🥺 Biểu Cảm Chibi (Kawaii Expressions)","Hai má phồng lên nũng nịu (Puffed cheeks), khóc nhè với hai dòng nước mắt chảy như suối (Anime tear streams), mắt sáng rực hình ngôi sao (Starry eyes), miệng cười hình chữ V.","exaggerated anime expressions, puffed cheeks, starry eyes, crying comical tears, blushing heavily"),card("chibi-action","🐹 Hành Động Vô Tri (Silly Actions)","Đang gặm chung một cái bánh bao, nằm bẹp trên sàn nhà như chú mèo lười, bị nhéo má đỏ ửng (Cheek pinching), đu mình trên một nhánh cây khổng lồ, hay chui rúc trong một cái chăn cuộn tròn.","silly actions, funny posture, squished cheeks, rolling in blankets, clumsy and cute"),card("chibi-props","🎀 Phụ Kiện Cute (Cute Props)","Ôm một con gấu bông khổng lồ to hơn người, đội chiếc nón hình tai ếch/tai thỏ, cầm một chiếc kẹo mút cầu vồng, xung quanh bay lượn những hình trái tim nhỏ xíu màu hồng.","oversized cute props, plushies, animal ear hats, floating pink hearts, colorful candy"),card("chibi-background","☁️ Nền Đơn Giản Cho Sticker (Sticker Background)","Nền màu trơn pastel (Pastel solid background), nền trong suốt (Transparent background), hoặc thêm đường viền trắng dày xung quanh nhân vật (Thick white sticker outline) để giống như một hình dán thật.","flat pastel background, thick white border outline, sticker aesthetic, clean minimal background")]},
-{id:"graphic_typo",icon:"🎨",title:"Đồ Họa & Typography / Thiết Kế Không Người",subtitle:"Thiệp cưới, Giấy mời, Vé xem phim, Trang chữ Vibe cặp đôi, Graphic Design không vẽ nhân vật",seed:15,cards:[card("typo-target","🎯 Vibe Đại Diện Cho Cặp Đôi / Đối Tượng","Chọn vibe đại diện cho Vợ Yêu ({{user}}), Bot Char, hoặc toàn bộ cặp đôi/group thông qua màu sắc, biểu tượng, đường nét và phong cách thiết kế (Thay vì vẽ người).","symbolic character representation, graphic design vibe representing main couple, emotional resonance through typography and abstract graphic art without drawing characters"),card("typo-format","🏷️ Thể Loại Ấn Phẩm & Thiết Kế Đồ Họa","Thiệp cưới hoàng gia (Royal Wedding Invitation), Giấy mời dạ tiệc (Gala Invitation Card), Vé xem phim điện ảnh cổ điển (Vintage Cinema Ticket), Trang nhật ký nghệ thuật toàn chữ (Typographic Art Journal), Poster Typography, Thiệp định tình...","luxury wedding invitation card, vintage cinema ticket design, typographic art journal page, royal gala event invitation, elegant graphic poster layout"),card("typo-fonts","🔤 Nghệ Thuật Chữ & Style Typography","Chữ Calligraphy uốn lượn lãng mạn, chữ Serif cổ điển quý phái, chữ Gothic huyền bí sang trọng, chữ Y2K hiện đại, bố cục chữ cách điệu, lồng ghép tên hoặc câu thoại định tình trong cốt truyện.","exquisite calligraphy typography, elegant serif font lettering, ornate gothic typography, modern Y2K experimental font, artistic text layout, stylized quote design"),card("typo-motifs","⚜️ Biểu Tượng & Hoa Văn Trang Trí (Motifs)","Huân chương gia tộc, hoa hồng gai khắc kim loại, vương miện hoàng gia, bướm đêm huyền ảo, ruy băng lụa mềm mại, viền khung vàng kim (gold foil border), con dấu sáp đỏ chăng trên phong thư thắt ruy băng.","symbolic floral motifs, ornate royal crest, gold foil stamping borders, crimson wax seal stamp, silk ribbon embellishments, intricate filigree decorations"),card("typo-layout","📐 Bố Cục & Chất Liệu Bề Mặt (Texture & Layout)","Bố cục phẳng Graphic Design chuẩn mực, giấy ngợi cổ điển có vân thô ráp (textured vintage paper), hiệu ứng dập nổi (embossing), ép kim lung linh (gold foil stamping), hiệu ứng ánh sáng rọi lên bề mặt thiệp.","graphic design flat layout, heavy textured vintage watercolor paper, metallic gold foil embossing, tactile wax seal texture, sophisticated print editorial quality"),card("typo-ref-adapt","✿ Học Hỏi Từ Ảnh Tham Chiếu (Anti-Human Rule)","Dù ảnh tham chiếu bạn tải lên là ảnh nhân vật hay ảnh người thật, AI BẮT BUỘC CHỈ học bảng màu, ánh sáng, vibe, cảm xúc và họa tiết trang trí, TUYỆT ĐỐI KHÔNG vẽ bất kỳ khuôn mặt hay dáng người nào vào ấn phẩm!","reference color palette extraction, learn artistic mood and aesthetic vibe, translating character portraits into abstract graphic art and typography"),card("typo-no-human","🛡️ Luật Bất Khả Xâm Phạm: 100% KHÔNG VẼ NGƯỜI","Cam kết tuyệt đối không có nhân vật, không có người, không có khuôn mặt hay cơ thể trong hình output. Chỉ xuất hiện nghệ thuật chữ, hoa văn, chất liệu và đồ họa ấn phẩm thượng hạng.","no humans, no people, no characters, no faces, no figures, 100% pure graphic design, typography art, invitation card and ticket illustration without any human presence")]},
-{id:"cinematic_album",icon:"🎞️",title:"Album Ảnh Điện Ảnh & Nghệ Thuật Thị Giác",subtitle:"Editorial photobook, Film strip, Contact sheet, High-art layout, Tư duy máy ảnh & góc độ",seed:16,cards:[card("album-target","🎯 Đối Tượng Trong Album Điện Ảnh","Chọn nhân vật (Vợ yêu, Bot Char, Couple/Group) làm trung tâm cho album ảnh nghệ thuật, truyền tải cảm xúc qua từng khung hình.","cinematic character photobook, editorial fashion spread, character study through multiple cinematic captures"),card("album-layout","🎞️ Bố Cục Album & Dàn Trang (Collage & Film Strip)","Cuốn album mở ra nhiều ảnh trên trang (Editorial Photobook Layout), dải phim nhựa 35mm (35mm Film Strip), contact sheet nhiều góc chụp liên tiếp, ảnh polaroid xếp đặt nghệ thuật trên bàn làm việc...","editorial photobook spread layout, 35mm film contact sheet collage, cinematic film strip sequence, polaroid photo arrangement, sophisticated magazine editorial layout"),card("album-camera","📷 Tư Duy Máy Ảnh & Góc Độ Chụp","Kết hợp tinh tế nhiều tiêu cự trong cùng album: shot cận cảnh mắt/tay góc 85mm portrait, shot toàn thân fashion 35mm, shot góc rộng phối cảnh điện ảnh 24mm, góc nghiêng Dutch angle kịch tính, bắt trọn nhịp chuyển động.","masterful camera lens variety, combining 85mm intimate macro detail shots with 35mm environmental portraits and 24mm wide cinematic angles, dynamic shutter speed capture, professional visual storytelling"),card("album-aesthetics","✨ Gu Thẩm Mỹ Cao & Thiên Phú Sáng Tạo Thị Giác","Tư duy nghệ thuật bậc thầy về màu sắc (Color Grading), ánh sáng rọi qua khe cửa (Volumetric Lighting), độ tương phản cao sang trọng (High-fashion contrast), grain phim nhựa cổ điển cực đẹp, không gian đậm chất điện ảnh Wong Kar-wai hoặc Denis Villeneuve.","masterwork visual aesthetics, high-art cinematic color grading, atmospheric volumetric lighting, nostalgic 35mm film grain, sophisticated visual rhythm, award-winning cinematography direction"),card("album-story","📖 Mạch Kể Chuyện Qua Ảnh (Visual Storytelling)","Các bức ảnh trong album liên kết thành một dòng chảy câu chuyện liên tục: ánh mắt trao nhau, nụ cười thoáng qua, cái chạm tay ngập ngừng, chi tiết món kỷ vật trong cốt truyện chính.","sequential visual storytelling, emotional continuity across frames, capturing fleeting micro-expressions, subtle romantic cues, cinematic narrative montage"),card("album-guard","🛡️ Bảo Vệ Chất Lượng Album (Cinematic Standards)","Đảm bảo màu sắc phim (film stock colors) chân thực, không bệt màu. Hình ảnh sắc nét, bố cục collage thẳng thớm không méo mó, tỷ lệ các ảnh trong trang phải hài hòa và có nhịp điệu.","flawless collage layout, pristine film grain quality, no warped images, perfectly balanced editorial spread, high-end artbook production quality")]},
-{id:"canva_aboutme",icon:"🖼️",title:"Thiết Kế Canva / About Me Profile Card",subtitle:"Học bố cục & khung hình từ mẫu (Tùy biến nhân vật & màu sắc)",seed:17,cards:[card("canva-target","🎯 Đối Tượng Trong Thiết Kế Profile","Chọn nhân vật (Vợ yêu, Bot Char, hoặc Couple) để đưa vào thiết kế dạng Profile Card, About Me page hoặc giao diện tạp chí.","character profile card, about me design, modern character introduction graphic"),card("canva-layout","📐 Cấu Trúc Khung & Bố Cục (UI / Graphic Layout)","Mô phỏng giao diện Canva, lưới Bento Box, thẻ nhân vật RPG, khung Polaroid, hoặc layout giới thiệu nhân vật với các text box (hộp thoại), sticker trang trí, thanh tiến trình (progress bar).","bento grid layout, UI card design, polaroid frame, RPG character stat screen, canva template aesthetic, stylized text boxes, decorative graphic UI elements"),card("canva-aesthetics","✨ Phong Cách Thiết Kế (Graphic Style)","Từ Y2K rực rỡ, Grunge bụi bặm, Minimalist tối giản, Pastel dễ thương đến Cyberpunk công nghệ. Màu sắc và font chữ phải hòa hợp với vibe của nhân vật chính.","graphic design aesthetics, Y2K graphic layout, pastel cute UI, minimalist editorial design, sharp vector graphics, harmonious color palette, stylized typography placeholder"),card("canva-ref-adapt","✿ Học Bố Cục Tham Chiếu (Reference UI Structure)","Học hỏi CẤU TRÚC bố cục (layout structure), tỷ lệ các khung hình, cách sắp xếp chữ và hình từ ảnh tham chiếu. TÙY BIẾN HOÀN TOÀN màu sắc, vibe và hình ảnh nhân vật theo cốt truyện gốc!","extracting UI structure and layout composition from reference, replacing original characters and colors with bespoke user story elements, adaptive graphic design learning"),card("canva-story","📖 Thông Tin Nhân Vật & Chữ (Typographic Placeholders)","Lồng ghép các khối chữ (text blocks) cách điệu làm điểm nhấn: Tên nhân vật viết to, các dòng mô tả nhỏ gọn, các keyword định hình tính cách hoặc câu thoại kinh điển.","stylized typography integration, character name header, descriptive text blocks, aesthetic typography hierarchy, readable decorative text"),card("canva-guard","🛡️ Bảo Vệ Tính Chuyên Nghiệp (Clean Layout Guard)","Đảm bảo đường nét UI thẳng thớm, không cong vênh. Các khối hình học (geometric shapes) sạch sẽ. Hình ảnh nhân vật bên trong khung phải sắc nét, không lấn viền sai cách.","crisp UI vector lines, straight geometric shapes, clean typography rendering, professional graphic design finish, perfectly framed character portraits")]},
-{id:"manga_webtoon",icon:"📚",title:"Trang Truyện Tranh / Webtoon Khổ Dài",subtitle:"Vẽ manga/manhwa nhiều khung, bám sát nét tham chiếu, pose thông minh, ít lỗi",seed:19,cards:[card("manga-target","🎯 Đối Tượng Trong Truyện","Chọn nhân vật chính cho trang truyện: Vợ Yêu ({{user}}), Bot Char, hay Couple đang tương tác.","comic book characters, webtoon protagonists, story-driven character interaction"),card("manga-layout","📐 Bố Cục Khung Truyện Khổ Dài (Webtoon Layout)","Trang truyện dọc dài (vertical scrolling webtoon), phân khung thông minh (smart panel layout), các khung hình đan xen chéo kịch tính hoặc vuông vức cổ điển, tràn viền (bleed).","vertical scrolling webtoon format, smart comic panel layout, dynamic overlapping frames, cinematic panel progression, seamless flow"),card("manga-style","🖌️ Nét Vẽ & Phong Cách (Manhwa/Manga/Manhua)","Bám sát 100% nét vẽ của ảnh tham chiếu: nét Manhwa Hàn Quốc bóng bẩy màu sắc lộng lẫy, nét Manga Nhật Bản sắc sảo (trắng đen hoặc màu), nét Manhua Trung cổ trang tỉ mỉ. Bắt trọn art style gốc.","exact art style adaptation from reference, Korean manhwa aesthetic, detailed anime/manga rendering, beautiful coloring, high artistic fidelity"),card("manga-pose","🏃 Ý Tưởng Pose & Góc Máy Trong Khung (Smart Poses)","Các pose thông minh và đa dạng qua từng khung: khung 1 đặc tả khuôn mặt (close-up), khung 2 toàn thân hành động (dynamic action), khung 3 góc máy từ trên xuống (high angle).","smart dynamic poses across panels, varied camera angles per frame, close-up emotive shots mixed with full body action, expressive body language"),card("manga-story","📖 Diễn Biến Cốt Truyện & Thoại (Story Flow)","Khắc họa diễn biến của câu chuyện qua từng ô truyện. Có thể thêm bong bóng thoại (speech bubbles) nghệ thuật hoặc để hình ảnh tự kể chuyện (visual storytelling).","sequential storytelling, emotional narrative progression, manga speech bubbles, visual story flow, cinematic comic pacing"),card("manga-quality","💎 Chất Lượng Cao & Chống Lỗi Bố Cục (Anti-Error Guard)","Đề cao nghệ thuật hình ảnh chất lượng cao. Kiểm soát lỗi giải phẫu (anatomy) khi vẽ nhiều nhân vật trong các khung nhỏ, đảm bảo các khung (panels) thẳng nét, sạch sẽ, không bị rối rắm hay dính liền nét vẽ.","masterpiece comic art, perfect anatomy across multiple panels, clean panel borders, avoid cluttered layouts, high-resolution comic page finish, cohesive visual consistency")]},
-{id:"fandom_merch",icon:"🛍️",title:"Fan Merch & Góc Sưu Tầm Truyện",subtitle:"Góc phòng Otaku, Poster, Card bo góc, Bìa truyện Couple nổi tiếng",seed:20,cards:[card("merch-target","🎯 Chủ Thể Sưu Tầm (Idol/Couple)","Chọn nhân vật hoặc Couple chính làm chủ đề cho các ấn phẩm merchandise, bìa truyện, poster, card bo góc.","anime merchandise collection, comic couple fandom, character idolization"),card("merch-layout","📐 Bố Cục Góc Sưu Tầm (Fan Room/Desk)","Góc bàn học ngập tràn standee, móc khóa, card bo góc; tường dán poster nhân vật; hoặc khung cảnh người hâm mộ đang cầm cuốn truyện tranh có bìa màu rực rỡ của Couple chính. Hình nền điện thoại hiển thị nhân vật.","otaku desk aesthetic, bedroom wall covered in anime posters, holding a full-color comic book cover, photocard display, acrylic standees, smartphone wallpaper showing characters"),card("merch-items","🛍️ Chi Tiết Ấn Phẩm & Merch (Merch Items)","Đặc tả chân thực các loại merch: Bìa truyện tranh màu (full-color comic cover), photocard bo góc phản quang (holographic photocard), móc khóa acrylic (acrylic keychain), huy hiệu (itabag pins), poster khổ lớn.","full-color manga cover art, holographic photocards, acrylic keychains, anime posters, fan merchandise, itabag accessories"),card("merch-ref-adapt","✿ Học Hỏi Vibe Tham Chiếu (Reference Vibe)","Học hỏi màu sắc, nét vẽ và biểu cảm từ ảnh tham chiếu để in lên các món đồ merch. Các nhân vật trong ảnh mẫu sẽ biến thành minh họa trên poster, bìa sách hoặc card bo góc!","extracting character visual DNA to illustrate merchandise items, adapting reference art style into comic covers and posters within the scene"),card("merch-atmosphere","✨ Không Khí & Ánh Sáng Góc Sưu Tầm","Ánh sáng ấm áp từ đèn bàn (desk lamp glow), đèn LED RGB mờ ảo trong phòng, nắng chiều hắt qua cửa sổ chiếu lên bộ sưu tập truyện tranh, tạo cảm giác fandom cuồng nhiệt và ấm cúng.","cozy room lighting, rgb led soft glow, sunlight hitting a manga collection, warm desk lamp lighting, passionate fandom atmosphere"),card("merch-quality","💎 Độ Nét Của Từng Ấn Phẩm (Detailing)","Đảm bảo các ấn phẩm nhỏ như card bo góc hay màn hình điện thoại đều sắc nét, nhìn rõ nhân vật bên trong. Không rác nét, chữ trên bìa sách có thể cách điệu nghệ thuật (mockup text).","high-resolution macro details on photocards and phone screen, clear character illustrations inside merchandise, readable stylized comic title mockups, clean otaku room clutter")]},
-{id:"handmade_card",icon:"💌",title:"Thẻ & Thiệp Handmade (Thiệp Cưới, Quà Tặng, Love Card)",subtitle:"Thiết kế thiệp thủ công, thiệp cưới, card tình yêu bám sát ảnh tham chiếu, chữ tiếng Việt ý nghĩa theo cốt truyện",seed:21,cards:[card("card-target","🎯 Đối Tượng & Dịp Tặng Thiệp (Target & Occasion)","Chọn nhân vật (Vợ Yêu {{user}}, Bot Char, Couple) và dịp kỷ niệm để làm chủ đề cho tấm thiệp: Thiệp cưới định tình (Wedding Invitation), Thiệp quà tặng kỷ niệm (Anniversary Gift Card), Card tình yêu thủ công (Handmade Love Card), hay thiệp xin lỗi / tỏ tình lãng mạn.","handmade love card, custom wedding invitation, romantic anniversary gift card, handcrafted greeting card, bespoke couple keepsakes"),card("card-style","🏷️ Kiểu Dáng & Chất Liệu Thiệp Handmade (Handmade Craft)","Thiết kế thủ công tinh xảo: Giấy mỹ thuật có vân sần (textured art paper), viền xé tay nghệ thuật (deckled edges), ép kim vàng lung linh (gold foil stamping), đính hoa khô (dried flower embellishments), thắt ruy băng lụa mềm mại (silk ribbon ties), hoặc đóng dấu sáp đỏ cổ điển (wax seal stamp).","handcrafted textured art paper, deckled edges, shimmering gold foil stamping, dried botanicals pressed on paper, silk ribbon bow ties, vintage crimson wax seal stamp, premium stationery design"),card("card-typography","🔤 Nghệ Thuật Chữ & Nội Dung Tiếng Việt (Vietnamese Typography)","Form chữ Calligraphy uốn lượn tuyệt đẹp hoặc chữ viết tay lãng mạn (handwritten script). NỘI DUNG CHỮ bằng tiếng Việt ý nghĩa, sâu sắc, bám sát câu chuyện và lời thề hẹn giữa hai người (Ví dụ: 'Gửi người thương...', 'Trăm năm hòa điệu...', 'Hẹn ước mùa hoa...'). Từng con chữ được nắn nót trau chuốt như một tác phẩm nghệ thuật.","exquisite Vietnamese calligraphy, romantic handwritten script lettering, elegant serif typography, legible Vietnamese text quote integrated into card design, artistic text placement, emotional love declaration words"),card("card-ref-adapt","✿ Học Hỏi Thiết Kế Từ Ảnh Tham Chiếu (Reference Adaptation)","Bám sát ảnh tham chiếu tải lên để học hỏi: bảng màu (color palette), hoa văn trang trí (ornate patterns), cách phối thảo mộc/ruy băng, ánh sáng và bố cục tổng thể của thiệp. Biến đổi hài hòa để phục vụ riêng cho câu chuyện tình yêu độc quyền của bạn!","extracting stationery design DNA from reference image, adapting color palette and floral motifs from reference into custom handmade card, high fidelity to reference craft style"),card("card-decor","🎀 Hoa Văn & Phụ Kiện Trang Trí (Embellishments & Decor)","Trang trí xung quanh tấm thiệp: Những cánh hoa hồng khô rơi rụng, nhẫn cưới lấp lánh đặt bên cạnh, chiếc bút mực máy cổ điển (fountain pen), dải lụa buông hờ hững trên mặt bàn gỗ ấm áp, hoặc ngọn nến thơm tỏa ánh sáng vàng dịu lung linh.","dried rose petals scattered around, vintage fountain pen, vintage brass keys, glowing scented candles, soft silk ribbon drape, rustic wooden table surface, romantic flatlay photography"),card("card-atmosphere","✨ Ánh Sáng & Khí Quyển Lãng Mạn (Romantic Atmosphere)","Ánh sáng vàng ấm áp buổi chiều tà rọi qua cửa sổ (warm golden hour sunlight), bóng đổ nhẹ nhàng tạo chiều sâu (soft directional shadows), hạt bụi sáng lơ lửng, tạo nên cảm giác vô cùng ấm cúng, riêng tư, trân trọng và thiêng liêng.","warm golden hour sunlight streaming across paper, soft directional shadows, glowing bokeh background, intimate and sacred atmosphere, tactile macro photography depth of field"),card("card-guard","🛡️ Bảo Vệ Chất Lượng Thiệp (Craftsmanship Guard)","Đảm bảo chữ tiếng Việt rõ ràng, sắc nét, không bị biến dạng hay lỗi font (no garbled text). Các chi tiết thủ công sắc sảo như thật (hyper-detailed macro shot). Bố cục thiệp cân đối, sang trọng, không bị rác chi tiết hay lộn xộn.","hyper-detailed macro photography of handmade card, readable legible typography, pristine print quality, balanced composition, no cluttered artifacts, masterpiece stationery design")]},
-{id:"marketing_pr_anime",icon:"📢",title:"PR Quảng Cáo Marketing & Bìa Anime/Manhwa/Manhua",subtitle:"Poster, Canva, Điện ảnh, Kĩ xảo, Outfits, có nhân vật phụ & chữ (Ưu tiên cốt truyện gốc)",seed:22,cards:[card("pr-target","🎯 Nhân Vật Chính & Supporting Cast (Nhân Vật Phụ)","Chọn nhân vật chính (Vợ Yêu {{user}}, Bot Char) kết hợp cùng dàn nhân vật phụ (supporting cast, rival, allies) xuất hiện trong chiến dịch quảng cáo, tạo sự tương tác kịch tính, phong phú và đầy chiều sâu câu chuyện.","promotional campaign ensemble, main couple with supporting characters, rich character interaction, dynamic multi-character advertisement layout"),card("pr-layout","📐 Bố Cục PR Marketing & Canva / Poster Layout","Bố cục quảng cáo truyền thông chuyên nghiệp: Poster điện ảnh khổ lớn, cover truyện tranh full màu (full-color comic cover), tạp chí thời trang (editorial cover), bố cục Canva hiện đại với các khối đồ họa (graphic blocks) và khung hình kịch tính.","promotional marketing layout, cinematic movie poster, full-color manhwa cover art, editorial fashion magazine layout, canva aesthetic graphic design, dynamic overlapping promotional frames"),card("pr-style","🖌️ Nét Vẽ Full Màu Rực Rỡ (Anime / Manhwa / Manhua)","Nét vẽ full color đẳng cấp cao nhất: Manhwa Hàn Quốc bóng bẩy lộng lẫy (shimmering Korean manhwa style), Manhua Trung Quốc sắc sảo chi tiết, hoặc Anime điện ảnh rực rỡ. Lên màu mượt mà, ánh sáng đỉnh cao.","vibrant full-color masterpiece, top-tier Korean manhwa illustration style, detailed anime promotional art, luxurious coloring, sharp digital painting"),card("pr-vfx","🎆 Kĩ Xảo Thị Giác & Kĩ Thuật Điện Ảnh (Cinematic VFX)","Ứng dụng kĩ xảo thị giác ấn tượng: Hào quang rực rỡ (glowing aura), tia sáng ma thuật (magical light beams), lens flare điện ảnh, hạt bụi lấp lánh (floating stardust), chiều sâu trường ảnh (depth of field) chuẩn máy ảnh chuyên nghiệp.","cinematic visual effects, glowing magical aura, dynamic lens flare, floating stardust particles, dramatic depth of field, blockbuster movie visual techniques"),card("pr-ref-adapt","✿ Học Hỏi Tham Chiếu -> Ưu Tiên 100% Cốt Truyện Gốc","Tham chiếu ảnh để học hỏi cảm hứng, ý tưởng bố cục, ánh sáng và góc độ. NHƯNG QUAN TRỌNG NHẤT VÀ TRÊN HẾT MỌI THỨ: Phải sử dụng ứng biến và biến đổi hoàn toàn để tôn vinh câu chuyện và hồ sơ nhân vật nguyên bản do bạn thiết lập!","extracting inspirational lighting, layout and dynamic angles from reference image, mandatory adaptation to serve user's original story lore and custom character profiles above all else, transformative creative marketing design"),card("pr-typography","🔤 Nghệ Thuật Chữ & Trang Phục Outfits (Typography & Fashion)","Đặc tả trang phục (Outfits) thời thượng, lộng lẫy, cực chất đúng concept chiến dịch. Lồng ghép dòng chữ quảng cáo, tên truyện/phim bằng tiếng Việt hoặc tiếng Anh cách điệu nghệ thuật sang trọng (mockup typography).","stylish promotional fashion outfits, high-end costume design, legible stylized title typography, artistic Vietnamese or English promotional text integration, sleek graphic overlays")]},
-{id:"bot_char_marketing_art",icon:"🐰",title:"Nghệ Thuật Của Nhân Vật Bot Char (Marketing & Điện Ảnh)",subtitle:"Quảng bá Marketing dành riêng cho Bot Char, điện ảnh kĩ xảo, gộp chung hoặc solo Bot Char",seed:23,cards:[card("bot-marketing-target","🐰 Đối Tượng: Độc Quyền Dành Riêng Cho Bot Char","Hạng mục này CHỈ DÀNH RIÊNG CHO BOT CHAR (Nhân vật chính AI). Bạn có thể chọn từng nhân vật Bot Char riêng lẻ hoặc gộp chung tất cả Bot Char trong một khung hình quảng bá Marketing đẳng cấp điện ảnh. Tuyệt đối không lẫn lộn với các hạng mục truyện tranh hay người thật.","exclusive bot character marketing art, solo or grouped AI main characters, promotional cinematic character showcase, strictly focused on bot char identity"),card("bot-marketing-style","🎬 Nghệ Thuật Điện Ảnh & Kĩ Xảo Quảng Bá (Cinematic Marketing)","Phong cách quảng bá truyền thông chất lượng cao nhất: Poster điện ảnh nhân vật (Character Movie Poster), tạp chí thời trang nhân vật (Character Editorial Spread), kĩ xảo ánh sáng hào quang lung linh (glowing magical aura, volumetric lighting), tạo hình đẳng cấp vượt trội để quảng bá thương hiệu cho Bot Char.","cinematic promotional marketing art, high-end character advertisement poster, volumetric cinematic lighting, glowing magical particle effects, blockbuster visual presentation"),card("bot-marketing-outfits","✨ Trang Phục & Khí Chất Tạo Hình (Outfits & Charisma)","Thiết kế trang phục (Outfits) thời thượng, lộng lẫy, cực kỳ sang chảnh và hút mắt cho Bot Char. Làm nổi bật khí chất đỉnh cao, thần thái quyến rũ, body language tự tin và vẻ đẹp kiêu hãnh của nhân vật chính trong chiến dịch truyền thông.","high-fashion promotional outfits, luxurious costume design, charismatic body language, confident and alluring character expressions, premium fashion styling"),card("bot-marketing-ref","✿ Học Hỏi Tham Chiếu -> Tôn Vinh Hồ Sơ Bot Char","Tham chiếu ảnh tải lên để học hỏi cảm hứng ánh sáng, màu sắc và góc quay kịch tính. NHƯNG QUAN TRỌNG NHẤT: Phải tuân thủ tuyệt đối cốt truyện và hồ sơ nhân vật (Lore & Profile) của Bot Char mà bạn đã thiết lập, biến đổi để tôn vinh sự độc nhất của Bot Char!","extracting cinematic lighting and color grading from reference image, mandatory adherence to bot character's lore and personal profile, bespoke character marketing design"),card("bot-marketing-typography","🔤 Chữ Nghệ Thuật & Slogan Tôn Vinh (Typography)","Lồng ghép tên của Bot Char hoặc câu slogan định danh, danh xưng nhân vật bằng chữ nghệ thuật cách điệu sang trọng (stylized typography mockup), tạo điểm nhấn quảng bá hoàn hảo cho bức ảnh.","legible stylized character name typography, elegant promotional title placement, luxury branding text overlay, sophisticated graphic poster composition"),card("bot-marketing-guard","🛡️ Bảo Vệ Tác Phẩm & Tránh Nhầm Lẫn Phòng (Context Guard)","Cam kết bám sát đúng nhiệm vụ Quảng bá Marketing cho Bot Char, tuyệt đối KHÔNG nhầm lẫn sang vẽ truyện tranh manga nhiều khung, KHÔNG nhầm sang vẽ chibi, KHÔNG vẽ sai màu mắt hay màu tóc gốc của Bot Char trong hồ sơ!","100% single promotional poster or editorial illustration, strictly NO manga comic panels, NO chibi proportions, perfect fidelity to character hair and eye color specifications")]},
-{id:"bot_char_hobbies_vibe",icon:"🐰",title:"Sở Thích Của Bot Char (Vibe & Hobbies - Không Vẽ Người)",subtitle:"Ẩm thực, Đồ sưu tầm, Phòng làm việc/Game, Phòng ngủ, Xe Moto, Vé xem phim, Ghi chú sách (Không vẽ nhân vật)",seed:24,cards:[card("hobby-target","🐰 Đối Tượng Bot Char & Nguyên Tắc Không Vẽ Người","Hạng mục này CHỈ DÀNH RIÊNG CHO BOT CHAR (Nhân vật chính AI). Bạn có thể dùng nút hình con thỏ vẽ bằng code bên dưới để chọn từng nhân vật Bot Char riêng lẻ hoặc gộp chung. NGUYÊN TẮC TUYỆT ĐỐI: KHÔNG vẽ nhân vật, KHÔNG vẽ khuôn mặt hay cơ thể người! Bức ảnh chỉ tập trung vào không gian sống, đồ vật yêu thích và sở thích cá nhân để khắc họa chiều sâu tâm hồn của Bot Char.","exclusive bot character hobbies and vibe space, no humans, no characters, no faces, no figures, 100% environment and personal belonging focus, symbolic character storytelling through personal items and hobby spaces"),card("hobby-food-items","🍜 Ẩm Thực & Món Đồ Sưu Tầm Yêu Thích","Thể hiện gu ẩm thực và những món đồ gắn liền với Bot Char: Ly cà phê đặc chế, món ăn yêu thích đang bốc khói, những món đồ sưu tầm độc lạ, kỷ vật định tình, máy ảnh cổ, headphone, hay những món quà nhỏ trên bàn làm việc.","favorite cuisine and gourmet food photography, steamy customized drinks, treasured personal collectibles, symbolic keepsakes, lifestyle flatlay photography, aesthetic still life composition"),card("hobby-rooms-game","🎮 Phòng Làm Việc / Chơi Game / Phòng Ngủ / Xe Moto","Khắc họa không gian cá nhân đậm chất riêng: Phòng làm việc dàn máy tính high-end RGB, phòng chơi game (màn hình đang bật game yêu thích), phòng ngủ ấm cúng ngập nắng với chăn gối lộn xộn mang hơi ấm nhân vật, hay chiếc xe Moto / xe cộ cá tính đỗ dưới ánh đèn đường.","personal sanctuary environment, high-end RGB gaming setup with game display, cozy sunlit bedroom with personal touch, custom motorcycle or vehicle under atmospheric lighting, immersive lifestyle space without character presence"),card("hobby-notes-tickets","🎫 Vé Xem Phim & Note / Ghi Chú / Chú Thích Sách","Những chi tiết tinh tế kể chuyện tình cảm và nội tâm: Cặp vé xem phim buổi hẹn hò, những trang sách mở ra với nét chữ ghi chú viết tay (handwritten notes), tờ giấy note dán trên bàn, bookmark kẹp trong sách, hay những dòng chú thích tràn đầy cảm xúc.","vintage movie cinema tickets flatlay, open book with handwritten marginalia notes and sticky annotations, romantic paper bookmarks, emotional typographic details, tactile paper textures and ink"),card("hobby-ref-dna","✿ Bắt Buộc Dùng 100% Ảnh Tham Chiếu & Cốt Truyện Gốc","DỰA THEO NGUYÊN MẪU TÀI LIỆU ẢNH THAM CHIẾU SUY RA CAO NHẤT MẠNH NHẤT LÀ CÂU CHUYỆN VÀ HỒ SƠ! Bắt buộc sử dụng chính xác toàn bộ tư liệu ảnh tham chiếu đã tải lên (Zero-Skip 100%) để bóc tách bảng màu, chất liệu, ánh sáng và đồ vật, kết hợp tuyệt đối với hồ sơ gốc của Bot Char để tạo dựng không gian vibe chuẩn xác nhất!","zero-skip 100% reference material utilization, extract color palette, texture, lighting and object aesthetics from all uploaded reference images, mandatory alignment with bot character's lore and backstory profile, transformative hobby space synthesis"),card("hobby-guard","🛡️ Bảo Vệ Vibe & Tránh Lỗi (100% No Human Presence Guard)","Cam kết tuyệt đối 100% KHÔNG xuất hiện nhân vật, con người, bàn tay hay khuôn mặt trong ảnh! Chỉ tập trung đặc tả độ nét cao (macro/volumetric lighting) cho không gian, đồ vật, chữ viết và ánh sáng lung linh mang đậm dấu ấn sở thích của Bot Char.","strictly no human presence, no people, no characters, no body parts, hyper-realistic macro photography of personal belongings, atmospheric volumetric lighting, clean aesthetic composition, masterpiece interior and object rendering")]},
-{id:"handwritten_annotations",icon:"✍️",title:"Nhật Ký Chú Thích Viết Tay Khắp Bức Ảnh (Handmade Photo Notes)",subtitle:"Viết hẳn chữ nhỏ xinh trang trí khắp ảnh kèm mũi tên chỉ sự vật, trang phục, cảm xúc, biểu cảm bám sát ảnh tham chiếu",seed:25,cards:[card("ann-target","🎯 Đối Tượng & Chủ Đề Ghi Chú","Chọn nhân vật (Vợ Yêu {{user}}, Bot Char hoặc Couple) và bối cảnh để viết chú thích lên. Chữ nhỏ xinh xắn trực tiếp lên bức ảnh theo dạng handmade diary.","handwritten notes all over the photo, photo annotation style, handmade journal entries on image, character details labeled with elegant script"),card("ann-arrows","🏹 Mũi Tên Chỉ Hướng & Định Vị Vẽ Tay","Sử dụng các mũi tên chỉ hướng vẽ tay mộc mạc chỉ vào rất nhiều điều xung quanh: sự vật, đồ vật, cây cối, quần áo, trang phục, biểu cảm khuôn mặt hay đồ đạc. Tuyệt đối KHÔNG sử dụng biểu tượng bàn phím hay nhãn dán có sẵn.","beautiful hand-drawn text written directly on the image, dainty handwritten marginalia, delicate arrows pointing to various objects, aesthetic diary annotation layout, no keyboard icons, no preset stickers"),card("ann-items","🌳 Chi Tiết Chú Thích Muôn Nơi (Everywhere Annotations)","Ghi chú tỉ mỉ cho mọi thứ xuất hiện trong ảnh. Có gì trong ảnh đều được chú thích thành chữ handmade sinh động như nhật ký lưu niệm.","detailed annotation labels for outfits, facial expressions, trees, furniture, hair details, beautiful handwritten words labeling items in the scene"),card("ann-emoji","✨ Emoji Đẹp Mắt & Ký Tự Đặc Biệt (!, @, #)","Thiết kế đẹp mắt thêm nhiều emoji dễ thương, sinh động và sử dụng các ký hiệu nghệ thuật như !, @, # trước các ghi chú chữ nhỏ.","playful handwritten notes with lovely emojis, cute hand-drawn symbols like !, @, # prefixing labels, personalized aesthetic journal styling"),card("ann-ref-adapt","✿ Bám Sát & Học Hỏi Từ Ảnh Tham Chiếu","Học tập hoàn hảo cách bố trí chú thích, nét vẽ và tông màu từ tài liệu ảnh tham chiếu để tạo nên tác phẩm đồng nhất hoàn hảo.","learning annotation layout and color palette from reference image, perfect adherence to reference photo details, high fidelity visual labeling"),card("ann-quality","🛡️ Bảo Vệ Độ Sạch & Chống Lỗi Định Dạng","Bảo đảm nét chữ nhỏ xinh nghệ thuật, không bị dính khối thô kệch, không méo hình hay lỗi giải phẫu. Toàn bộ mang vibe handmade diary trọn vẹn, chân thực.","clear artistic handwriting, no deformed text blocks, perfectly balanced handwritten text overlay, high-resolution aesthetic photo notes, masterpiece illustration")]},
-{id:"soulful",icon:"🥀",title:"Bức Ảnh Biết Nói & Chiều Sâu Câu Chuyện",subtitle:"Học tinh hoa ảnh tham chiếu (không lộ mặt gốc) -> Bức ảnh tự sự, hạnh hiểu, chạm đến trái tim",seed:18,cards:[card("soul-target","🎯 Đối Tượng Trong Bức Ảnh Biết Nói","Chọn nhân vật làm trung tâm cho bức ảnh tự sự: Vợ Yêu ({{user}}), Bot Char, hay khoảnh khắc tương tác giữa hai người. Bức ảnh không chỉ vẽ người mà phải hiện lên nội tâm và câu chuyện của họ.","emotional character focus, soulful narrative portrait, deeper psychological connection, storytelling through facial expression and gaze"),card("soul-ref-adapt","✿ Học Tinh Hoa Tham Chiếu (Không Lộ / Không Copy Mặt)","Dựa theo toàn bộ ảnh tham chiếu gửi lên để học hỏi triệt để bố cục, góc chụp, ánh sáng, màu sắc và cảm xúc (nguyên mẫu hình ảnh), biến đổi sáng tạo mang dấu ấn riêng biệt, hòa quyện 100% với thần thái và nhân vật trong câu chuyện!","masterful visual reference adaptation, extract artistic DNA, lighting, mood and composition with transformative originality, 100% fidelity to story lore and character profile"),card("soul-storytelling","📖 Khung Hình Tự Sự & Không Cần Tiếng Nói","Không cần viết chữ như tiểu thuyết, nhưng nhìn vào bức ảnh là thấy ngay một chương truyện đang diễn ra: không gian tĩnh lặng, kỷ vật định tình đặt bên cạnh, ánh sáng chiếu qua khe cửa, từng chi tiết nhỏ trong phòng đều đang kể chuyện (Visual Storytelling).","silent visual storytelling, narrative environmental details, symbolic objects from story lore, unspoken emotional narrative, atmospheric setting speaking volumes without words"),card("soul-emotion","🥺 Độ Cảm Động & Chiều Sâu Tâm Lý (Hạnh Hiểu / Thấu Hiểu)","Khắc họa cảm giác 'hạnh hiểu' — sự thấu hiểu sâu sắc, niềm hạnh phúc lẫn nghẹn ngào, sự đồng cảm không cần lời nói giữa hai tâm hồn. Ánh mắt ướt nhẹ, nụ cười an yên sau sóng gió, cái chạm tay ngập ngừng chứa đựng muôn vàn cảm xúc.","deep emotional resonance, profound mutual understanding ('hạnh hiểu'), soulful gaze filled with tenderness, cathartic emotional depth, subtle tears of relief, heartfelt connection"),card("soul-atmosphere","🕯️ Khí Quyển & Ánh Sáng Chạm Trái Tim","Ánh sáng vàng ấm áp áp sát làn da (warm cinematic volumetric lighting), bóng tối mềm mại làm nổi bật đôi mắt biết nói, hạt bụi sáng lơ lửng trong không gian, bầu không khí êm đềm, thiêng liêng và lắng đọng.","ethereal cinematic lighting, warm golden glow on skin, soft shadow contrast highlighting expressive eyes, floating dust motes, sacred and serene emotional atmosphere"),card("soul-guard","🛡️ Bảo Vệ Chiều Sâu (Tránh Ảnh Vô Hồn / Tránh Đạo Nhái)","Cam kết bức ảnh có hồn, có chiều sâu tâm lý, tuyệt đối không vẽ nhân vật đơ cứng vô hồn như tượng sáp, tạo ra diện mạo nhân vật mang tính sáng tạo độc lập, không rác chi tiết lộn xộn làm mất tập trung vào cảm xúc chính.","soulful lifelike expression, prevent stiff robotic poses or lifeless eyes, ensuring transformative originality and bespoke character features, clean emotional focal point, high-art masterpiece quality")]},
-{id:"bg",icon:"⌑",title:"Nền / Typography / Layout / UI",subtitle:"Background / font / graphic / character card",seed:7,cards:[card("background","Nền background","Nền hỗ trợ câu chuyện, không cướp spotlight.","story-driven background, atmospheric environment, symbolic details, not cluttered"),card("typography","Phông chữ / chữ poster","Title, serif, Y2K, manga speech bubble.","integrated poster typography, elegant title placement, graphic text elements"),card("layout","Layout poster / card","Poster, album, character card, Instagram profile.","poster layout, editorial layout, character card layout, clean UI-inspired layout"),card("decor","Trang trí giao diện","Khung, panel, sticker, line, icon vẽ bằng code.","decorative UI frame, soft interface elements, ornate border, clean visual container")]},
-{id:"color",icon:"◌",title:"Màu Sắc / Ánh Sáng / Bão Hòa",subtitle:"Color palette / saturation / temperature / lighting",seed:8,cards:[card("palette","Bảng màu","Pastel, gothic, Y2K, cinematic, monochrome.","controlled color palette, limited palette, harmonious colors, accent color"),card("saturation","Độ bão hòa","Nhạt mềm, rực vừa, màu trầm, accent nổi.","low saturation, muted colors, controlled saturation, vivid accent details"),card("temperature","Nhiệt độ màu","Ấm, lạnh, trung tính, hoài niệm.","warm color temperature, cool color temperature, warm highlights, cool shadows"),card("lighting","Ánh sáng","Key light, rim light, backlight, low-key, stage.","cinematic lighting, soft key light, rim light, backlighting, dramatic shadows")]},
-{id:"full",icon:"୨ৎ",title:"Tổng Hợp Toàn Bộ Nhân Vật",subtitle:"Reference + story + face + pose + outfit + color + negative",seed:9,cards:[card("reference","Reference Control","Học hỏi DNA nghệ thuật, TUYỆT ĐỐI không copy nhân vật, ưu tiên 100% cốt truyện.","reference-inspired visual DNA, zero-identity copying, prioritize narrative accuracy 100%, character profile fidelity"),card("story","Story Priority","Cốt truyện, timeline, hồ sơ là ưu tiên.","prioritize narrative accuracy, selected story canon, character profile"),card("character","Character Design","Mặt, tóc, outfit, khí chất, body language.","refined character design, expressive face, detailed hair, elegant outfit, strong presence"),card("composition","Composition","Bố cục, camera, đường thị giác, focal point.","strong composition, clear focal point, balanced negative space, leading lines"),card("render","Line / Render / Texture","Nét, lên màu, texture, chất lượng.","clean delicate lineart, polished rendering, smooth gradients, subtle texture"),card("negative","Negative Prompt","Prompt tránh lỗi bắt buộc.",errorGuard)]},
-{id:"supporting_cast_poster",icon:"👥",title:"Poster Dàn Nhân Vật Phụ & NPC Quan Trọng",subtitle:"Dàn nhân vật phụ, NPC quan trọng tôn vinh cặp chính/nhân vật chính trong Poster PR, quảng cáo thương mại kiểu Anime hoặc Điện ảnh nghệ thuật",seed:26,cards:[card("supporting-roles","🎯 Dàn Diễn Viên Phụ & NPC Quan Trọng (Supporting Cast & NPCs)","Định nghĩa danh sách, vai trò các diễn viên phụ, NPC quan trọng hay quần chúng có chiều sâu câu chuyện bổ trợ cho nhân vật chính.","promotional movie ensemble, prominent supporting cast, vital background NPCs, dramatic arrangement of minor characters framing the leads, deep worldbuilding cast"),card("poster-layout","📐 Bố Cục Poster PR Thương Mại Hoành Tráng (PR Poster Layout)","Bố cục poster thương mại quảng bá cực lớn, bìa đĩa Anime hoành tráng hoặc poster phim điện ảnh nghệ thuật đẳng cấp truyền thông.","commercial PR campaign poster layout, grand promotional movie poster, theatrical key visual, anime movie cover, modern dynamic bento graphic block composition"),card("protagonist-spotlight","✨ Tiêu Điểm Làm Nổi Bật Nhân Vật Chính / Cặp Đôi (Main Star Spotlight)","Sự sắp xếp bố cục và ánh sáng đặc biệt nhằm làm nổi bật cặp đôi chính hoặc nhân vật chính ở trung tâm, dàn NPC vây quanh làm nền tôn vinh thần thái.","dramatic hierarchy, majestic spotlight highlighting the main couple at the core center, supporting cast gracefully arranged in shadow or peripheral background, powerful visual depth"),card("ref-learning","✿ Học Hỏi Tỉ Mỉ Từ Nhiều Ảnh Tham Chiếu (Adaptive Multi-Ref Learning)","Bám sát toàn bộ các ảnh tham chiếu ở mọi vị trí để học hỏi cách sắp đặt nhân vật, ánh sáng kịch tính và bảng màu nghệ thuật, ứng biến hoàn toàn theo cốt truyện gốc của bạn.","100% zero-skip multi-reference visual DNA learning, masterfully adapting multi-character positioning, color scheme and dramatic cinema style, perfect fidelity to original story lore"),card("promo-fashion","🔤 Trang Phục & Slogan Chữ Nghệ Thuật (Fashion & Branding Slogan)","Trang phục lộng lẫy thiết kế đồng điệu theo concept chung, kết hợp cùng tiêu đề phim/truyện hoặc slogan quảng bá cách điệu chữ sang trọng (mockup typography).","theatrical coordinated outfits, luxury promotional costume designs, sleek title typography overlay, commercial marketing slogan, sophisticated brand design overlay"),card("poster-guard","🛡️ Bảo Vệ Chất Lượng Poster Điện Ảnh (Grand Poster Guard)","Kiểm soát tuyệt đối tỷ lệ giải phẫu của nhiều nhân vật, ánh sáng kịch tính, độ rõ nét của nhân vật phụ, không rác nét, dính hình hay lỗi méo dạng.","masterpiece promotional art, flawless multi-character proportions, crisp details on background characters, atmospheric volumetric lighting, cinematic color grading, balanced epic composition")]},
-{id:"ref_adaptation",icon:"🔄",title:"Biến Đổi & Thích Ứng Ảnh Tham Chiếu Nhân Vật (Character Reference Adaptor)",subtitle:"Giữ nguyên đường nét khuôn mặt/nhân vật từ ảnh tham chiếu, nhưng biến đổi hoàn toàn bối cảnh, nền, trang phục bám sát 100% cốt truyện",seed:27,cards:[
-  card("adaptation-target","🎯 Nhân Vật Đích & Đối Tượng Biến Đổi","Chọn nhân vật cần thích ứng bối cảnh. AI sẽ vẽ đúng nhân vật trong truyện của bạn với vibe từ ảnh tham chiếu.","character-driven adaptation target, map story character profile to reference visual style, prioritize story identity over reference face"),
-  card("adaptation-preserve","🧬 Truyền Tải Thần Thái & DNA Nghệ Thuật (Transfer Visual DNA)","Học hỏi đường nét nghệ thuật và thần thái, nhưng áp dụng chính xác theo khuôn mặt và đặc điểm của nhân vật trong cốt truyện.","transfer visual DNA from reference, adopt artistic aesthetic and mood, apply story-accurate facial features, character profile fidelity, artistic style preservation, not an identity copy"),
-  card("adaptation-background","🌌 Thay Đổi Bối Cảnh & Nền Không Gian (Background Transformation)","Biến đổi hoàn toàn nền và không gian xung quanh cho phù hợp 100% với bối cảnh truyện: căn phòng, thiên nhiên, ánh sáng hay thời tiết mới.","complete environmental transformation, scenic transition to new background, atmospheric depth, cinematic setting matching story context perfectly, rich environmental storytelling"),
-  card("adaptation-outfit","👗 Thích Ứng Trang Phục & Phong Cách Mới (Outfit & Styling Adaptation)","Thay đổi quần áo, trang phục, giáp trụ hoặc phụ kiện cho nhân vật phù hợp với chương truyện mà vẫn tôn lên vóc dáng gốc.","adapted costume design, new outfit styled for the story event, preserving body proportion, detailed accessories matching the scene, elegant fabric folds"),
-  card("adaptation-harmony","🎨 Đồng Bộ Màu Sắc & Ánh Sáng Nghệ Thuật (Color & Light Harmony)","Hòa quyện nhân vật gốc vào ánh sáng, bóng tối và bảng màu mới của bối cảnh, tạo ra tác phẩm đồng nhất hoàn hảo.","harmonious integration of character and environment, matching highlights and shadows, cinematic color temperature, volumetric atmospheric light"),
-  card("adaptation-guard","🛡️ Bảo Vệ Chất Lượng Chuyển Đổi (High-Fidelity Adaptation Guard)","Cam kết ảnh không bị biến dạng nét mặt, không đơ cứng vô hồn, giữ trọn vẹn hồn cốt của nhân vật và chất lượng điện ảnh nghệ thuật cực cao.","masterpiece cinematic adaptation, high-fidelity facial consistency, perfectly proportioned, dramatic lighting integration, no distortion, flawless original-inspired render")
-]},
-{id:"cinematic_aura",icon:"🎬",title:"Điện Ảnh & Khí Chất Nghệ Thuật",subtitle:"Tôn vinh vóc dáng, đường cong và thần thái quyến rũ trong khung hình điện ảnh",seed:28,cards:[
-  card("cine-art","🎨 Nghệ Thuật & Vibe Điện Ảnh","Tạo ra những prompt mang tính nghệ thuật cao, ánh sáng và màu sắc đẳng cấp điện ảnh.","high-end cinematic art, artistic visual vibe, masterpiece lighting, dramatic color grading, professional cinematography"),
-  card("cine-curves","👗 Trang Phục & Đường Cong","Trang phục được thiết kế tinh tế để tôn lên những đường cong quyến rũ một cách nghệ thuật.","outfit highlighting body curves, elegant form-fitting attire, sophisticated silhouette, artistic body lines, tasteful alluring design, clothing that accentuates natural curves"),
-  card("cine-physique","🧍 Vóc Dáng & Hình Thể Chuẩn","Sử dụng các thuật ngữ nhân trắc học an toàn để mô tả hình thể cân đối, vóc dáng chuẩn.","well-balanced anthropometric physique, standard figure, athletic yet graceful body, perfectly proportioned anatomy, healthy aesthetic physique, balanced body composition"),
-  card("cine-aura","✨ Khí Chất & Thần Thái Quyến Rũ","Chuyển sự chú ý sang thần thái quyến rũ: Hấp dẫn, quyến rũ, có sức hút, mặn mà/đằm thắm.","magnetic charisma, seductive elegance, alluring mature beauty ('mặn mà'), sophisticated charm, powerful attractive aura, graceful presence, mature and captivating charm")
-]},
-{id:"reference_visual_intelligence",icon:"🎨",title:"Trí Tuệ Thị Giác Từ Ảnh Tham Chiếu",subtitle:"Phân tích DNA nét vẽ / Kỹ thuật render / Bố cục thị giác",seed:20,cards:[
-  card("reference_visual_intelligence","Trí Tuệ Thị Giác Từ Ảnh Tham Chiếu","Phân tích chuyên sâu: 1. Nét vẽ (line-art), 2. Khuôn mặt/mắt/tóc, 3. Kỹ thuật màu/render, 4. Bố cục, 5. Trung tâm/đường thị giác, 6. Thiết kế đồ họa/UI (nếu có), 7. Quy tắc chuyển hóa nghệ thuật từ ảnh tham chiếu vào nhân vật cốt truyện mà không sao chép.","visual intelligence analysis, style DNA extraction, rendering physics, composition geometry, visual flow, design logic integration")
-]},
-{id:"canva_story_visual_series",icon:"📐",title:"BỘ THIẾT KẾ CANVA CỐT TRUYỆN",subtitle:"Trang bìa, Tóm tắt cốt truyện, Hồ sơ nhân vật, Thiết lập thế giới, Quan hệ nhân vật & Trang kết",seed:29,cards:[
-  card("canva-series-cover","👑 Bìa Series / Poster Chính","Thiết kế trang bìa hoặc Poster chính cho Series Canva quảng bá cốt truyện, làm nổi bật tiêu đề lớn, logo/biểu tượng của cặp đôi, bối cảnh đặc trưng, và bố cục đồ họa cực kỳ ấn tượng, chuyên nghiệp.","series cover design, canva promotional poster, bold typographic title, main story logo, dramatic graphic layout, premium novel cover aesthetic"),
-  card("canva-story-premise","📖 Tóm Tắt Cốt Truyện & Premise","Thiết kế trang tóm tắt cốt truyện Canva với bố cục phân chia thông minh (bento grid, các khối chữ), lồng ghép các từ khóa cốt lõi (keywords), dòng chữ tóm tắt (synopsis), câu thoại mở đầu kịch tính, và các chi tiết đồ họa đại diện cho xung đột chính.","story premise infographic, bento grid layout, key plot points visual, synopsis typography blocks, narrative graphic elements, stylized text placeholders"),
-  card("canva-character-profile","👤 Hồ Sơ Nhân Vật Chi Tiết","Thiết kế trang giới thiệu hồ sơ nhân vật (Profile Card / About Me) trong Canva, gồm khung hình nhân vật sắc nét, các hộp thoại thông tin (họ tên, tuổi, tính cách, sở thích), thanh tiến trình chỉ số RPG, và các sticker trang trí đặc trưng.","character info card, RPG stats layout, structured profile design, text boxes, decorative portrait frames, aesthetic character profile sheet"),
-  card("canva-lore-setting","🌌 Thiết Lập Thế Giới & Lore","Thiết kế trang thế giới truyện/lore trong Canva, mô tả bối cảnh không gian đặc trưng (vũ trụ, học đường, cung điện, phố cổ), bản đồ thu nhỏ cách điệu, các biểu tượng hoa văn địa danh cổ kính hoặc công nghệ cao, và các mốc thời gian lịch sử quan trọng.","world lore graphics, environment showcase, conceptual setting design, timeline infographics, stylized map elements, aesthetic fantasy/sci-fi worldbuilding layout"),
-  card("canva-relationships-hook","🔗 Mối Quan Hệ & Câu Lure (Hook)","Thiết kế trang biểu đồ mối quan hệ giữa các nhân vật (Relationship Chart) hoặc trang câu khách (Hook / Quote) với các đường kết nối vẽ tay mộc mạc, biểu tượng trái tim/mũi tên đan xen, cùng câu thoại định tình hay trích dẫn đắt giá nhất gây tò mò cho độc giả.","relationship chart layout, visual network map, romantic connection diagrams, striking story quote design, emotional hook typography, stylized relational arrows"),
-  card("canva-end-page","🚪 Trang Kết & Call to Action","Thiết kế trang kết thúc của bộ ảnh Canva quảng bá truyện, hiển thị lời kêu gọi hành động (Call to Action) như: 'Đón xem chương tiếp theo...', 'Hãy theo dõi hành trình của chúng mình...', biểu tượng nút bấm hoặc logo nhỏ xinh xắn kết màn, bố cục trang nhã, lắng đọng.","end screen layout, call to action graphic, book trailer end frame, follow button icons, clean elegant finish layout, cinematic story closing spread")
-]},{
-  id: "canva_presentation",
-  icon: "📊",
-  title: "CANVA PRESENTATION",
-  subtitle: "10 Slide Canva Nối Tiếp",
-  seed: 30,
-  cards: [
-    card("slide-1", "Slide 1: Mở Đầu (Title/Hook)", "Slide đầu tiên giới thiệu chủ đề mạnh mẽ", "slide 1 title hook opening intro"),
-    card("slide-2", "Slide 2: Đặt Vấn Đề (Problem/Context)", "Trình bày vấn đề hoặc bối cảnh", "slide 2 context problem setting"),
-    card("slide-3", "Slide 3: Giới Thiệu Nhân Vật (Character/Subject)", "Nhân vật chính", "slide 3 character introduction focus"),
-    card("slide-4", "Slide 4: Diễn Biến 1 (Development A)", "Điểm phát triển đầu tiên", "slide 4 plot development action"),
-    card("slide-5", "Slide 5: Cao Trào/Xung Đột (Climax/Conflict)", "Điểm nhấn trung tâm của câu chuyện", "slide 5 conflict climax turning point"),
-    card("slide-6", "Slide 6: Phân Tích Chi Tiết (Deep Dive)", "Slide đi sâu vào một khía cạnh", "slide 6 detail analysis deep dive"),
-    card("slide-7", "Slide 7: Thông Điệp/Ý Nghĩa (Message/Quote)", "Trích dẫn đắt giá, thông điệp lõi", "slide 7 quote message core value"),
-    card("slide-8", "Slide 8: Diễn Biến 2 (Development B)", "Phần sau cao trào", "slide 8 aftermath resolution flow"),
-    card("slide-9", "Slide 9: Tổng Kết (Summary/Vision)", "Tóm tắt lại hành trình", "slide 9 summary wrap up vision"),
-    card("slide-10", "Slide 10: Call to Action (Outro)", "Kết thúc và kêu gọi hành động", "slide 10 outro call to action end")
-  ]
-}];
+export const beautifulHairCard = card(
+  "beautiful_hair_art",
+  "💇 TÓC XINH ĐẸP ♥︎",
+  "🚨 SUPREME MANDATE: EXTREME STRUCTURAL DEPTH & LONG PARAGRAPHS 🚨\nYou are an elite Art Director. When processing this card, YOU ARE STRICTLY FORBIDDEN from writing 1-2 sentence summaries! Every single aspect of the hair must be explained in an EXHAUSTIVE, LONG PARAGRAPH (4-6 sentences minimum per section).\n- DO NOT just state 'beautiful hair' or 'cel-shaded clumps'. You MUST explain EXACTLY how the structure is created, how light interacts with it, the brushwork used, and WHY this technique fits the character.\n- Detail the skull construction, parting, roots, primary mass architecture, secondary clump design, silhouette, flow physics, shading method, color transitions, and strand-level behavior.\n- Treat this as a deep-dive tutorial for a senior illustrator. ANY short or generic response is a critical failure. Output must be perfectly integrated into the FINAL PROMPT.",
+  "💇 [BEAUTIFUL HAIR DESIGN ACTIVATED]: Học hỏi phong cách vẽ tóc tinh hoa từ ảnh mẫu. CAM KẾT: Phân tích cực kỳ chuyên sâu thành các đoạn văn dài, giải thích rõ cách tạo khối, cách render, đường nét, ánh sáng và vật lý tóc. Không dùng 1-2 câu chung chung."
+);
+
+export const expressiveEyeCard = card(
+  "expressive_eye_art",
+  "👀 ĐÔI MẮT CÓ HỒN ♥︎",
+  "🚨 BẮT BUỘC ĐÀO SÂU: ĐÔI MẮT CÓ HỒN 🚨\nTUYỆT ĐỐI KHÔNG DÙNG 1-2 CÂU CHUNG CHUNG (như 'sparkling eyes' hay 'beautiful eyes'). Phải phân tích thành các đoạn văn DÀI, CHI TIẾT (tối thiểu 4-6 câu cho mỗi phần) mô tả kỹ thuật render mắt.\n- Hình dạng & Giải phẫu: Phân tích chiều ngang/cao, độ cong mí, độ mở, khoảng cách, mí trên ôm nhãn cầu thế nào.\n- Kiến trúc Iris: Base hue, outer limbal ring, inner ring, mid-zone color, radial texture, vùng tối dưới mí trên.\n- Ánh sáng & Bắt sáng (Catchlight): Nguồn sáng phản chiếu thế nào, không đối xứng máy móc.\n- Lông mi & Lông mày: Mi phân cụm, có taper; chân mày phản ánh vi biểu cảm (độ căng, độ cong).\n- Cảm xúc & Hướng nhìn: Ánh mắt đang khóa vào đâu, vi biểu cảm cơ má và khóe miệng.\nBạn phải viết như một Art Director hướng dẫn chi tiết kỹ thuật.",
+  "👀 [EXPRESSIVE EYE DESIGN ACTIVATED]: CAM KẾT phân tích kiến trúc đôi mắt chuyên sâu thành các đoạn văn dài, giải thích rõ cách tạo khối nhãn cầu, render iris, catchlight và vi biểu cảm. Không dùng 1-2 câu chung chung."
+);
+
+export const faceAuraCard = card(
+  "face_aura_art",
+  "✨ KHUÔN MẶT & THẦN THÁI NHÂN VẬT",
+  "🚨 BẮT BUỘC ĐÀO SÂU: KHUÔN MẶT & THẦN THÁI 🚨\nTUYỆT ĐỐI KHÔNG DÙNG 1-2 CÂU CHUNG CHUNG (như 'handsome face' hay 'beautiful smile'). Phải phân tích thành các đoạn văn DÀI, CHI TIẾT (tối thiểu 4-6 câu cho mỗi phần) về cấu trúc khuôn mặt.\n- Nhận diện khuôn mặt: Trán, má, hốc mắt, độ rộng hàm, cằm, mức độ trưởng thành (tuổi thị giác), tỷ lệ vàng.\n- Mặt phẳng khuôn mặt (Facial Planes): shading phải bám sát cấu trúc sọ và gò má, cấm airbrush toàn bộ mặt thành búp bê nhựa.\n- Mũi & Miệng: Cầu mũi, chóp mũi, bóng dưới mũi; hình môi, khóe miệng, độ căng.\n- Sự hiện diện (Character Presence): Thần thái tỏa ra từ nhân vật thông qua tỷ lệ tương phản sắc độ (value contrast) và mật độ chi tiết quanh focal point (khuôn mặt).\nBạn phải viết như một Art Director hướng dẫn chi tiết kỹ thuật tạo hình.",
+  "✨ [FACE & AURA DESIGN ACTIVATED]: CAM KẾT phân tích cấu trúc xương, mặt phẳng khuôn mặt (facial planes), ngũ quan và thần thái nhân vật cực kỳ chuyên sâu thành các đoạn văn dài. Cấm airbrush nhựa."
+);
+
+export const bodyScalePlacementCard = card(
+  "body_scale_placement_art",
+  "🧍 TỈ LỆ CƠ THỂ & VỊ TRÍ NHÂN VẬT",
+  "🚨 BẮT BUỘC ĐÀO SÂU: TỈ LỆ & VỊ TRÍ 🚨\nTUYỆT ĐỐI KHÔNG DÙNG 1-2 CÂU CHUNG CHUNG. Phải phân tích thành các đoạn văn DÀI, CHI TIẾT (tối thiểu 4-6 câu cho mỗi phần) về giải phẫu học và sắp đặt.\n- Tuổi thị giác & Tỉ lệ: Tỷ lệ đầu-thân (head-to-body ratio), độ rộng vai, chiều dài cổ/tay/chân khớp với tuổi canon.\n- Cấu trúc cơ thể: Trục đầu, trục vai, lồng ngực, trục hông, các khớp, chân chịu lực, trọng tâm.\n- Bàn tay: Lòng bàn tay, đốt ngón tay có taper, độ dày, tương tác đúng vật lý với đạo cụ, chống bàn tay AI dị dạng.\n- Sắp đặt & Tỷ lệ khung (Scale & Placement): Nhân vật chiếm bao nhiêu % khung hình? Focal point ở đâu? Eye path dẫn dắt thế nào qua negative space.\nBạn phải viết như một Art Director hướng dẫn chi tiết kỹ thuật.",
+  "🧍 [BODY SCALE & PLACEMENT ACTIVATED]: CAM KẾT phân tích giải phẫu học cơ thể, tỷ lệ đầu-thân, cấu trúc tay và tỷ lệ nhân vật trong khung hình cực kỳ chuyên sâu thành các đoạn văn dài. Chống lỗi giải phẫu."
+);
+
+export const referenceVisualTranslationCard = card(
+  "reference_visual_translation",
+  "🖼️ CHUYỂN HÓA NGÔN NGỮ NGHỆ THUẬT",
+  "🚨 BẮT BUỘC ĐÀO SÂU: CHUYỂN HÓA ẢNH THAM CHIẾU 🚨\nTUYỆT ĐỐI KHÔNG COPY NỘI DUNG. Phải phân tích thành các đoạn văn DÀI, CHI TIẾT (tối thiểu 4-6 câu cho mỗi phần) về kỹ thuật hội họa được trích xuất từ ảnh tham chiếu.\n- High Technical Fidelity: Trích xuất chất lượng line-art, cách tổ chức mảng lớn, silhouette, điều khiển cạnh (edge hierarchy), value hierarchy, saturation.\n- Color & Lighting: Hue hierarchy chủ đạo/phụ/nhấn, local color, nguồn sáng (key, fill, rim, bounce), material response.\n- Thay thế chức năng: KHÔNG sao chép nhân vật cụ thể, pose, quần áo hay background cụ thể của ảnh mẫu. Xác định CHỨC NĂNG của chi tiết mẫu (ví dụ: tạo khung, dẫn mắt) và THAY THẾ bằng chi tiết phù hợp với cốt truyện và canon hiện tại.\nBạn phải viết như một Art Director hướng dẫn chi tiết kỹ thuật.",
+  "🖼️ [REFERENCE TRANSLATION ACTIVATED]: CAM KẾT trích xuất kỹ thuật hội họa, lighting, value, edge control từ ảnh mẫu thành các đoạn văn dài chuyên sâu. Thay thế nội dung cụ thể bằng nội dung canon."
+);
+
+export const cinematicVisualCard = card(
+  "cinematic_visual_art",
+  "🎥 GÓC CHỤP / KỸ THUẬT SỐ / CAMERA / MÀU SẮC / TỈ LỆ / ĐIỆN ẢNH / THỊ GIÁC / BỐ CỤC / HỘI HỌA",
+  "🚨 CINEMATIC VISUAL ART DIRECTION & DIGITAL PRODUCTION CARD 🚨\nThiết lập cấu trúc góc chụp kỹ thuật số, camera, màu sắc nghệ thuật và bố cục điện ảnh đỉnh cao cho toàn bộ dải prompt:\n- Camera: Góc ngang tầm mắt (eye-level), góc từ dưới lên (low-angle) đầy uy quyền, góc từ trên xuống (high-angle) mong manh, hoặc góc nghiêng (Dutch angle) đầy kịch tính.\n- Lens & Shot Size: Trình bày chi tiết kích thước khung hình (medium close-up, extreme close-up, full body, wide shot), phối cảnh 1 điểm tụ, đa diện ghép collage, sử dụng ống kính 85mm portrait xóa phông mịn màng, 24mm phối cảnh mạnh mẽ hoặc 35mm nghệ thuật đời thường.\n- Ánh sáng & Màu sắc: Ánh sáng cinematic đa hướng tôn vinh thần thái, dải màu (palette) hài hòa truyền tải cảm xúc kịch tính của câu chuyện, kỹ thuật đánh bóng (shading) mềm mại có chiều sâu quang học.\n- Bố cục thị giác: Sắp đặt đường chéo động sống động, S-curve mềm mại tạo dòng chảy nhịp điệu tự nhiên cho tóc và váy áo, dải dẫn dắt ánh nhìn (leading lines) đưa mắt người xem hội tụ thẳng về trung tâm thị giác chính (gương mặt/đôi mắt/đôi bàn tay).",
+  "🎥 [CINEMATIC CAMERA & ARTWORK SYSTEM ACTIVE]: Kích hoạt camera điện ảnh Studio AAA. Điều chỉnh tiêu cự ống kính kỹ thuật số, góc quay kịch tính, dải dẫn sáng, chuyển sắc màu sắc chuyên nghiệp và đường dẫn thị giác dẫn dắt ánh nhìn."
+);
+
+export const mistakePreventionCard = card(
+  "mistake_prevention_card",
+  "🛡️ PHÒNG TRÁNH LỖI",
+  "🚨 MA TRẬN TRIỆT TIÊU VÀ PHÒNG TRÁNH LỖI MỸ THUẬT AI (AI-SLOP PREVENTION MATRIX) 🚨\nMa trận tối thượng bảo vệ tranh vẽ khỏi tất cả các lỗi biến dạng cơ thể và bệ rạc mỹ thuật của AI:\n- Phòng chống lỗi bàn tay: Khóa chặt bàn tay 5 ngón thuôn dài rõ rệt, tỷ lệ các ngón chính xác, không dính chùm, không thừa/thiếu ngón, các khớp xương mềm mại tự nhiên.\n- Phòng chống lỗi da nhựa: Triệt tiêu làn da bóng lóa sáp nến vô hồn. Đảm bảo dải texture da mịn màng, có dải tương phản sáng tối và khối xương gò má, hốc mắt cơ học.\n- Phòng chống lỗi mắt lệch: Triệt tiêu mắt lác, trợn ngược hay đơ dại vô hồn. Đảm bảo đôi mắt có hồn, đồng tử lấp lánh tinh anh, catchlight rực rỡ và mi mắt sắc mảnh.\n- Phòng chống lỗi tóc rác: Tránh tóc bệt rít như dính keo hoặc các sợi tóc rời rạc bay hỗn loạn vô tội vạ làm loãng đường thị giác. Khóa các mảng tóc (hair clumps) hình học chắc chắn.\n- Phòng chống lỗi bối cảnh & pose dáng: Chống dáng đứng sượng sùng cứng ngắc như tượng sáp, dáng đứng mất trọng tâm. Chống bối cảnh phẳng dẹt bệ rạc cướp spotlight của cặp nhân vật chính.",
+  "🛡️ [ERROR PREVENTION ACTIVE]: Đã kích hoạt khiên chắn triệt tiêu lỗi AI. Gia cố dải mô tả âm bản và dương bản nghiêm ngặt để đảm bảo anatomy cơ thể hoàn mỹ và tính mỹ thuật chuyên nghiệp."
+);
+
+export const errorGuard =
+  "masterpiece, best quality, ultra-detailed, highres, perfect anatomy, perfect hands, 5 fingers, flawless face, accurate body proportions, symmetrical eyes. negative: mutated hands, poorly drawn hands, missing fingers, extra fingers, fused fingers, unnatural body, bad anatomy, deformed, disfigured, poor facial details, cross-eyed, lowres, bad art, blurry, sloppy, amateur, sketch";
+
+export const STYLE_GROUPS: StyleGroup[] = [
+  {
+    group: "1. Nhóm nét vẽ theo độ sạch của đường line",
+    items: [
+      {
+        name: "Clean Line Art — nét sạch, gọn, chuyên nghiệp",
+        keywords:
+          "clean line art, crisp linework, smooth outlines, polished anime lineart, refined contour lines, neat drawing, precise linework, high-quality character sheet lines",
+      },
+      {
+        name: "Thin Line Art — nét mảnh, nhẹ, thanh thoát",
+        keywords:
+          "thin delicate lineart, fine line drawing, soft thin outlines, airy linework, elegant fine lines, fragile lineart, subtle contour lines",
+      },
+      {
+        name: "Thick Line Art — nét dày, mạnh, cá tính",
+        keywords:
+          "bold lineart, thick outlines, strong contour lines, graphic linework, heavy ink lines, striking black outlines, expressive bold strokes",
+      },
+      {
+        name: "Rough Sketch Line — nét phác thảo thô, sống động",
+        keywords:
+          "rough sketch, sketchy lineart, loose linework, expressive sketch lines, unfinished sketch aesthetic, raw pencil lines, dynamic draft lines",
+      },
+      {
+        name: "Messy Line Art — nét rối có chủ đích",
+        keywords:
+          "messy lineart, chaotic sketch lines, emotional linework, scratchy ink lines, tangled outlines, expressive messy strokes",
+      },
+      {
+        name: "No Line / Lineless Art — tranh không viền",
+        keywords:
+          "lineless art, painterly rendering, soft edge painting, no outlines, color-blocked forms, seamless shading, delicate painted edges",
+      },
+    ],
+  },
+  {
+    group: "2. Nhóm nét vẽ theo chất liệu bút",
+    items: [
+      {
+        name: "Pencil Line — nét chì",
+        keywords:
+          "pencil sketch, graphite lines, soft pencil texture, hand-drawn pencil linework, light pencil shading, rough graphite strokes",
+      },
+      {
+        name: "Ink Line — nét mực manga",
+        keywords:
+          "inked manga lines, black ink lineart, traditional manga inking, sharp ink strokes, expressive ink drawing, monochrome ink art",
+      },
+      {
+        name: "G-Pen Manga Line — nét bút G manga",
+        keywords:
+          "G-pen linework, manga G-pen inking, pressure-sensitive ink lines, tapered ink strokes, dynamic manga pen lines",
+      },
+      {
+        name: "Brush Pen Line — nét cọ mực",
+        keywords:
+          "brush pen lineart, expressive brush strokes, sumi ink lines, calligraphic linework, bold brush ink, tapered brush lines",
+      },
+      {
+        name: "Marker Line — nét bút marker",
+        keywords:
+          "marker drawing, alcohol marker texture, fashion marker sketch, bold marker outlines, clean marker strokes, copic marker style",
+      },
+      {
+        name: "Ballpoint Pen Line — nét bút bi",
+        keywords:
+          "ballpoint pen sketch, blue pen linework, thin pen scratches, notebook doodle style, casual pen drawing",
+      },
+      {
+        name: "Crayon / Pastel Line — nét sáp, phấn",
+        keywords:
+          "crayon texture, pastel chalk lines, soft crayon drawing, powdery pastel strokes, childlike soft linework",
+      },
+      {
+        name: "Watercolor Line — nét màu nước",
+        keywords:
+          "watercolor lineart, soft watercolor edges, translucent brush lines, delicate watercolor strokes, washed ink outlines",
+      },
+      {
+        name: "Digital Brush Line — nét cọ kỹ thuật số",
+        keywords:
+          "digital brush lineart, pressure-sensitive digital lines, clean digital strokes, soft digital pen, polished digital illustration",
+      },
+    ],
+  },
+  {
+    group: "3. Nhóm nét theo phong cách Anime",
+    items: [
+      {
+        name: "Modern Anime Style — anime hiện đại",
+        keywords:
+          "modern anime style, clean anime lineart, soft cel shading, polished character illustration, luminous eyes, smooth digital coloring",
+      },
+      {
+        name: "Soft Pastel Anime — anime pastel mềm",
+        keywords:
+          "soft pastel anime style, delicate thin lineart, low contrast colors, gentle watercolor shading, dreamy atmosphere, airy composition",
+      },
+      {
+        name: "Cinematic Anime — anime điện ảnh",
+        keywords:
+          "cinematic anime illustration, dramatic lighting, film-like composition, depth of field, atmospheric background, emotional close-up",
+      },
+      {
+        name: "90s Anime Style — anime thập niên 90",
+        keywords:
+          "90s anime style, retro cel animation, vintage anime lineart, hand-painted cel look, soft grain, nostalgic anime colors",
+      },
+      {
+        name: "2000s Anime Style — anime đầu 2000",
+        keywords:
+          "early 2000s anime style, visual novel character art, glossy eyes, clean cel shading, nostalgic digital anime coloring",
+      },
+      {
+        name: "Moe Anime Style — nét moe dễ thương",
+        keywords:
+          "moe anime style, cute rounded features, big sparkling eyes, soft lineart, adorable expression, gentle pastel colors",
+      },
+      {
+        name: "Shounen Anime Style — anime hành động",
+        keywords:
+          "shounen anime style, dynamic action lines, bold lineart, strong cel shading, intense expression, energetic composition",
+      },
+      {
+        name: "Josei Anime Style — anime trưởng thành",
+        keywords:
+          "josei anime style, mature elegant character design, refined lineart, subtle facial expression, graceful proportions, sophisticated mood",
+      },
+      {
+        name: "Shoujo Anime Style — anime thiếu nữ lãng mạn",
+        keywords:
+          "shoujo anime style, romantic delicate lineart, sparkling eyes, floral background, dreamy highlights, graceful feminine composition",
+      },
+    ],
+  },
+  {
+    group: "4. Nhóm nét Manga",
+    items: [
+      {
+        name: "Classic Manga Black & White",
+        keywords:
+          "classic black and white manga, screentone shading, inked manga lineart, monochrome panel art, traditional manga texture",
+      },
+      {
+        name: "Shoujo Manga Line",
+        keywords:
+          "shoujo manga lineart, delicate eyelashes, sparkling eyes, flowing hair lines, romantic screentone, floral manga background",
+      },
+      {
+        name: "Seinen Manga Line",
+        keywords:
+          "seinen manga style, realistic manga anatomy, gritty ink shading, detailed hatching, mature monochrome atmosphere",
+      },
+      {
+        name: "Horror Manga Line",
+        keywords:
+          "horror manga lineart, scratchy ink lines, heavy black shadows, unsettling facial detail, eerie hatching, dark manga atmosphere",
+      },
+      {
+        name: "Gekiga Style",
+        keywords:
+          "gekiga manga style, dramatic ink shading, realistic facial lines, heavy monochrome contrast, mature graphic storytelling",
+      },
+      {
+        name: "Minimal Manga",
+        keywords:
+          "minimal manga style, simple clean lineart, sparse background, subtle expression, elegant monochrome composition",
+      },
+    ],
+  },
+  {
+    group: "5. Nhóm nét Manhwa Hàn Quốc",
+    items: [
+      {
+        name: "Romance Manhwa Style",
+        keywords:
+          "Korean romance manhwa style, elegant clean lineart, glossy hair, luminous skin, sparkling eyes, soft gradient coloring, luxurious atmosphere",
+      },
+      {
+        name: "Villainess Manhwa Style",
+        keywords:
+          "villainess manhwa style, aristocratic character design, ornate dress details, elegant sharp eyes, polished webtoon rendering, luxurious palace background",
+      },
+      {
+        name: "Modern Webtoon Style",
+        keywords:
+          "modern Korean webtoon style, clean digital lineart, smooth gradient shading, mobile webtoon composition, polished character rendering",
+      },
+      {
+        name: "Dark Manhwa Style",
+        keywords:
+          "dark Korean manhwa style, cold dramatic lighting, sharp elegant lineart, moody shadows, intense gaze, noir webtoon atmosphere",
+      },
+      {
+        name: "Soft Healing Manhwa",
+        keywords:
+          "soft healing manhwa style, warm pastel tones, gentle clean lineart, cozy background, soft sunlight, calm emotional atmosphere",
+      },
+    ],
+  },
+  {
+    group: "6. Nhóm nét Manhua Trung Quốc",
+    items: [
+      {
+        name: "Modern Manhua Style",
+        keywords:
+          "modern Chinese manhua style, elegant sharp lineart, tall slender proportions, glossy digital coloring, dramatic romantic lighting",
+      },
+      {
+        name: "Ancient Chinese Manhua / Cổ trang",
+        keywords:
+          "ancient Chinese manhua style, flowing hanfu, delicate ink-like lineart, elegant long hair, poetic composition, soft fantasy atmosphere",
+      },
+      {
+        name: "Xianxia / Wuxia Art",
+        keywords:
+          "xianxia fantasy art, wuxia character design, flowing robes, ethereal ink brush lines, misty mountains, celestial lighting",
+      },
+      {
+        name: "Danmei / BL Manhua Style",
+        keywords:
+          "danmei manhua style, elegant male beauty, refined delicate lineart, graceful long proportions, romantic soft lighting, poetic atmosphere",
+      },
+    ],
+  },
+  {
+    group: "7. Nhóm nét AI Art / Niji / Digital Illustration",
+    items: [
+      {
+        name: "Niji Anime Style",
+        keywords:
+          "niji anime style, polished anime illustration, beautiful character design, luminous eyes, detailed hair, cinematic composition, high-quality anime key visual",
+      },
+      {
+        name: "AI Semi-Realistic Anime",
+        keywords:
+          "semi-realistic anime art, realistic lighting, soft painterly rendering, detailed facial features, cinematic portrait, anime-realism fusion",
+      },
+      {
+        name: "Painterly AI Art",
+        keywords:
+          "painterly anime illustration, soft brush rendering, visible brush strokes, artistic digital painting, atmospheric color blending",
+      },
+      {
+        name: "Hyper-Detailed AI Art",
+        keywords:
+          "ultra-detailed anime art, intricate costume details, highly detailed eyes, elaborate accessories, sharp focus, 8k illustration",
+      },
+      {
+        name: "Minimal AI Anime",
+        keywords:
+          "minimal anime illustration, clean white background, simple lineart, elegant negative space, refined character silhouette",
+      },
+    ],
+  },
+  {
+    group: "8. Nhóm nét theo cách tô màu",
+    items: [
+      {
+        name: "Cel Shading",
+        keywords:
+          "cel shading, hard shadow edges, anime flat coloring, clean highlight shapes, crisp shadow blocks",
+      },
+      {
+        name: "Soft Shading",
+        keywords:
+          "soft shading, smooth gradients, gentle shadow transitions, soft light rendering, delicate skin shading",
+      },
+      {
+        name: "Watercolor Coloring",
+        keywords:
+          "watercolor coloring, translucent washes, soft color bleeding, delicate paper texture, pastel watercolor tones",
+      },
+      {
+        name: "Gouache Style",
+        keywords:
+          "gouache painting style, matte colors, soft opaque brushwork, painterly texture, gentle hand-painted look",
+      },
+      {
+        name: "Oil Painting Anime",
+        keywords:
+          "anime oil painting style, rich brush texture, dramatic painterly lighting, thick painted strokes, classical portrait mood",
+      },
+      {
+        name: "Flat Color Illustration",
+        keywords:
+          "flat color illustration, simple color blocks, clean graphic shapes, minimal shading, modern poster style",
+      },
+      {
+        name: "Gradient Webtoon Coloring",
+        keywords:
+          "smooth gradient coloring, webtoon rendering, soft airbrush shadows, polished digital gradients, glossy highlights",
+      },
+      {
+        name: "Airbrush Rendering",
+        keywords:
+          "airbrush shading, soft digital airbrush, smooth skin rendering, blurred shadow transitions, glossy soft highlights",
+      },
+    ],
+  },
+  {
+    group: "9. Nhóm texture bề mặt",
+    items: [
+      {
+        name: "Paper Texture",
+        keywords:
+          "paper texture, subtle grain, traditional paper background, hand-drawn texture, soft analog feel",
+      },
+      {
+        name: "Canvas Texture",
+        keywords:
+          "canvas texture, visible fabric grain, painterly canvas surface, traditional painting feel",
+      },
+      {
+        name: "Grainy Texture",
+        keywords:
+          "subtle grain, soft film grain, textured shading, muted grain overlay, vintage noise texture",
+      },
+      {
+        name: "Screentone Texture",
+        keywords:
+          "manga screentone, halftone dots, monochrome tone shading, printed manga texture",
+      },
+      {
+        name: "Risograph Texture",
+        keywords:
+          "risograph print texture, offset colors, grainy print effect, retro poster texture",
+      },
+      {
+        name: "VHS / Retro Texture",
+        keywords:
+          "VHS anime texture, retro scanlines, old TV grain, nostalgic analog effect, faded colors",
+      },
+    ],
+  },
+  {
+    group: "10. Nhóm nét theo hình dáng nhân vật",
+    items: [
+      {
+        name: "Bishounen Line — nam đẹp kiểu manga",
+        keywords:
+          "bishounen character design, elegant male beauty, sharp jawline, delicate facial features, graceful slim proportions",
+      },
+      {
+        name: "Ikemen Style — trai đẹp hiện đại",
+        keywords:
+          "ikemen anime style, handsome male character, stylish hair, sharp eyes, fashionable outfit, clean modern lineart",
+      },
+      {
+        name: "Pretty Boy Soft Style",
+        keywords:
+          "soft pretty boy, gentle facial features, delicate eyes, soft fluffy hair, tender expression, pastel anime style",
+      },
+      {
+        name: "Cold Beauty Style",
+        keywords:
+          "cold beauty character design, distant gaze, sharp elegant eyes, pale tones, refined linework, aloof atmosphere",
+      },
+      {
+        name: "Cute Girl Moe Style",
+        keywords:
+          "cute anime girl, round soft face, big eyes, fluffy hair, adorable expression, soft pastel colors",
+      },
+      {
+        name: "Elegant Lady Style",
+        keywords:
+          "elegant anime woman, refined mature beauty, graceful posture, delicate lineart, sophisticated outfit, soft cinematic lighting",
+      },
+    ],
+  },
+  {
+    group: "11. Nhóm nét tóc",
+    items: [
+      {
+        name: "Clean Hair Strands",
+        keywords:
+          "clean hair strands, neatly separated hair locks, polished anime hair, smooth hair linework",
+      },
+      {
+        name: "Fluffy Hair",
+        keywords:
+          "fluffy hair, soft layered hair, airy hair volume, gentle hair strands, cute soft hairstyle",
+      },
+      {
+        name: "Messy Hair",
+        keywords:
+          "messy hair, tousled hair strands, casual bedhead, expressive hair movement, loose uneven bangs",
+      },
+      {
+        name: "Glossy Manhwa Hair",
+        keywords:
+          "glossy manhwa hair, smooth shiny hair, elegant hair highlights, polished digital hair rendering",
+      },
+      {
+        name: "Watercolor Hair",
+        keywords:
+          "watercolor hair shading, soft translucent hair, gentle color bleeding, pastel hair gradients",
+      },
+      {
+        name: "Ink Manga Hair",
+        keywords:
+          "inked manga hair, black hair shadows, sharp hair lineart, monochrome hair rendering",
+      },
+    ],
+  },
+  {
+    group: "12. Nhóm nét mắt",
+    items: [
+      {
+        name: "Sparkling Shoujo Eyes",
+        keywords:
+          "sparkling shoujo eyes, large luminous eyes, multiple eye highlights, romantic glossy gaze",
+      },
+      {
+        name: "Sharp Anime Eyes",
+        keywords:
+          "sharp anime eyes, narrow intense gaze, clean eyelash line, cool expression",
+      },
+      {
+        name: "Soft Melancholic Eyes",
+        keywords:
+          "soft melancholic eyes, watery gaze, subtle sadness, delicate lower eyelashes, emotional eye highlights",
+      },
+      {
+        name: "Cold Manhwa Eyes",
+        keywords:
+          "cold manhwa eyes, elegant sharp gaze, pale iris, calm intimidating expression",
+      },
+      {
+        name: "Cute Round Eyes",
+        keywords:
+          "round cute eyes, innocent gaze, soft blush, adorable eye shape, gentle highlights",
+      },
+    ],
+  },
+  {
+    group: "13. Nhóm thời trang / outfit",
+    items: [
+      {
+        name: "Streetwear Anime",
+        keywords:
+          "anime streetwear, oversized hoodie, baggy pants, headphones, sneakers, casual cool outfit, sketchy fashion illustration",
+      },
+      {
+        name: "Y2K Anime",
+        keywords:
+          "Y2K anime fashion, retro techwear, baggy pants, cropped jacket, headphones, chunky sneakers, graphic accessories",
+      },
+      {
+        name: "Techwear Anime",
+        keywords:
+          "anime techwear, black layered outfit, tactical straps, oversized jacket, futuristic street fashion, sharp graphic linework",
+      },
+      {
+        name: "Idol Stage Outfit",
+        keywords:
+          "idol stage outfit, ornate uniform, headset microphone, sparkling accessories, stage costume, polished anime key visual",
+      },
+      {
+        name: "School Uniform Manga",
+        keywords:
+          "anime school uniform, clean manga lineart, youthful character design, soft everyday atmosphere",
+      },
+      {
+        name: "Aristocratic Manhwa Outfit",
+        keywords:
+          "aristocratic manhwa outfit, ornate dress, lace details, pearl accessories, royal elegance, luxurious fabric rendering",
+      },
+      {
+        name: "Hanfu / Cổ trang",
+        keywords:
+          "flowing hanfu, layered silk robes, ancient Chinese fashion, elegant sleeves, delicate embroidery, poetic linework",
+      },
+    ],
+  },
+  {
+    group: "14. Nhóm bố cục tranh",
+    items: [
+      {
+        name: "Character Sheet",
+        keywords:
+          "character sheet, full body design, multiple expressions, outfit details, clean white background, reference sheet",
+      },
+      {
+        name: "Sticker Sheet / Collage",
+        keywords:
+          "anime sticker sheet, collage layout, doodle icons, character cutouts, graphic design composition, playful layout",
+      },
+      {
+        name: "Poster Key Visual",
+        keywords:
+          "anime key visual poster, cinematic composition, dramatic lighting, centered character, title space, official illustration",
+      },
+      {
+        name: "Manga Panel Layout",
+        keywords:
+          "manga panel composition, speech bubbles, screentone background, dynamic paneling, monochrome storytelling",
+      },
+      {
+        name: "Webtoon Vertical Layout",
+        keywords:
+          "vertical webtoon composition, mobile scrolling format, clean panel spacing, cinematic close-up, webtoon-style rendering",
+      },
+      {
+        name: "Fashion Illustration Layout",
+        keywords:
+          "fashion illustration, full body pose, minimal background, stylish outfit focus, loose sketch linework",
+      },
+    ],
+  },
+  {
+    group: "15. Nhóm cảm xúc / vibe",
+    items: [
+      {
+        name: "Cute / Adorable",
+        keywords:
+          "cute anime style, soft rounded lineart, pastel colors, innocent expression, adorable details, gentle blush",
+      },
+      {
+        name: "Cool / Stylish",
+        keywords:
+          "cool anime style, sharp lineart, stylish streetwear, confident pose, clean graphic composition",
+      },
+      {
+        name: "Melancholic / Buồn đẹp",
+        keywords:
+          "melancholic anime art, soft sorrowful gaze, muted colors, delicate lineart, quiet emotional atmosphere",
+      },
+      {
+        name: "Dark Romance",
+        keywords:
+          "dark romance anime style, moody shadows, intense gaze, elegant tension, black and red palette, dramatic lighting",
+      },
+      {
+        name: "Healing / Dịu dàng",
+        keywords:
+          "healing anime illustration, warm sunlight, soft pastel tones, cozy background, gentle emotional expression",
+      },
+      {
+        name: "Chaotic / Cá tính rối",
+        keywords:
+          "chaotic sketch style, messy expressive linework, energetic pose, bold graphic shapes, rebellious fashion",
+      },
+    ],
+  },
+];
+
+const RAW_ROOMS: Room[] = [
+  {
+    id: "camera",
+    icon: "⌁",
+    title: "Điểm Nhìn Và Góc Chụp",
+    subtitle: "Góc máy / lens / phối cảnh / tỉ lệ / shot size",
+    seed: 1,
+    cards: [
+      card(
+        "eye",
+        "Góc ngang tầm mắt",
+        "Tự nhiên, gần gũi, đối diện nhân vật.",
+        "eye-level angle, intimate frontal view, soft direct gaze",
+      ),
+      card(
+        "high",
+        "Góc từ trên xuống",
+        "Mong manh, nhỏ bé, chịu áp lực.",
+        "high angle shot, looking down at the character, fragile emotional mood",
+      ),
+      card(
+        "low",
+        "Góc từ dưới lên",
+        "Quyền lực, cao lớn, áp đảo.",
+        "low angle shot, powerful silhouette, dominant presence, cinematic tension",
+      ),
+      card(
+        "dutch",
+        "Góc nghiêng máy",
+        "Tâm lý bất ổn, drama, căng thẳng.",
+        "Dutch angle, unstable emotional composition, dramatic visual tension",
+      ),
+      card(
+        "shoulder",
+        "Góc qua vai / ngoái nhìn",
+        "Thân mật, lưu luyến, bị bắt gặp.",
+        "over-the-shoulder shot, looking back at viewer, intimate cinematic framing",
+      ),
+      card(
+        "fullbody",
+        "Toàn thân / fashion framing",
+        "Outfit, dáng đứng, giày, phụ kiện.",
+        "full body shot, fashion illustration framing, clean white background",
+      ),
+      card(
+        "medium",
+        "Medium close-up",
+        "Tập trung mắt, tay, cảm xúc.",
+        "medium close-up, intimate portrait framing, focus on eyes and hands",
+      ),
+      card(
+        "extreme",
+        "Extreme close-up",
+        "Cận mắt/môi/tay/vật thể.",
+        "extreme close-up, detailed eye reflection, cinematic emotional tension",
+      ),
+      card(
+        "wide",
+        "Wide shot",
+        "Nhân vật nhỏ giữa không gian lớn.",
+        "wide shot, small figure in a vast environment, poetic loneliness",
+      ),
+      card(
+        "aspect",
+        "Tỉ lệ khung ảnh",
+        "Dọc poster, ngang điện ảnh, vuông album cover.",
+        "vertical 9:16 poster composition, cinematic 16:9 widescreen frame, square album cover composition",
+      ),
+      card(
+        "lens",
+        "Ống kính / lens",
+        "85mm chân dung, 24mm phối cảnh mạnh, 35mm đời thường.",
+        "85mm portrait lens, shallow depth of field, creamy bokeh; 24mm wide-angle lens; 35mm documentary lens",
+      ),
+      card(
+        "perspective",
+        "Phối cảnh / đa giác",
+        "Một điểm tụ, forced perspective, multi-perspective collage.",
+        "multi-perspective composition, one-point perspective, forced perspective, dynamic anime composition",
+      ),
+    ],
+  },
+  {
+    id: "focal",
+    icon: "✦",
+    title: "Trung Tâm Thị Giác / Đường Thị Giác",
+    subtitle: "Focal point / leading lines / gaze / flow",
+    seed: 2,
+    cards: [
+      card(
+        "hierarchy",
+        "Trung tâm thị giác chính",
+        "Mắt, tay, gương mặt, đạo cụ nào là trọng tâm.",
+        "strong visual hierarchy, eyes as primary focal point, hands as secondary focal point",
+      ),
+      card(
+        "leading",
+        "Đường dẫn mắt",
+        "Đường trong ảnh dẫn về gương mặt / vật chủ.",
+        "strong leading lines guiding the viewer’s eye toward the character’s face",
+      ),
+      card(
+        "s",
+        "S-curve / nhịp mềm",
+        "Tóc, cơ thể, váy, ribbon tạo dòng chảy mềm.",
+        "S-curve body line, flowing hair, elegant compositional rhythm",
+      ),
+      card(
+        "diag",
+        "Đường chéo động",
+        "Pose ngầu, streetwear, action, thời trang.",
+        "diagonal visual flow, dynamic streetwear pose, strong line of action",
+      ),
+      card(
+        "direct",
+        "Ánh nhìn trực diện",
+        "Half-lidded, tự tin, hút mắt.",
+        "half-lidded eyes, direct eye contact, lazy confident gaze",
+      ),
+      card(
+        "down",
+        "Ánh nhìn u buồn",
+        "Nhìn xuống, mắt ướt, mong manh.",
+        "melancholic downward gaze, soft watery eyes, fragile expression",
+      ),
+      card(
+        "over",
+        "Ánh nhìn qua vai",
+        "Thân mật, cinematic, lưu luyến.",
+        "over-the-shoulder gaze, intimate emotional tension, cinematic portrait",
+      ),
+      card(
+        "hand",
+        "Tay gần mặt / foreshortened",
+        "Tay biểu cảm, gần máy, cần guard lỗi tay.",
+        "hand near face, foreshortened hand in foreground, dynamic perspective, expressive gesture",
+      ),
+    ],
+  },
+  {
+    id: "face",
+    icon: "☾",
+    title: "Dung Mạo / Ngũ Quan / Makeup",
+    subtitle: "Mắt / mũi / môi / mi mắt / da / biểu cảm",
+    seed: 3,
+    cards: [
+      card(
+        "beauty",
+        "Dung mạo tổng thể",
+        "Kiểu đẹp mềm, sắc, lạnh, ngọt, búp bê, phi giới tính.",
+        "delicate facial features, refined face structure, elegant beauty, soft symmetrical face",
+      ),
+      card(
+        "eyes",
+        "Mắt / màu mắt / highlight",
+        "Hình dáng mắt, màu mắt, ánh nhìn, catchlight.",
+        "beautiful expressive eyes, detailed iris, luminous eyes, glossy eye highlights",
+      ),
+      card(
+        "eyelids",
+        "Mi mắt / lông mi",
+        "Mi trên, mi dưới, mí lờ đờ, mí buồn.",
+        "delicate eyelids, soft upper eyelid crease, refined lower eyelashes, long elegant lashes",
+      ),
+      card(
+        "nose",
+        "Mũi",
+        "Mũi anime tối giản, mũi cao thanh, profile đẹp.",
+        "small delicate nose, refined nose bridge, soft nose shading, elegant facial profile",
+      ),
+      card(
+        "lips",
+        "Miệng / môi",
+        "Màu môi, dáng môi, cười nhẹ, môi hé, môi buồn.",
+        "soft rose-tinted lips, subtle parted mouth, delicate lip highlights",
+      ),
+      card(
+        "expression",
+        "Biểu cảm khuôn mặt",
+        "Buồn đẹp, lạnh, dịu, sủng nịnh, bất ổn.",
+        "subtle emotional expression, restrained feelings, complex gaze, cinematic expression",
+      ),
+      card(
+        "makeup",
+        "Makeup",
+        "Tone makeup, mắt, má, môi, da.",
+        "soft pastel makeup, peach blush, subtle eyeshadow, glossy rose lips",
+      ),
+      card(
+        "skin",
+        "Da / skin rendering",
+        "Anime skin, manhwa glossy, porcelain, semi-real.",
+        "luminous skin, soft skin shading, porcelain skin, subtle skin texture",
+      ),
+    ],
+  },
+  {
+    id: "hair",
+    icon: "〰",
+    title: "Tóc / Chất Tóc / Lỗi Tóc",
+    subtitle: "Hair reference / structure / error guard",
+    seed: 4,
+    cards: [
+      card(
+        "hair-ref",
+        "Ảnh tham chiếu tóc",
+        "Học hỏi kiểu tóc từ ảnh, nhưng áp dụng theo mô tả cốt truyện.",
+        "hair reference analysis, visual style DNA learning, apply story-driven hair description, prioritize character profile over reference identity",
+      ),
+      card(
+        "shape",
+        "Form tóc / khối tóc",
+        "3-5 khối tóc rõ, tự nhiên, không rối như chổi.",
+        "3-5 clear hair masses, controlled strand rhythm, natural uneven locks",
+      ),
+      card(
+        "color",
+        "Màu tóc / highlight",
+        "Màu tóc theo hồ sơ, tránh sáng chấm quá đà.",
+        "black hair, silver hair, burgundy hair, glossy but controlled highlights",
+      ),
+      card(
+        "errors",
+        "Tránh lỗi tóc",
+        "Không song song đều tăm tắp, không nhọn hoắt, không flyaway dày đặc.",
+        "avoid broom-like hair, excessive flyaway strands, identical parallel locks, needle-like tips",
+      ),
+    ],
+  },
+  {
+    id: "pose",
+    icon: "♧",
+    title: "Pose Dáng X3",
+    subtitle: "3 pose outputs trong cùng một phòng",
+    seed: 5,
+    cards: [
+      card(
+        "pose1",
+        "Pose 1 · chính diện / chân dung",
+        "Dáng chính, rõ mặt và khí chất.",
+        "pose variation 1, medium portrait, hand gesture, emotional face focus",
+      ),
+      card(
+        "pose2",
+        "Pose 2 · fashion / full body",
+        "Dáng toàn thân, outfit, silhouette.",
+        "pose variation 2, full-body fashion pose, contrapposto, stylish silhouette",
+      ),
+      card(
+        "pose3",
+        "Pose 3 · điện ảnh / phối cảnh",
+        "Dáng có chiều sâu, foreground, tay gần máy hoặc ngoái nhìn.",
+        "pose variation 3, cinematic perspective, over-the-shoulder, foreshortened hand",
+      ),
+      card(
+        "hand-guard",
+        "Guard lỗi tay",
+        "Bắt buộc chống thiếu/thừa/dính ngón tay.",
+        "correct five-finger hands, natural grip, no fused fingers, no extra fingers",
+      ),
+    ],
+  },
+  {
+    id: "outfit",
+    icon: "✧",
+    title: "Trang Phục / Phụ Kiện",
+    subtitle: "Outfit / props / fabric / accessories",
+    seed: 6,
+    cards: [
+      card(
+        "outfit",
+        "Trang phục chính",
+        "Style, form, silhouette, chất liệu.",
+        "detailed outfit design, layered fashion, fabric texture, strong silhouette",
+      ),
+      card(
+        "accessories",
+        "Phụ kiện",
+        "Nơ, hoa, micro, trang sức, túi, kính, vật kỷ niệm.",
+        "meaningful accessories, ribbon, jewelry, microphone, bag, glass, symbolic item",
+      ),
+      card(
+        "fabric",
+        "Chất liệu",
+        "Ren, satin, lụa, leather, vinyl, knit.",
+        "delicate lace texture, satin sheen, silk fabric, black leather, shiny vinyl",
+      ),
+      card(
+        "props",
+        "Vật thể kể chuyện",
+        "Đạo cụ có ý nghĩa trong cốt truyện.",
+        "symbolic props, story-driven objects, carefully placed objects",
+      ),
+    ],
+  },
+  {
+    id: "art",
+    icon: "🪄",
+    title: "Phòng Tranh Nghệ Thuật",
+    subtitle: "Bắt sáng, bố cục, góc chụp, concept nghệ thuật",
+    seed: 10,
+    cards: [
+      card(
+        "art-concept",
+        "🎨 Vibe Nghệ Thuật (Art Concept)",
+        "Bạn muốn bức tranh mang cảm giác gì? Sự tĩnh lặng của một buổi chiều tà (Melancholic sunset), sự bí ẩn của đêm khuya (Mysterious dark vibe), sự trong trẻo của sương sớm (Ethereal morning), hay rực rỡ như một giấc mơ (Dreamcore).",
+        "concept art, cinematic aesthetic, highly detailed masterpiece, breathtaking illustration",
+      ),
+      card(
+        "art-lighting",
+        "✨ Kỹ Thuật Ánh Sáng (Lighting)",
+        "Ánh sáng quyết định 80% cảm xúc bức tranh. Có thể là ánh sáng vàng xuyên qua kẽ lá (Dappled sunlight), ánh sáng ngược phía sau tạo viền thiên thần (Rim light/Backlighting), hay ánh sáng mờ ảo của neon (Cyberpunk neon glow).",
+        "volumetric lighting, cinematic lighting, god rays, soft ethereal glow, rim light, dramatic shadows",
+      ),
+      card(
+        "art-camera",
+        "📷 Góc Máy & Bố Cục (Camera & Layout)",
+        "Từ dưới nhìn lên thể hiện sự uy nghi (Low angle), từ trên nhìn xuống tạo cảm giác bé nhỏ (High angle), hay góc nhìn qua vai lén lút (Over the shoulder). Bố cục đường dẫn (Leading lines) hút mắt người xem.",
+        "dynamic angle, wide angle shot, extreme close-up, rule of thirds, perfect composition, depth of field",
+      ),
+      card(
+        "art-details",
+        "💎 Chi Tiết Chạm Trổ (Intricate Details)",
+        "Từng giọt mồ hôi, giọt nước mắt lăn dài, sợi tóc bay trong gió, hoa văn thêu chìm trên áo, hay bụi phấn bay lơ lửng trong không khí. Những chi tiết nhỏ làm nên tuyệt tác.",
+        "intricate details, hyper-detailed, 8k resolution, crisp lines, delicate rendering",
+      ),
+      card(
+        "art-style",
+        "🖌️ Nét Vẽ / Họa Phong (Art Style)",
+        "Màu nước mềm mại (Watercolor), sơn dầu cọ dày (Thick impasto oil painting), anime thập niên 90 (Retro 90s anime), hay nét vẽ sắc sảo của manhwa Hàn Quốc (Korean webtoon style).",
+        "distinctive art style, polished illustration, studio ghibli inspired, high-end comic art",
+      ),
+    ],
+  },
+  {
+    id: "pose_interact",
+    icon: "🤸",
+    title: "Tạo Dáng & Tương Tác",
+    subtitle: "Chuyển động, ánh mắt, chạm, tư thế độc đáo",
+    seed: 11,
+    cards: [
+      card(
+        "pose-action",
+        "🏃 Chuyển Động & Tư Thế (Dynamic Action)",
+        "Đang chạy dưới mưa, ngả người ra sau khi cười, tay chống cằm suy tư, ôm gối cuộn tròn, vươn vai đón nắng, hay một tư thế chiến đấu siêu ngầu trong anime (Dynamic combat pose).",
+        "dynamic pose, natural movement, fluid body language, expressive posture",
+      ),
+      card(
+        "pose-eyes",
+        "👀 Ánh Mắt & Biểu Cảm (Eye Contact)",
+        "Ánh mắt là cửa sổ tâm hồn. Đang nhìn thẳng đắm đuối (Deep eye contact), liếc nhìn ngại ngùng (Shy sidelong glance), nhắm mắt tận hưởng (Eyes closed in peace), hay một giọt nước mắt vương trên mi (Tearful gaze).",
+        "expressive eyes, deep eye contact, subtle micro-expressions, emotional gaze",
+      ),
+      card(
+        "pose-touch",
+        "🤝 Tương Tác Cặp Đôi (Couple Interaction)",
+        "Nếu vẽ hai người, sự tương tác là quan trọng nhất: Chạm trán (Forehead touch), nắm chặt tay, tựa lưng vào nhau (Back to back), một cái ôm từ phía sau (Back hug), hay ánh mắt vô tình giao nhau.",
+        "intimate couple interaction, gentle touch, holding hands, back hug, natural chemistry",
+      ),
+      card(
+        "pose-hands",
+        "🤲 Ngôn Ngữ Đôi Bàn Tay (Hand Gestures)",
+        "Đôi tay tạo nên sự tinh tế: Tay vén tóc mai, tay tháo nơ áo, tay đút túi quần hờ hững, ngón tay đan vào nhau, hay một bàn tay to che chở bàn tay nhỏ.",
+        "expressive hand gestures, delicate fingers, elegant hand placement, holding object naturally",
+      ),
+      card(
+        "pose-guard",
+        "🛡️ Chống Lỗi Giải Phẫu (Anatomy Guard)",
+        "Lưu ý bắt buộc để AI không vẽ sai: Tay phải có đủ 5 ngón, khớp xương tự nhiên, tỷ lệ cơ thể chuẩn, không bị gãy gập kỳ lạ, chân không bị xoắn vào nhau.",
+        "perfect anatomy, accurate proportions, correct hand anatomy, 5 fingers, flawless structural logic",
+      ),
+    ],
+  },
+  {
+    id: "clothes",
+    icon: "👗",
+    title: "Thời Trang & Phụ Kiện",
+    subtitle: "Chất liệu vải, kiểu dáng, trang sức, phong cách",
+    seed: 12,
+    cards: [
+      card(
+        "clothes-style",
+        "👗 Phong Cách Thời Trang (Fashion Style)",
+        "Bạn chọn phong cách nào: Dạ hội hoàng gia lộng lẫy (Royal ballgown), Cyberpunk cool ngầu (Techwear), Y2K năng động, Học đường Nhật Bản (Japanese school uniform), hay Cổ trang thanh tao (Hanfu/Kimono)?",
+        "fashion aesthetic, high-fashion editorial, stylish outfit, perfectly coordinated clothing",
+      ),
+      card(
+        "clothes-material",
+        "🧵 Chất Liệu & Texture (Fabric Texture)",
+        "Vải lụa mỏng tang bay trong gió (Flowing silk), nhung tuyết bắt sáng (Velvet), da thuộc cá tính (Leather jacket), ren mờ ảo (Delicate lace), hay lớp áo choàng dệt kim ấm áp (Knit sweater).",
+        "detailed fabric texture, flowing silk, shiny leather, soft knit, intricate lace pattern",
+      ),
+      card(
+        "clothes-accessories",
+        "💍 Trang Sức & Phụ Kiện (Accessories)",
+        "Kính gọng vàng tri thức (Gold-rimmed glasses), khuyên tai ngọc trai đung đưa (Pearl drop earrings), vòng cổ choker cá tính, găng tay lụa dài, băng đô cài tóc, hay một chiếc dù trong mưa.",
+        "stylish accessories, elegant jewelry, matching fashion items, intricate accessory design",
+      ),
+      card(
+        "clothes-details",
+        "✨ Chi Tiết Trang Phục (Clothing Details)",
+        "Nếp gấp quần áo (Clothing folds), viền ren, cúc áo mạ vàng, họa tiết thêu nổi trên cổ tay áo, ruy băng thắt nơ, hay áo khoác hờ hững rớt một bên vai.",
+        "realistic clothing folds, intricate tailoring, precise fashion details, flowing garments",
+      ),
+      card(
+        "clothes-fit",
+        "✂️ Độ Vừa Vặn & Tôn Dáng (Fit & Silhouette)",
+        "Quần áo ôm sát tôn đường cong (Form-fitting), áo oversized rộng rãi dễ thương, áo choàng dài quét đất tạo sự quyền lực, hay chân váy xếp ly xòe rộng khi xoay vòng.",
+        "flattering silhouette, perfect fit, dynamic clothing shape, strong fashion statement",
+      ),
+    ],
+  },
+  {
+    id: "space",
+    icon: "🌌",
+    title: "Không Gian & Kiến Trúc",
+    subtitle: "Bối cảnh, thời tiết, môi trường xung quanh",
+    seed: 13,
+    cards: [
+      card(
+        "space-setting",
+        "🌌 Bối Cảnh Chính (Main Setting)",
+        "Một quán cafe ấm cúng ngày mưa (Cozy rainy cafe), cung điện bỏ hoang ngập dây leo (Overgrown ruined palace), phòng ngủ lộn xộn ngập nắng (Messy sunlit bedroom), hay một tinh cầu vỡ nát giữa vũ trụ.",
+        "immersive environment, distinct setting, atmospheric background, detailed surroundings",
+      ),
+      card(
+        "space-weather",
+        "⛅ Thời Tiết & Khí Hậu (Weather & Climate)",
+        "Bầu trời hoàng hôn tím biếc (Purple sunset sky), cơn mưa rào mùa hạ (Summer rain), bão tuyết mịt mù (Blinding snowstorm), sương mù giăng lối (Foggy morning), hay ánh trăng tròn rực rỡ (Full moon night).",
+        "atmospheric weather, dramatic sky, weather effects, environmental mood setter",
+      ),
+      card(
+        "space-objects",
+        "🛋️ Đồ Vật Xung Quanh (Props & Objects)",
+        "Trang trí không gian: Cuốn sách đang đọc dở trên bàn, tách trà nghi ngút khói, chiếc đèn chùm pha lê lấp lánh, rèm cửa bằng voan mỏng bay phấp phới, hay những cánh hoa đào rơi rụng.",
+        "environmental storytelling props, detailed background objects, aesthetic room decor",
+      ),
+      card(
+        "space-depth",
+        "📏 Chiều Sâu & Không Gian (Depth of Field)",
+        "Tạo hiệu ứng xóa phông mờ ảo (Bokeh) cho các vật ở gần hoặc xa, tiền cảnh (Foreground) có một cành hoa che khuất một phần ống kính, hậu cảnh (Background) kéo dài vô tận tạo chiều sâu.",
+        "depth of field, beautiful bokeh, foreground framing, deep perspective, cinematic depth",
+      ),
+      card(
+        "space-magic",
+        "✨ Yếu Tố Huyền Ảo (Magical Elements)",
+        "Thêm chút phép màu: Đom đóm phát sáng (Glowing fireflies), bụi phép thuật bay lơ lửng (Magical stardust), mặt nước phản chiếu như gương, hay những đám mây ngũ sắc.",
+        "magical atmosphere, glowing elements, fantasy environmental effects, ethereal environment",
+      ),
+    ],
+  },
+  {
+    id: "sticker",
+    icon: "💖",
+    title: "Chibi & Sticker Dễ Thương",
+    subtitle: "Mặt bư, nựng má, siêu cute, chibi tỉ lệ 2-3 đầu",
+    seed: 14,
+    cards: [
+      card(
+        "chibi-style",
+        "💖 Phong Cách Chibi (Chibi Style)",
+        "Vẽ theo tỷ lệ đầu to người nhỏ (2-3 đầu) cực kỳ dễ thương. Có thể chọn nét vẽ pastel mềm mại, nét manga siêu quậy, hoặc phong cách sticker trong suốt viền trắng.",
+        "chibi style, super cute, kawaii aesthetic, big head small body, anime sticker style",
+      ),
+      card(
+        "chibi-face",
+        "🥺 Biểu Cảm Chibi (Kawaii Expressions)",
+        "Hai má phồng lên nũng nịu (Puffed cheeks), khóc nhè với hai dòng nước mắt chảy như suối (Anime tear streams), mắt sáng rực hình ngôi sao (Starry eyes), miệng cười hình chữ V.",
+        "exaggerated anime expressions, puffed cheeks, starry eyes, crying comical tears, blushing heavily",
+      ),
+      card(
+        "chibi-action",
+        "🐹 Hành Động Vô Tri (Silly Actions)",
+        "Đang gặm chung một cái bánh bao, nằm bẹp trên sàn nhà như chú mèo lười, bị nhéo má đỏ ửng (Cheek pinching), đu mình trên một nhánh cây khổng lồ, hay chui rúc trong một cái chăn cuộn tròn.",
+        "silly actions, funny posture, squished cheeks, rolling in blankets, clumsy and cute",
+      ),
+      card(
+        "chibi-props",
+        "🎀 Phụ Kiện Cute (Cute Props)",
+        "Ôm một con gấu bông khổng lồ to hơn người, đội chiếc nón hình tai ếch/tai thỏ, cầm một chiếc kẹo mút cầu vồng, xung quanh bay lượn những hình trái tim nhỏ xíu màu hồng.",
+        "oversized cute props, plushies, animal ear hats, floating pink hearts, colorful candy",
+      ),
+      card(
+        "chibi-background",
+        "☁️ Nền Đơn Giản Cho Sticker (Sticker Background)",
+        "Nền màu trơn pastel (Pastel solid background), nền trong suốt (Transparent background), hoặc thêm đường viền trắng dày xung quanh nhân vật (Thick white sticker outline) để giống như một hình dán thật.",
+        "flat pastel background, thick white border outline, sticker aesthetic, clean minimal background",
+      ),
+    ],
+  },
+  {
+    id: "graphic_typo",
+    icon: "🎨",
+    title: "Đồ Họa & Typography / Thiết Kế Không Người",
+    subtitle:
+      "Thiệp cưới, Giấy mời, Vé xem phim, Trang chữ Vibe cặp đôi, Graphic Design không vẽ nhân vật",
+    seed: 15,
+    cards: [
+      card(
+        "typo-target",
+        "🎯 Vibe Đại Diện Cho Cặp Đôi / Đối Tượng",
+        "Chọn vibe đại diện cho Vợ Yêu ({{user}}), Bot Char, hoặc toàn bộ cặp đôi/group thông qua màu sắc, biểu tượng, đường nét và phong cách thiết kế (Thay vì vẽ người).",
+        "symbolic character representation, graphic design vibe representing main couple, emotional resonance through typography and abstract graphic art without drawing characters",
+      ),
+      card(
+        "typo-format",
+        "🏷️ Thể Loại Ấn Phẩm & Thiết Kế Đồ Họa",
+        "Thiệp cưới hoàng gia (Royal Wedding Invitation), Giấy mời dạ tiệc (Gala Invitation Card), Vé xem phim điện ảnh cổ điển (Vintage Cinema Ticket), Trang nhật ký nghệ thuật toàn chữ (Typographic Art Journal), Poster Typography, Thiệp định tình...",
+        "luxury wedding invitation card, vintage cinema ticket design, typographic art journal page, royal gala event invitation, elegant graphic poster layout",
+      ),
+      card(
+        "typo-fonts",
+        "🔤 Nghệ Thuật Chữ & Style Typography",
+        "Chữ Calligraphy uốn lượn lãng mạn, chữ Serif cổ điển quý phái, chữ Gothic huyền bí sang trọng, chữ Y2K hiện đại, bố cục chữ cách điệu, lồng ghép tên hoặc câu thoại định tình trong cốt truyện.",
+        "exquisite calligraphy typography, elegant serif font lettering, ornate gothic typography, modern Y2K experimental font, artistic text layout, stylized quote design",
+      ),
+      card(
+        "typo-motifs",
+        "⚜️ Biểu Tượng & Hoa Văn Trang Trí (Motifs)",
+        "Huân chương gia tộc, hoa hồng gai khắc kim loại, vương miện hoàng gia, bướm đêm huyền ảo, ruy băng lụa mềm mại, viền khung vàng kim (gold foil border), con dấu sáp đỏ chăng trên phong thư thắt ruy băng.",
+        "symbolic floral motifs, ornate royal crest, gold foil stamping borders, crimson wax seal stamp, silk ribbon embellishments, intricate filigree decorations",
+      ),
+      card(
+        "typo-layout",
+        "📐 Bố Cục & Chất Liệu Bề Mặt (Texture & Layout)",
+        "Bố cục phẳng Graphic Design chuẩn mực, giấy ngợi cổ điển có vân thô ráp (textured vintage paper), hiệu ứng dập nổi (embossing), ép kim lung linh (gold foil stamping), hiệu ứng ánh sáng rọi lên bề mặt thiệp.",
+        "graphic design flat layout, heavy textured vintage watercolor paper, metallic gold foil embossing, tactile wax seal texture, sophisticated print editorial quality",
+      ),
+      card(
+        "typo-ref-adapt",
+        "✿ Học Hỏi Từ Ảnh Tham Chiếu (Anti-Human Rule)",
+        "Dù ảnh tham chiếu bạn tải lên là ảnh nhân vật hay ảnh người thật, AI BẮT BUỘC CHỈ học bảng màu, ánh sáng, vibe, cảm xúc và họa tiết trang trí, TUYỆT ĐỐI KHÔNG vẽ bất kỳ khuôn mặt hay dáng người nào vào ấn phẩm!",
+        "reference color palette extraction, learn artistic mood and aesthetic vibe, translating character portraits into abstract graphic art and typography",
+      ),
+      card(
+        "typo-no-human",
+        "🛡️ Luật Bất Khả Xâm Phạm: 100% KHÔNG VẼ NGƯỜI",
+        "Cam kết tuyệt đối không có nhân vật, không có người, không có khuôn mặt hay cơ thể trong hình output. Chỉ xuất hiện nghệ thuật chữ, hoa văn, chất liệu và đồ họa ấn phẩm thượng hạng.",
+        "no humans, no people, no characters, no faces, no figures, 100% pure graphic design, typography art, invitation card and ticket illustration without any human presence",
+      ),
+    ],
+  },
+  {
+    id: "cinematic_album",
+    icon: "🎞️",
+    title: "Album Ảnh Điện Ảnh & Nghệ Thuật Thị Giác",
+    subtitle:
+      "Editorial photobook, Film strip, Contact sheet, High-art layout, Tư duy máy ảnh & góc độ",
+    seed: 16,
+    cards: [
+      card(
+        "album-target",
+        "🎯 Đối Tượng Trong Album Điện Ảnh",
+        "Chọn nhân vật (Vợ yêu, Bot Char, Couple/Group) làm trung tâm cho album ảnh nghệ thuật, truyền tải cảm xúc qua từng khung hình.",
+        "cinematic character photobook, editorial fashion spread, character study through multiple cinematic captures",
+      ),
+      card(
+        "album-layout",
+        "🎞️ Bố Cục Album & Dàn Trang (Collage & Film Strip)",
+        "Cuốn album mở ra nhiều ảnh trên trang (Editorial Photobook Layout), dải phim nhựa 35mm (35mm Film Strip), contact sheet nhiều góc chụp liên tiếp, ảnh polaroid xếp đặt nghệ thuật trên bàn làm việc...",
+        "editorial photobook spread layout, 35mm film contact sheet collage, cinematic film strip sequence, polaroid photo arrangement, sophisticated magazine editorial layout",
+      ),
+      card(
+        "album-camera",
+        "📷 Tư Duy Máy Ảnh & Góc Độ Chụp",
+        "Kết hợp tinh tế nhiều tiêu cự trong cùng album: shot cận cảnh mắt/tay góc 85mm portrait, shot toàn thân fashion 35mm, shot góc rộng phối cảnh điện ảnh 24mm, góc nghiêng Dutch angle kịch tính, bắt trọn nhịp chuyển động.",
+        "masterful camera lens variety, combining 85mm intimate macro detail shots with 35mm environmental portraits and 24mm wide cinematic angles, dynamic shutter speed capture, professional visual storytelling",
+      ),
+      card(
+        "album-aesthetics",
+        "✨ Gu Thẩm Mỹ Cao & Thiên Phú Sáng Tạo Thị Giác",
+        "Tư duy nghệ thuật bậc thầy về màu sắc (Color Grading), ánh sáng rọi qua khe cửa (Volumetric Lighting), độ tương phản cao sang trọng (High-fashion contrast), grain phim nhựa cổ điển cực đẹp, không gian đậm chất điện ảnh Wong Kar-wai hoặc Denis Villeneuve.",
+        "masterwork visual aesthetics, high-art cinematic color grading, atmospheric volumetric lighting, nostalgic 35mm film grain, sophisticated visual rhythm, award-winning cinematography direction",
+      ),
+      card(
+        "album-story",
+        "📖 Mạch Kể Chuyện Qua Ảnh (Visual Storytelling)",
+        "Các bức ảnh trong album liên kết thành một dòng chảy câu chuyện liên tục: ánh mắt trao nhau, nụ cười thoáng qua, cái chạm tay ngập ngừng, chi tiết món kỷ vật trong cốt truyện chính.",
+        "sequential visual storytelling, emotional continuity across frames, capturing fleeting micro-expressions, subtle romantic cues, cinematic narrative montage",
+      ),
+      card(
+        "album-guard",
+        "🛡️ Bảo Vệ Chất Lượng Album (Cinematic Standards)",
+        "Đảm bảo màu sắc phim (film stock colors) chân thực, không bệt màu. Hình ảnh sắc nét, bố cục collage thẳng thớm không méo mó, tỷ lệ các ảnh trong trang phải hài hòa và có nhịp điệu.",
+        "flawless collage layout, pristine film grain quality, no warped images, perfectly balanced editorial spread, high-end artbook production quality",
+      ),
+    ],
+  },
+  {
+    id: "canva_aboutme",
+    icon: "🖼️",
+    title: "Thiết Kế Canva / About Me Profile Card",
+    subtitle: "Học bố cục & khung hình từ mẫu (Tùy biến nhân vật & màu sắc)",
+    seed: 17,
+    cards: [
+      card(
+        "canva-target",
+        "🎯 Đối Tượng Trong Thiết Kế Profile",
+        "Chọn nhân vật (Vợ yêu, Bot Char, hoặc Couple) để đưa vào thiết kế dạng Profile Card, About Me page hoặc giao diện tạp chí.",
+        "character profile card, about me design, modern character introduction graphic",
+      ),
+      card(
+        "canva-layout",
+        "📐 Cấu Trúc Khung & Bố Cục (UI / Graphic Layout)",
+        "Mô phỏng giao diện Canva, lưới Bento Box, thẻ nhân vật RPG, khung Polaroid, hoặc layout giới thiệu nhân vật với các text box (hộp thoại), sticker trang trí, thanh tiến trình (progress bar).",
+        "bento grid layout, UI card design, polaroid frame, RPG character stat screen, canva template aesthetic, stylized text boxes, decorative graphic UI elements",
+      ),
+      card(
+        "canva-aesthetics",
+        "✨ Phong Cách Thiết Kế (Graphic Style)",
+        "Từ Y2K rực rỡ, Grunge bụi bặm, Minimalist tối giản, Pastel dễ thương đến Cyberpunk công nghệ. Màu sắc và font chữ phải hòa hợp với vibe của nhân vật chính.",
+        "graphic design aesthetics, Y2K graphic layout, pastel cute UI, minimalist editorial design, sharp vector graphics, harmonious color palette, stylized typography placeholder",
+      ),
+      card(
+        "canva-ref-adapt",
+        "✿ Học Bố Cục Tham Chiếu (Reference UI Structure)",
+        "Học hỏi CẤU TRÚC bố cục (layout structure), tỷ lệ các khung hình, cách sắp xếp chữ và hình từ ảnh tham chiếu. TÙY BIẾN HOÀN TOÀN màu sắc, vibe và hình ảnh nhân vật theo cốt truyện gốc!",
+        "extracting UI structure and layout composition from reference, replacing original characters and colors with bespoke user story elements, adaptive graphic design learning",
+      ),
+      card(
+        "canva-story",
+        "📖 Thông Tin Nhân Vật & Chữ (Typographic Placeholders)",
+        "Lồng ghép các khối chữ (text blocks) cách điệu làm điểm nhấn: Tên nhân vật viết to, các dòng mô tả nhỏ gọn, các keyword định hình tính cách hoặc câu thoại kinh điển.",
+        "stylized typography integration, character name header, descriptive text blocks, aesthetic typography hierarchy, readable decorative text",
+      ),
+      card(
+        "canva-guard",
+        "🛡️ Bảo Vệ Tính Chuyên Nghiệp (Clean Layout Guard)",
+        "Đảm bảo đường nét UI thẳng thớm, không cong vênh. Các khối hình học (geometric shapes) sạch sẽ. Hình ảnh nhân vật bên trong khung phải sắc nét, không lấn viền sai cách.",
+        "crisp UI vector lines, straight geometric shapes, clean typography rendering, professional graphic design finish, perfectly framed character portraits",
+      ),
+    ],
+  },
+  {
+    id: "manga_webtoon",
+    icon: "📚",
+    title: "Trang Truyện Tranh / Webtoon Khổ Dài",
+    subtitle:
+      "Vẽ manga/manhwa nhiều khung, bám sát nét tham chiếu, pose thông minh, ít lỗi",
+    seed: 19,
+    cards: [
+      card(
+        "manga-target",
+        "🎯 Đối Tượng Trong Truyện",
+        "Chọn nhân vật chính cho trang truyện: Vợ Yêu ({{user}}), Bot Char, hay Couple đang tương tác.",
+        "comic book characters, webtoon protagonists, story-driven character interaction",
+      ),
+      card(
+        "manga-layout",
+        "📐 Bố Cục Khung Truyện Khổ Dài (Webtoon Layout)",
+        "Trang truyện dọc dài (vertical scrolling webtoon), phân khung thông minh (smart panel layout), các khung hình đan xen chéo kịch tính hoặc vuông vức cổ điển, tràn viền (bleed).",
+        "vertical scrolling webtoon format, smart comic panel layout, dynamic overlapping frames, cinematic panel progression, seamless flow",
+      ),
+      card(
+        "manga-style",
+        "🖌️ Nét Vẽ & Phong Cách (Manhwa/Manga/Manhua)",
+        "Bám sát 100% nét vẽ của ảnh tham chiếu: nét Manhwa Hàn Quốc bóng bẩy màu sắc lộng lẫy, nét Manga Nhật Bản sắc sảo (trắng đen hoặc màu), nét Manhua Trung cổ trang tỉ mỉ. Bắt trọn art style gốc.",
+        "exact art style adaptation from reference, Korean manhwa aesthetic, detailed anime/manga rendering, beautiful coloring, high artistic fidelity",
+      ),
+      card(
+        "manga-pose",
+        "🏃 Ý Tưởng Pose & Góc Máy Trong Khung (Smart Poses)",
+        "Các pose thông minh và đa dạng qua từng khung: khung 1 đặc tả khuôn mặt (close-up), khung 2 toàn thân hành động (dynamic action), khung 3 góc máy từ trên xuống (high angle).",
+        "smart dynamic poses across panels, varied camera angles per frame, close-up emotive shots mixed with full body action, expressive body language",
+      ),
+      card(
+        "manga-story",
+        "📖 Diễn Biến Cốt Truyện & Thoại (Story Flow)",
+        "Khắc họa diễn biến của câu chuyện qua từng ô truyện. Có thể thêm bong bóng thoại (speech bubbles) nghệ thuật hoặc để hình ảnh tự kể chuyện (visual storytelling).",
+        "sequential storytelling, emotional narrative progression, manga speech bubbles, visual story flow, cinematic comic pacing",
+      ),
+      card(
+        "manga-quality",
+        "💎 Chất Lượng Cao & Chống Lỗi Bố Cục (Anti-Error Guard)",
+        "Đề cao nghệ thuật hình ảnh chất lượng cao. Kiểm soát lỗi giải phẫu (anatomy) khi vẽ nhiều nhân vật trong các khung nhỏ, đảm bảo các khung (panels) thẳng nét, sạch sẽ, không bị rối rắm hay dính liền nét vẽ.",
+        "masterpiece comic art, perfect anatomy across multiple panels, clean panel borders, avoid cluttered layouts, high-resolution comic page finish, cohesive visual consistency",
+      ),
+    ],
+  },
+  {
+    id: "fandom_merch",
+    icon: "🛍️",
+    title: "Fan Merch & Góc Sưu Tầm Truyện",
+    subtitle:
+      "Góc phòng Otaku, Poster, Card bo góc, Bìa truyện Couple nổi tiếng",
+    seed: 20,
+    cards: [
+      card(
+        "merch-target",
+        "🎯 Chủ Thể Sưu Tầm (Idol/Couple)",
+        "Chọn nhân vật hoặc Couple chính làm chủ đề cho các ấn phẩm merchandise, bìa truyện, poster, card bo góc.",
+        "anime merchandise collection, comic couple fandom, character idolization",
+      ),
+      card(
+        "merch-layout",
+        "📐 Bố Cục Góc Sưu Tầm (Fan Room/Desk)",
+        "Góc bàn học ngập tràn standee, móc khóa, card bo góc; tường dán poster nhân vật; hoặc khung cảnh người hâm mộ đang cầm cuốn truyện tranh có bìa màu rực rỡ của Couple chính. Hình nền điện thoại hiển thị nhân vật.",
+        "otaku desk aesthetic, bedroom wall covered in anime posters, holding a full-color comic book cover, photocard display, acrylic standees, smartphone wallpaper showing characters",
+      ),
+      card(
+        "merch-items",
+        "🛍️ Chi Tiết Ấn Phẩm & Merch (Merch Items)",
+        "Đặc tả chân thực các loại merch: Bìa truyện tranh màu (full-color comic cover), photocard bo góc phản quang (holographic photocard), móc khóa acrylic (acrylic keychain), huy hiệu (itabag pins), poster khổ lớn.",
+        "full-color manga cover art, holographic photocards, acrylic keychains, anime posters, fan merchandise, itabag accessories",
+      ),
+      card(
+        "merch-ref-adapt",
+        "✿ Học Hỏi Vibe Tham Chiếu (Reference Vibe)",
+        "Học hỏi màu sắc, nét vẽ và biểu cảm từ ảnh tham chiếu để in lên các món đồ merch. Các nhân vật trong ảnh mẫu sẽ biến thành minh họa trên poster, bìa sách hoặc card bo góc!",
+        "extracting character visual DNA to illustrate merchandise items, adapting reference art style into comic covers and posters within the scene",
+      ),
+      card(
+        "merch-atmosphere",
+        "✨ Không Khí & Ánh Sáng Góc Sưu Tầm",
+        "Ánh sáng ấm áp từ đèn bàn (desk lamp glow), đèn LED RGB mờ ảo trong phòng, nắng chiều hắt qua cửa sổ chiếu lên bộ sưu tập truyện tranh, tạo cảm giác fandom cuồng nhiệt và ấm cúng.",
+        "cozy room lighting, rgb led soft glow, sunlight hitting a manga collection, warm desk lamp lighting, passionate fandom atmosphere",
+      ),
+      card(
+        "merch-quality",
+        "💎 Độ Nét Của Từng Ấn Phẩm (Detailing)",
+        "Đảm bảo các ấn phẩm nhỏ như card bo góc hay màn hình điện thoại đều sắc nét, nhìn rõ nhân vật bên trong. Không rác nét, chữ trên bìa sách có thể cách điệu nghệ thuật (mockup text).",
+        "high-resolution macro details on photocards and phone screen, clear character illustrations inside merchandise, readable stylized comic title mockups, clean otaku room clutter",
+      ),
+    ],
+  },
+  {
+    id: "handmade_card",
+    icon: "💌",
+    title: "Thẻ & Thiệp Handmade (Thiệp Cưới, Quà Tặng, Love Card)",
+    subtitle:
+      "Thiết kế thiệp thủ công, thiệp cưới, card tình yêu bám sát ảnh tham chiếu, chữ tiếng Việt ý nghĩa theo cốt truyện",
+    seed: 21,
+    cards: [
+      card(
+        "card-target",
+        "🎯 Đối Tượng & Dịp Tặng Thiệp (Target & Occasion)",
+        "Chọn nhân vật (Vợ Yêu {{user}}, Bot Char, Couple) và dịp kỷ niệm để làm chủ đề cho tấm thiệp: Thiệp cưới định tình (Wedding Invitation), Thiệp quà tặng kỷ niệm (Anniversary Gift Card), Card tình yêu thủ công (Handmade Love Card), hay thiệp xin lỗi / tỏ tình lãng mạn.",
+        "handmade love card, custom wedding invitation, romantic anniversary gift card, handcrafted greeting card, bespoke couple keepsakes",
+      ),
+      card(
+        "card-style",
+        "🏷️ Kiểu Dáng & Chất Liệu Thiệp Handmade (Handmade Craft)",
+        "Thiết kế thủ công tinh xảo: Giấy mỹ thuật có vân sần (textured art paper), viền xé tay nghệ thuật (deckled edges), ép kim vàng lung linh (gold foil stamping), đính hoa khô (dried flower embellishments), thắt ruy băng lụa mềm mại (silk ribbon ties), hoặc đóng dấu sáp đỏ cổ điển (wax seal stamp).",
+        "handcrafted textured art paper, deckled edges, shimmering gold foil stamping, dried botanicals pressed on paper, silk ribbon bow ties, vintage crimson wax seal stamp, premium stationery design",
+      ),
+      card(
+        "card-typography",
+        "🔤 Nghệ Thuật Chữ & Nội Dung Tiếng Việt (Vietnamese Typography)",
+        "Form chữ Calligraphy uốn lượn tuyệt đẹp hoặc chữ viết tay lãng mạn (handwritten script). NỘI DUNG CHỮ bằng tiếng Việt ý nghĩa, sâu sắc, bám sát câu chuyện và lời thề hẹn giữa hai người (Ví dụ: 'Gửi người thương...', 'Trăm năm hòa điệu...', 'Hẹn ước mùa hoa...'). Từng con chữ được nắn nót trau chuốt như một tác phẩm nghệ thuật.",
+        "exquisite Vietnamese calligraphy, romantic handwritten script lettering, elegant serif typography, legible Vietnamese text quote integrated into card design, artistic text placement, emotional love declaration words",
+      ),
+      card(
+        "card-ref-adapt",
+        "✿ Học Hỏi Thiết Kế Từ Ảnh Tham Chiếu (Reference Adaptation)",
+        "Bám sát ảnh tham chiếu tải lên để học hỏi: bảng màu (color palette), hoa văn trang trí (ornate patterns), cách phối thảo mộc/ruy băng, ánh sáng và bố cục tổng thể của thiệp. Biến đổi hài hòa để phục vụ riêng cho câu chuyện tình yêu độc quyền của bạn!",
+        "extracting stationery design DNA from reference image, adapting color palette and floral motifs from reference into custom handmade card, high fidelity to reference craft style",
+      ),
+      card(
+        "card-decor",
+        "🎀 Hoa Văn & Phụ Kiện Trang Trí (Embellishments & Decor)",
+        "Trang trí xung quanh tấm thiệp: Những cánh hoa hồng khô rơi rụng, nhẫn cưới lấp lánh đặt bên cạnh, chiếc bút mực máy cổ điển (fountain pen), dải lụa buông hờ hững trên mặt bàn gỗ ấm áp, hoặc ngọn nến thơm tỏa ánh sáng vàng dịu lung linh.",
+        "dried rose petals scattered around, vintage fountain pen, vintage brass keys, glowing scented candles, soft silk ribbon drape, rustic wooden table surface, romantic flatlay photography",
+      ),
+      card(
+        "card-atmosphere",
+        "✨ Ánh Sáng & Khí Quyển Lãng Mạn (Romantic Atmosphere)",
+        "Ánh sáng vàng ấm áp buổi chiều tà rọi qua cửa sổ (warm golden hour sunlight), bóng đổ nhẹ nhàng tạo chiều sâu (soft directional shadows), hạt bụi sáng lơ lửng, tạo nên cảm giác vô cùng ấm cúng, riêng tư, trân trọng và thiêng liêng.",
+        "warm golden hour sunlight streaming across paper, soft directional shadows, glowing bokeh background, intimate and sacred atmosphere, tactile macro photography depth of field",
+      ),
+      card(
+        "card-guard",
+        "🛡️ Bảo Vệ Chất Lượng Thiệp (Craftsmanship Guard)",
+        "Đảm bảo chữ tiếng Việt rõ ràng, sắc nét, không bị biến dạng hay lỗi font (no garbled text). Các chi tiết thủ công sắc sảo như thật (hyper-detailed macro shot). Bố cục thiệp cân đối, sang trọng, không bị rác chi tiết hay lộn xộn.",
+        "hyper-detailed macro photography of handmade card, readable legible typography, pristine print quality, balanced composition, no cluttered artifacts, masterpiece stationery design",
+      ),
+    ],
+  },
+  {
+    id: "marketing_pr_anime",
+    icon: "📢",
+    title: "PR Quảng Cáo Marketing & Bìa Anime/Manhwa/Manhua",
+    subtitle:
+      "Poster, Canva, Điện ảnh, Kĩ xảo, Outfits, có nhân vật phụ & chữ (Ưu tiên cốt truyện gốc)",
+    seed: 22,
+    cards: [
+      card(
+        "pr-target",
+        "🎯 Nhân Vật Chính & Supporting Cast (Nhân Vật Phụ)",
+        "Chọn nhân vật chính (Vợ Yêu {{user}}, Bot Char) kết hợp cùng dàn nhân vật phụ (supporting cast, rival, allies) xuất hiện trong chiến dịch quảng cáo, tạo sự tương tác kịch tính, phong phú và đầy chiều sâu câu chuyện.",
+        "promotional campaign ensemble, main couple with supporting characters, rich character interaction, dynamic multi-character advertisement layout",
+      ),
+      card(
+        "pr-layout",
+        "📐 Bố Cục PR Marketing & Canva / Poster Layout",
+        "Bố cục quảng cáo truyền thông chuyên nghiệp: Poster điện ảnh khổ lớn, cover truyện tranh full màu (full-color comic cover), tạp chí thời trang (editorial cover), bố cục Canva hiện đại với các khối đồ họa (graphic blocks) và khung hình kịch tính.",
+        "promotional marketing layout, cinematic movie poster, full-color manhwa cover art, editorial fashion magazine layout, canva aesthetic graphic design, dynamic overlapping promotional frames",
+      ),
+      card(
+        "pr-style",
+        "🖌️ Nét Vẽ Full Màu Rực Rỡ (Anime / Manhwa / Manhua)",
+        "Nét vẽ full color đẳng cấp cao nhất: Manhwa Hàn Quốc bóng bẩy lộng lẫy (shimmering Korean manhwa style), Manhua Trung Quốc sắc sảo chi tiết, hoặc Anime điện ảnh rực rỡ. Lên màu mượt mà, ánh sáng đỉnh cao.",
+        "vibrant full-color masterpiece, top-tier Korean manhwa illustration style, detailed anime promotional art, luxurious coloring, sharp digital painting",
+      ),
+      card(
+        "pr-vfx",
+        "🎆 Kĩ Xảo Thị Giác & Kĩ Thuật Điện Ảnh (Cinematic VFX)",
+        "Ứng dụng kĩ xảo thị giác ấn tượng: Hào quang rực rỡ (glowing aura), tia sáng ma thuật (magical light beams), lens flare điện ảnh, hạt bụi lấp lánh (floating stardust), chiều sâu trường ảnh (depth of field) chuẩn máy ảnh chuyên nghiệp.",
+        "cinematic visual effects, glowing magical aura, dynamic lens flare, floating stardust particles, dramatic depth of field, blockbuster movie visual techniques",
+      ),
+      card(
+        "pr-ref-adapt",
+        "✿ Học Hỏi Tham Chiếu -> Ưu Tiên 100% Cốt Truyện Gốc",
+        "Tham chiếu ảnh để học hỏi cảm hứng, ý tưởng bố cục, ánh sáng và góc độ. NHƯNG QUAN TRỌNG NHẤT VÀ TRÊN HẾT MỌI THỨ: Phải sử dụng ứng biến và biến đổi hoàn toàn để tôn vinh câu chuyện và hồ sơ nhân vật nguyên bản do bạn thiết lập!",
+        "extracting inspirational lighting, layout and dynamic angles from reference image, mandatory adaptation to serve user's original story lore and custom character profiles above all else, transformative creative marketing design",
+      ),
+      card(
+        "pr-typography",
+        "🔤 Nghệ Thuật Chữ & Trang Phục Outfits (Typography & Fashion)",
+        "Đặc tả trang phục (Outfits) thời thượng, lộng lẫy, cực chất đúng concept chiến dịch. Lồng ghép dòng chữ quảng cáo, tên truyện/phim bằng tiếng Việt hoặc tiếng Anh cách điệu nghệ thuật sang trọng (mockup typography).",
+        "stylish promotional fashion outfits, high-end costume design, legible stylized title typography, artistic Vietnamese or English promotional text integration, sleek graphic overlays",
+      ),
+    ],
+  },
+  {
+    id: "bot_char_marketing_art",
+    icon: "🐰",
+    title: "Nghệ Thuật Của Nhân Vật Bot Char (Marketing & Điện Ảnh)",
+    subtitle:
+      "Quảng bá Marketing dành riêng cho Bot Char, điện ảnh kĩ xảo, gộp chung hoặc solo Bot Char",
+    seed: 23,
+    cards: [
+      card(
+        "bot-marketing-target",
+        "🐰 Đối Tượng: Độc Quyền Dành Riêng Cho Bot Char",
+        "Hạng mục này CHỈ DÀNH RIÊNG CHO BOT CHAR (Nhân vật chính AI). Bạn có thể chọn từng nhân vật Bot Char riêng lẻ hoặc gộp chung tất cả Bot Char trong một khung hình quảng bá Marketing đẳng cấp điện ảnh. Tuyệt đối không lẫn lộn với các hạng mục truyện tranh hay người thật.",
+        "exclusive bot character marketing art, solo or grouped AI main characters, promotional cinematic character showcase, strictly focused on bot char identity",
+      ),
+      card(
+        "bot-marketing-style",
+        "🎬 Nghệ Thuật Điện Ảnh & Kĩ Xảo Quảng Bá (Cinematic Marketing)",
+        "Phong cách quảng bá truyền thông chất lượng cao nhất: Poster điện ảnh nhân vật (Character Movie Poster), tạp chí thời trang nhân vật (Character Editorial Spread), kĩ xảo ánh sáng hào quang lung linh (glowing magical aura, volumetric lighting), tạo hình đẳng cấp vượt trội để quảng bá thương hiệu cho Bot Char.",
+        "cinematic promotional marketing art, high-end character advertisement poster, volumetric cinematic lighting, glowing magical particle effects, blockbuster visual presentation",
+      ),
+      card(
+        "bot-marketing-outfits",
+        "✨ Trang Phục & Khí Chất Tạo Hình (Outfits & Charisma)",
+        "Thiết kế trang phục (Outfits) thời thượng, lộng lẫy, cực kỳ sang chảnh và hút mắt cho Bot Char. Làm nổi bật khí chất đỉnh cao, thần thái quyến rũ, body language tự tin và vẻ đẹp kiêu hãnh của nhân vật chính trong chiến dịch truyền thông.",
+        "high-fashion promotional outfits, luxurious costume design, charismatic body language, confident and alluring character expressions, premium fashion styling",
+      ),
+      card(
+        "bot-marketing-ref",
+        "✿ Học Hỏi Tham Chiếu -> Tôn Vinh Hồ Sơ Bot Char",
+        "Tham chiếu ảnh tải lên để học hỏi cảm hứng ánh sáng, màu sắc và góc quay kịch tính. NHƯNG QUAN TRỌNG NHẤT: Phải tuân thủ tuyệt đối cốt truyện và hồ sơ nhân vật (Lore & Profile) của Bot Char mà bạn đã thiết lập, biến đổi để tôn vinh sự độc nhất của Bot Char!",
+        "extracting cinematic lighting and color grading from reference image, mandatory adherence to bot character's lore and personal profile, bespoke character marketing design",
+      ),
+      card(
+        "bot-marketing-typography",
+        "🔤 Chữ Nghệ Thuật & Slogan Tôn Vinh (Typography)",
+        "Lồng ghép tên của Bot Char hoặc câu slogan định danh, danh xưng nhân vật bằng chữ nghệ thuật cách điệu sang trọng (stylized typography mockup), tạo điểm nhấn quảng bá hoàn hảo cho bức ảnh.",
+        "legible stylized character name typography, elegant promotional title placement, luxury branding text overlay, sophisticated graphic poster composition",
+      ),
+      card(
+        "bot-marketing-guard",
+        "🛡️ Bảo Vệ Tác Phẩm & Tránh Nhầm Lẫn Phòng (Context Guard)",
+        "Cam kết bám sát đúng nhiệm vụ Quảng bá Marketing cho Bot Char, tuyệt đối KHÔNG nhầm lẫn sang vẽ truyện tranh manga nhiều khung, KHÔNG nhầm sang vẽ chibi, KHÔNG vẽ sai màu mắt hay màu tóc gốc của Bot Char trong hồ sơ!",
+        "100% single promotional poster or editorial illustration, strictly NO manga comic panels, NO chibi proportions, perfect fidelity to character hair and eye color specifications",
+      ),
+    ],
+  },
+  {
+    id: "bot_char_hobbies_vibe",
+    icon: "🐰",
+    title: "Sở Thích Của Bot Char (Vibe & Hobbies - Không Vẽ Người)",
+    subtitle:
+      "Ẩm thực, Đồ sưu tầm, Phòng làm việc/Game, Phòng ngủ, Xe Moto, Vé xem phim, Ghi chú sách (Không vẽ nhân vật)",
+    seed: 24,
+    cards: [
+      card(
+        "hobby-target",
+        "🐰 Đối Tượng Bot Char & Nguyên Tắc Không Vẽ Người",
+        "Hạng mục này CHỈ DÀNH RIÊNG CHO BOT CHAR (Nhân vật chính AI). Bạn có thể dùng nút hình con thỏ vẽ bằng code bên dưới để chọn từng nhân vật Bot Char riêng lẻ hoặc gộp chung. NGUYÊN TẮC TUYỆT ĐỐI: KHÔNG vẽ nhân vật, KHÔNG vẽ khuôn mặt hay cơ thể người! Bức ảnh chỉ tập trung vào không gian sống, đồ vật yêu thích và sở thích cá nhân để khắc họa chiều sâu tâm hồn của Bot Char.",
+        "exclusive bot character hobbies and vibe space, no humans, no characters, no faces, no figures, 100% environment and personal belonging focus, symbolic character storytelling through personal items and hobby spaces",
+      ),
+      card(
+        "hobby-food-items",
+        "🍜 Ẩm Thực & Món Đồ Sưu Tầm Yêu Thích",
+        "Thể hiện gu ẩm thực và những món đồ gắn liền với Bot Char: Ly cà phê đặc chế, món ăn yêu thích đang bốc khói, những món đồ sưu tầm độc lạ, kỷ vật định tình, máy ảnh cổ, headphone, hay những món quà nhỏ trên bàn làm việc.",
+        "favorite cuisine and gourmet food photography, steamy customized drinks, treasured personal collectibles, symbolic keepsakes, lifestyle flatlay photography, aesthetic still life composition",
+      ),
+      card(
+        "hobby-rooms-game",
+        "🎮 Phòng Làm Việc / Chơi Game / Phòng Ngủ / Xe Moto",
+        "Khắc họa không gian cá nhân đậm chất riêng: Phòng làm việc dàn máy tính high-end RGB, phòng chơi game (màn hình đang bật game yêu thích), phòng ngủ ấm cúng ngập nắng với chăn gối lộn xộn mang hơi ấm nhân vật, hay chiếc xe Moto / xe cộ cá tính đỗ dưới ánh đèn đường.",
+        "personal sanctuary environment, high-end RGB gaming setup with game display, cozy sunlit bedroom with personal touch, custom motorcycle or vehicle under atmospheric lighting, immersive lifestyle space without character presence",
+      ),
+      card(
+        "hobby-notes-tickets",
+        "🎫 Vé Xem Phim & Note / Ghi Chú / Chú Thích Sách",
+        "Những chi tiết tinh tế kể chuyện tình cảm và nội tâm: Cặp vé xem phim buổi hẹn hò, những trang sách mở ra với nét chữ ghi chú viết tay (handwritten notes), tờ giấy note dán trên bàn, bookmark kẹp trong sách, hay những dòng chú thích tràn đầy cảm xúc.",
+        "vintage movie cinema tickets flatlay, open book with handwritten marginalia notes and sticky annotations, romantic paper bookmarks, emotional typographic details, tactile paper textures and ink",
+      ),
+      card(
+        "hobby-ref-dna",
+        "✿ Bắt Buộc Dùng 100% Ảnh Tham Chiếu & Cốt Truyện Gốc",
+        "DỰA THEO NGUYÊN MẪU TÀI LIỆU ẢNH THAM CHIẾU SUY RA CAO NHẤT MẠNH NHẤT LÀ CÂU CHUYỆN VÀ HỒ SƠ! Bắt buộc sử dụng chính xác toàn bộ tư liệu ảnh tham chiếu đã tải lên (Zero-Skip 100%) để bóc tách bảng màu, chất liệu, ánh sáng và đồ vật, kết hợp tuyệt đối với hồ sơ gốc của Bot Char để tạo dựng không gian vibe chuẩn xác nhất!",
+        "zero-skip 100% reference material utilization, extract color palette, texture, lighting and object aesthetics from all uploaded reference images, mandatory alignment with bot character's lore and backstory profile, transformative hobby space synthesis",
+      ),
+      card(
+        "hobby-guard",
+        "🛡️ Bảo Vệ Vibe & Tránh Lỗi (100% No Human Presence Guard)",
+        "Cam kết tuyệt đối 100% KHÔNG xuất hiện nhân vật, con người, bàn tay hay khuôn mặt trong ảnh! Chỉ tập trung đặc tả độ nét cao (macro/volumetric lighting) cho không gian, đồ vật, chữ viết và ánh sáng lung linh mang đậm dấu ấn sở thích của Bot Char.",
+        "strictly no human presence, no people, no characters, no body parts, hyper-realistic macro photography of personal belongings, atmospheric volumetric lighting, clean aesthetic composition, masterpiece interior and object rendering",
+      ),
+    ],
+  },
+  {
+    id: "handwritten_annotations",
+    icon: "✍️",
+    title: "Nhật Ký Chú Thích Viết Tay Khắp Bức Ảnh (Handmade Photo Notes)",
+    subtitle:
+      "Viết hẳn chữ nhỏ xinh trang trí khắp ảnh kèm mũi tên chỉ sự vật, trang phục, cảm xúc, biểu cảm bám sát ảnh tham chiếu",
+    seed: 25,
+    cards: [
+      card(
+        "ann-target",
+        "🎯 Đối Tượng & Chủ Đề Ghi Chú",
+        "Chọn nhân vật (Vợ Yêu {{user}}, Bot Char hoặc Couple) và bối cảnh để viết chú thích lên. Chữ nhỏ xinh xắn trực tiếp lên bức ảnh theo dạng handmade diary.",
+        "handwritten notes all over the photo, photo annotation style, handmade journal entries on image, character details labeled with elegant script",
+      ),
+      card(
+        "ann-arrows",
+        "🏹 Mũi Tên Chỉ Hướng & Định Vị Vẽ Tay",
+        "Sử dụng các mũi tên chỉ hướng vẽ tay mộc mạc chỉ vào rất nhiều điều xung quanh: sự vật, đồ vật, cây cối, quần áo, trang phục, biểu cảm khuôn mặt hay đồ đạc. Tuyệt đối KHÔNG sử dụng biểu tượng bàn phím hay nhãn dán có sẵn.",
+        "beautiful hand-drawn text written directly on the image, dainty handwritten marginalia, delicate arrows pointing to various objects, aesthetic diary annotation layout, no keyboard icons, no preset stickers",
+      ),
+      card(
+        "ann-items",
+        "🌳 Chi Tiết Chú Thích Muôn Nơi (Everywhere Annotations)",
+        "Ghi chú tỉ mỉ cho mọi thứ xuất hiện trong ảnh. Có gì trong ảnh đều được chú thích thành chữ handmade sinh động như nhật ký lưu niệm.",
+        "detailed annotation labels for outfits, facial expressions, trees, furniture, hair details, beautiful handwritten words labeling items in the scene",
+      ),
+      card(
+        "ann-emoji",
+        "✨ Emoji Đẹp Mắt & Ký Tự Đặc Biệt (!, @, #)",
+        "Thiết kế đẹp mắt thêm nhiều emoji dễ thương, sinh động và sử dụng các ký hiệu nghệ thuật như !, @, # trước các ghi chú chữ nhỏ.",
+        "playful handwritten notes with lovely emojis, cute hand-drawn symbols like !, @, # prefixing labels, personalized aesthetic journal styling",
+      ),
+      card(
+        "ann-ref-adapt",
+        "✿ Bám Sát & Học Hỏi Từ Ảnh Tham Chiếu",
+        "Học tập hoàn hảo cách bố trí chú thích, nét vẽ và tông màu từ tài liệu ảnh tham chiếu để tạo nên tác phẩm đồng nhất hoàn hảo.",
+        "learning annotation layout and color palette from reference image, perfect adherence to reference photo details, high fidelity visual labeling",
+      ),
+      card(
+        "ann-quality",
+        "🛡️ Bảo Vệ Độ Sạch & Chống Lỗi Định Dạng",
+        "Bảo đảm nét chữ nhỏ xinh nghệ thuật, không bị dính khối thô kệch, không méo hình hay lỗi giải phẫu. Toàn bộ mang vibe handmade diary trọn vẹn, chân thực.",
+        "clear artistic handwriting, no deformed text blocks, perfectly balanced handwritten text overlay, high-resolution aesthetic photo notes, masterpiece illustration",
+      ),
+    ],
+  },
+  {
+    id: "soulful",
+    icon: "🥀",
+    title: "Bức Ảnh Biết Nói & Chiều Sâu Câu Chuyện",
+    subtitle:
+      "Học tinh hoa ảnh tham chiếu (không lộ mặt gốc) -> Bức ảnh tự sự, hạnh hiểu, chạm đến trái tim",
+    seed: 18,
+    cards: [
+      card(
+        "soul-target",
+        "🎯 Đối Tượng Trong Bức Ảnh Biết Nói",
+        "Chọn nhân vật làm trung tâm cho bức ảnh tự sự: Vợ Yêu ({{user}}), Bot Char, hay khoảnh khắc tương tác giữa hai người. Bức ảnh không chỉ vẽ người mà phải hiện lên nội tâm và câu chuyện của họ.",
+        "emotional character focus, soulful narrative portrait, deeper psychological connection, storytelling through facial expression and gaze",
+      ),
+      card(
+        "soul-ref-adapt",
+        "✿ Học Tinh Hoa Tham Chiếu (Không Lộ / Không Copy Mặt)",
+        "Dựa theo toàn bộ ảnh tham chiếu gửi lên để học hỏi triệt để bố cục, góc chụp, ánh sáng, màu sắc và cảm xúc (nguyên mẫu hình ảnh), biến đổi sáng tạo mang dấu ấn riêng biệt, hòa quyện 100% với thần thái và nhân vật trong câu chuyện!",
+        "masterful visual reference adaptation, extract artistic DNA, lighting, mood and composition with transformative originality, 100% fidelity to story lore and character profile",
+      ),
+      card(
+        "soul-storytelling",
+        "📖 Khung Hình Tự Sự & Không Cần Tiếng Nói",
+        "Không cần viết chữ như tiểu thuyết, nhưng nhìn vào bức ảnh là thấy ngay một chương truyện đang diễn ra: không gian tĩnh lặng, kỷ vật định tình đặt bên cạnh, ánh sáng chiếu qua khe cửa, từng chi tiết nhỏ trong phòng đều đang kể chuyện (Visual Storytelling).",
+        "silent visual storytelling, narrative environmental details, symbolic objects from story lore, unspoken emotional narrative, atmospheric setting speaking volumes without words",
+      ),
+      card(
+        "soul-emotion",
+        "🥺 Độ Cảm Động & Chiều Sâu Tâm Lý (Hạnh Hiểu / Thấu Hiểu)",
+        "Khắc họa cảm giác 'hạnh hiểu' — sự thấu hiểu sâu sắc, niềm hạnh phúc lẫn nghẹn ngào, sự đồng cảm không cần lời nói giữa hai tâm hồn. Ánh mắt ướt nhẹ, nụ cười an yên sau sóng gió, cái chạm tay ngập ngừng chứa đựng muôn vàn cảm xúc.",
+        "deep emotional resonance, profound mutual understanding ('hạnh hiểu'), soulful gaze filled with tenderness, cathartic emotional depth, subtle tears of relief, heartfelt connection",
+      ),
+      card(
+        "soul-atmosphere",
+        "🕯️ Khí Quyển & Ánh Sáng Chạm Trái Tim",
+        "Ánh sáng vàng ấm áp áp sát làn da (warm cinematic volumetric lighting), bóng tối mềm mại làm nổi bật đôi mắt biết nói, hạt bụi sáng lơ lửng trong không gian, bầu không khí êm đềm, thiêng liêng và lắng đọng.",
+        "ethereal cinematic lighting, warm golden glow on skin, soft shadow contrast highlighting expressive eyes, floating dust motes, sacred and serene emotional atmosphere",
+      ),
+      card(
+        "soul-guard",
+        "🛡️ Bảo Vệ Chiều Sâu (Tránh Ảnh Vô Hồn / Tránh Đạo Nhái)",
+        "Cam kết bức ảnh có hồn, có chiều sâu tâm lý, tuyệt đối không vẽ nhân vật đơ cứng vô hồn như tượng sáp, tạo ra diện mạo nhân vật mang tính sáng tạo độc lập, không rác chi tiết lộn xộn làm mất tập trung vào cảm xúc chính.",
+        "soulful lifelike expression, prevent stiff robotic poses or lifeless eyes, ensuring transformative originality and bespoke character features, clean emotional focal point, high-art masterpiece quality",
+      ),
+    ],
+  },
+  {
+    id: "bg",
+    icon: "⌑",
+    title: "Nền / Typography / Layout / UI",
+    subtitle: "Background / font / graphic / character card",
+    seed: 7,
+    cards: [
+      card(
+        "background",
+        "Nền background",
+        "Nền hỗ trợ câu chuyện, không cướp spotlight.",
+        "story-driven background, atmospheric environment, symbolic details, not cluttered",
+      ),
+      card(
+        "typography",
+        "Phông chữ / chữ poster",
+        "Title, serif, Y2K, manga speech bubble.",
+        "integrated poster typography, elegant title placement, graphic text elements",
+      ),
+      card(
+        "layout",
+        "Layout poster / card",
+        "Poster, album, character card, Instagram profile.",
+        "poster layout, editorial layout, character card layout, clean UI-inspired layout",
+      ),
+      card(
+        "decor",
+        "Trang trí giao diện",
+        "Khung, panel, sticker, line, icon vẽ bằng code.",
+        "decorative UI frame, soft interface elements, ornate border, clean visual container",
+      ),
+    ],
+  },
+  {
+    id: "color",
+    icon: "◌",
+    title: "Màu Sắc / Ánh Sáng / Bão Hòa",
+    subtitle: "Color palette / saturation / temperature / lighting",
+    seed: 8,
+    cards: [
+      card(
+        "palette",
+        "Bảng màu",
+        "Pastel, gothic, Y2K, cinematic, monochrome.",
+        "controlled color palette, limited palette, harmonious colors, accent color",
+      ),
+      card(
+        "saturation",
+        "Độ bão hòa",
+        "Nhạt mềm, rực vừa, màu trầm, accent nổi.",
+        "low saturation, muted colors, controlled saturation, vivid accent details",
+      ),
+      card(
+        "temperature",
+        "Nhiệt độ màu",
+        "Ấm, lạnh, trung tính, hoài niệm.",
+        "warm color temperature, cool color temperature, warm highlights, cool shadows",
+      ),
+      card(
+        "lighting",
+        "Ánh sáng",
+        "Key light, rim light, backlight, low-key, stage.",
+        "cinematic lighting, soft key light, rim light, backlighting, dramatic shadows",
+      ),
+    ],
+  },
+  {
+    id: "full",
+    icon: "୨ৎ",
+    title: "Tổng Hợp Toàn Bộ Nhân Vật",
+    subtitle: "Reference + story + face + pose + outfit + color + negative",
+    seed: 9,
+    cards: [
+      card(
+        "reference",
+        "Reference Control",
+        "Học hỏi DNA nghệ thuật, TUYỆT ĐỐI không copy nhân vật, ưu tiên 100% cốt truyện.",
+        "reference-inspired visual DNA, zero-identity copying, prioritize narrative accuracy 100%, character profile fidelity",
+      ),
+      card(
+        "story",
+        "Story Priority",
+        "Cốt truyện, timeline, hồ sơ là ưu tiên.",
+        "prioritize narrative accuracy, selected story canon, character profile",
+      ),
+      card(
+        "character",
+        "Character Design",
+        "Mặt, tóc, outfit, khí chất, body language.",
+        "refined character design, expressive face, detailed hair, elegant outfit, strong presence",
+      ),
+      card(
+        "composition",
+        "Composition",
+        "Bố cục, camera, đường thị giác, focal point.",
+        "strong composition, clear focal point, balanced negative space, leading lines",
+      ),
+      card(
+        "render",
+        "Line / Render / Texture",
+        "Nét, lên màu, texture, chất lượng.",
+        "clean delicate lineart, polished rendering, smooth gradients, subtle texture",
+      ),
+      card(
+        "negative",
+        "Negative Prompt",
+        "Prompt tránh lỗi bắt buộc.",
+        errorGuard,
+      ),
+    ],
+  },
+  {
+    id: "supporting_cast_poster",
+    icon: "👥",
+    title: "Poster Dàn Nhân Vật Phụ & NPC Quan Trọng",
+    subtitle:
+      "Dàn nhân vật phụ, NPC quan trọng tôn vinh cặp chính/nhân vật chính trong Poster PR, quảng cáo thương mại kiểu Anime hoặc Điện ảnh nghệ thuật",
+    seed: 26,
+    cards: [
+      card(
+        "supporting-roles",
+        "🎯 Dàn Diễn Viên Phụ & NPC Quan Trọng (Supporting Cast & NPCs)",
+        "Định nghĩa danh sách, vai trò các diễn viên phụ, NPC quan trọng hay quần chúng có chiều sâu câu chuyện bổ trợ cho nhân vật chính.",
+        "promotional movie ensemble, prominent supporting cast, vital background NPCs, dramatic arrangement of minor characters framing the leads, deep worldbuilding cast",
+      ),
+      card(
+        "poster-layout",
+        "📐 Bố Cục Poster PR Thương Mại Hoành Tráng (PR Poster Layout)",
+        "Bố cục poster thương mại quảng bá cực lớn, bìa đĩa Anime hoành tráng hoặc poster phim điện ảnh nghệ thuật đẳng cấp truyền thông.",
+        "commercial PR campaign poster layout, grand promotional movie poster, theatrical key visual, anime movie cover, modern dynamic bento graphic block composition",
+      ),
+      card(
+        "protagonist-spotlight",
+        "✨ Tiêu Điểm Làm Nổi Bật Nhân Vật Chính / Cặp Đôi (Main Star Spotlight)",
+        "Sự sắp xếp bố cục và ánh sáng đặc biệt nhằm làm nổi bật cặp đôi chính hoặc nhân vật chính ở trung tâm, dàn NPC vây quanh làm nền tôn vinh thần thái.",
+        "dramatic hierarchy, majestic spotlight highlighting the main couple at the core center, supporting cast gracefully arranged in shadow or peripheral background, powerful visual depth",
+      ),
+      card(
+        "ref-learning",
+        "✿ Học Hỏi Tỉ Mỉ Từ Nhiều Ảnh Tham Chiếu (Adaptive Multi-Ref Learning)",
+        "Bám sát toàn bộ các ảnh tham chiếu ở mọi vị trí để học hỏi cách sắp đặt nhân vật, ánh sáng kịch tính và bảng màu nghệ thuật, ứng biến hoàn toàn theo cốt truyện gốc của bạn.",
+        "100% zero-skip multi-reference visual DNA learning, masterfully adapting multi-character positioning, color scheme and dramatic cinema style, perfect fidelity to original story lore",
+      ),
+      card(
+        "promo-fashion",
+        "🔤 Trang Phục & Slogan Chữ Nghệ Thuật (Fashion & Branding Slogan)",
+        "Trang phục lộng lẫy thiết kế đồng điệu theo concept chung, kết hợp cùng tiêu đề phim/truyện hoặc slogan quảng bá cách điệu chữ sang trọng (mockup typography).",
+        "theatrical coordinated outfits, luxury promotional costume designs, sleek title typography overlay, commercial marketing slogan, sophisticated brand design overlay",
+      ),
+      card(
+        "poster-guard",
+        "🛡️ Bảo Vệ Chất Lượng Poster Điện Ảnh (Grand Poster Guard)",
+        "Kiểm soát tuyệt đối tỷ lệ giải phẫu của nhiều nhân vật, ánh sáng kịch tính, độ rõ nét của nhân vật phụ, không rác nét, dính hình hay lỗi méo dạng.",
+        "masterpiece promotional art, flawless multi-character proportions, crisp details on background characters, atmospheric volumetric lighting, cinematic color grading, balanced epic composition",
+      ),
+    ],
+  },
+  {
+    id: "ref_adaptation",
+    icon: "🔄",
+    title:
+      "Biến Đổi & Thích Ứng Ảnh Tham Chiếu Nhân Vật (Character Reference Adaptor)",
+    subtitle:
+      "Giữ nguyên đường nét khuôn mặt/nhân vật từ ảnh tham chiếu, nhưng biến đổi hoàn toàn bối cảnh, nền, trang phục bám sát 100% cốt truyện",
+    seed: 27,
+    cards: [
+      card(
+        "adaptation-target",
+        "🎯 Nhân Vật Đích & Đối Tượng Biến Đổi",
+        "Chọn nhân vật cần thích ứng bối cảnh. AI sẽ vẽ đúng nhân vật trong truyện của bạn với vibe từ ảnh tham chiếu.",
+        "character-driven adaptation target, map story character profile to reference visual style, prioritize story identity over reference face",
+      ),
+      card(
+        "adaptation-preserve",
+        "🧬 Truyền Tải Thần Thái & DNA Nghệ Thuật (Transfer Visual DNA)",
+        "Học hỏi đường nét nghệ thuật và thần thái, nhưng áp dụng chính xác theo khuôn mặt và đặc điểm của nhân vật trong cốt truyện.",
+        "transfer visual DNA from reference, adopt artistic aesthetic and mood, apply story-accurate facial features, character profile fidelity, artistic style preservation, not an identity copy",
+      ),
+      card(
+        "adaptation-background",
+        "🌌 Thay Đổi Bối Cảnh & Nền Không Gian (Background Transformation)",
+        "Biến đổi hoàn toàn nền và không gian xung quanh cho phù hợp 100% với bối cảnh truyện: căn phòng, thiên nhiên, ánh sáng hay thời tiết mới.",
+        "complete environmental transformation, scenic transition to new background, atmospheric depth, cinematic setting matching story context perfectly, rich environmental storytelling",
+      ),
+      card(
+        "adaptation-outfit",
+        "👗 Thích Ứng Trang Phục & Phong Cách Mới (Outfit & Styling Adaptation)",
+        "Thay đổi quần áo, trang phục, giáp trụ hoặc phụ kiện cho nhân vật phù hợp với chương truyện mà vẫn tôn lên vóc dáng gốc.",
+        "adapted costume design, new outfit styled for the story event, preserving body proportion, detailed accessories matching the scene, elegant fabric folds",
+      ),
+      card(
+        "adaptation-harmony",
+        "🎨 Đồng Bộ Màu Sắc & Ánh Sáng Nghệ Thuật (Color & Light Harmony)",
+        "Hòa quyện nhân vật gốc vào ánh sáng, bóng tối và bảng màu mới của bối cảnh, tạo ra tác phẩm đồng nhất hoàn hảo.",
+        "harmonious integration of character and environment, matching highlights and shadows, cinematic color temperature, volumetric atmospheric light",
+      ),
+      card(
+        "adaptation-guard",
+        "🛡️ Bảo Vệ Chất Lượng Chuyển Đổi (High-Fidelity Adaptation Guard)",
+        "Cam kết ảnh không bị biến dạng nét mặt, không đơ cứng vô hồn, giữ trọn vẹn hồn cốt của nhân vật và chất lượng điện ảnh nghệ thuật cực cao.",
+        "masterpiece cinematic adaptation, high-fidelity facial consistency, perfectly proportioned, dramatic lighting integration, no distortion, flawless original-inspired render",
+      ),
+    ],
+  },
+  {
+    id: "cinematic_aura",
+    icon: "🎬",
+    title: "Điện Ảnh & Khí Chất Nghệ Thuật",
+    subtitle:
+      "Tôn vinh vóc dáng, đường cong và thần thái quyến rũ trong khung hình điện ảnh",
+    seed: 28,
+    cards: [
+      card(
+        "cine-art",
+        "🎨 Nghệ Thuật & Vibe Điện Ảnh",
+        "Tạo ra những prompt mang tính nghệ thuật cao, ánh sáng và màu sắc đẳng cấp điện ảnh.",
+        "high-end cinematic art, artistic visual vibe, masterpiece lighting, dramatic color grading, professional cinematography",
+      ),
+      card(
+        "cine-curves",
+        "👗 Trang Phục & Đường Cong",
+        "Trang phục được thiết kế tinh tế để tôn lên những đường cong quyến rũ một cách nghệ thuật.",
+        "outfit highlighting body curves, elegant form-fitting attire, sophisticated silhouette, artistic body lines, tasteful alluring design, clothing that accentuates natural curves",
+      ),
+      card(
+        "cine-physique",
+        "🧍 Vóc Dáng & Hình Thể Chuẩn",
+        "Sử dụng các thuật ngữ nhân trắc học an toàn để mô tả hình thể cân đối, vóc dáng chuẩn.",
+        "well-balanced anthropometric physique, standard figure, athletic yet graceful body, perfectly proportioned anatomy, healthy aesthetic physique, balanced body composition",
+      ),
+      card(
+        "cine-aura",
+        "✨ Khí Chất & Thần Thái Quyến Rũ",
+        "Chuyển sự chú ý sang thần thái quyến rũ: Hấp dẫn, quyến rũ, có sức hút, mặn mà/đằm thắm.",
+        "magnetic charisma, seductive elegance, alluring mature beauty ('mặn mà'), sophisticated charm, powerful attractive aura, graceful presence, mature and captivating charm",
+      ),
+    ],
+  },
+  {
+    id: "reference_visual_intelligence",
+    icon: "🎨",
+    title: "Trí Tuệ Thị Giác Từ Ảnh Tham Chiếu",
+    subtitle: "Phân tích DNA nét vẽ / Kỹ thuật render / Bố cục thị giác",
+    seed: 20,
+    cards: [
+      card(
+        "reference_visual_intelligence",
+        "Trí Tuệ Thị Giác Từ Ảnh Tham Chiếu",
+        "Phân tích chuyên sâu: 1. Nét vẽ (line-art), 2. Khuôn mặt/mắt/tóc, 3. Kỹ thuật màu/render, 4. Bố cục, 5. Trung tâm/đường thị giác, 6. Thiết kế đồ họa/UI (nếu có), 7. Quy tắc chuyển hóa nghệ thuật từ ảnh tham chiếu vào nhân vật cốt truyện mà không sao chép.",
+        "visual intelligence analysis, style DNA extraction, rendering physics, composition geometry, visual flow, design logic integration",
+      ),
+    ],
+  },
+  {
+    id: "canva_story_visual_series",
+    icon: "📐",
+    title: "BỘ THIẾT KẾ CANVA CỐT TRUYỆN",
+    subtitle:
+      "Trang bìa, Tóm tắt cốt truyện, Hồ sơ nhân vật, Thiết lập thế giới, Quan hệ nhân vật & Trang kết",
+    seed: 29,
+    cards: [
+      card(
+        "canva-series-cover",
+        "👑 Bìa Series / Poster Chính",
+        "Thiết kế trang bìa hoặc Poster chính cho Series Canva quảng bá cốt truyện, làm nổi bật tiêu đề lớn, logo/biểu tượng của cặp đôi, bối cảnh đặc trưng, và bố cục đồ họa cực kỳ ấn tượng, chuyên nghiệp.",
+        "series cover design, canva promotional poster, bold typographic title, main story logo, dramatic graphic layout, premium novel cover aesthetic",
+      ),
+      card(
+        "canva-story-premise",
+        "📖 Tóm Tắt Cốt Truyện & Premise",
+        "Thiết kế trang tóm tắt cốt truyện Canva với bố cục phân chia thông minh (bento grid, các khối chữ), lồng ghép các từ khóa cốt lõi (keywords), dòng chữ tóm tắt (synopsis), câu thoại mở đầu kịch tính, và các chi tiết đồ họa đại diện cho xung đột chính.",
+        "story premise infographic, bento grid layout, key plot points visual, synopsis typography blocks, narrative graphic elements, stylized text placeholders",
+      ),
+      card(
+        "canva-character-profile",
+        "👤 Hồ Sơ Nhân Vật Chi Tiết",
+        "Thiết kế trang giới thiệu hồ sơ nhân vật (Profile Card / About Me) trong Canva, gồm khung hình nhân vật sắc nét, các hộp thoại thông tin (họ tên, tuổi, tính cách, sở thích), thanh tiến trình chỉ số RPG, và các sticker trang trí đặc trưng.",
+        "character info card, RPG stats layout, structured profile design, text boxes, decorative portrait frames, aesthetic character profile sheet",
+      ),
+      card(
+        "canva-lore-setting",
+        "🌌 Thiết Lập Thế Giới & Lore",
+        "Thiết kế trang thế giới truyện/lore trong Canva, mô tả bối cảnh không gian đặc trưng (vũ trụ, học đường, cung điện, phố cổ), bản đồ thu nhỏ cách điệu, các biểu tượng hoa văn địa danh cổ kính hoặc công nghệ cao, và các mốc thời gian lịch sử quan trọng.",
+        "world lore graphics, environment showcase, conceptual setting design, timeline infographics, stylized map elements, aesthetic fantasy/sci-fi worldbuilding layout",
+      ),
+      card(
+        "canva-relationships-hook",
+        "🔗 Mối Quan Hệ & Câu Lure (Hook)",
+        "Thiết kế trang biểu đồ mối quan hệ giữa các nhân vật (Relationship Chart) hoặc trang câu khách (Hook / Quote) với các đường kết nối vẽ tay mộc mạc, biểu tượng trái tim/mũi tên đan xen, cùng câu thoại định tình hay trích dẫn đắt giá nhất gây tò mò cho độc giả.",
+        "relationship chart layout, visual network map, romantic connection diagrams, striking story quote design, emotional hook typography, stylized relational arrows",
+      ),
+      card(
+        "canva-end-page",
+        "🚪 Trang Kết & Call to Action",
+        "Thiết kế trang kết thúc của bộ ảnh Canva quảng bá truyện, hiển thị lời kêu gọi hành động (Call to Action) như: 'Đón xem chương tiếp theo...', 'Hãy theo dõi hành trình của chúng mình...', biểu tượng nút bấm hoặc logo nhỏ xinh xắn kết màn, bố cục trang nhã, lắng đọng.",
+        "end screen layout, call to action graphic, book trailer end frame, follow button icons, clean elegant finish layout, cinematic story closing spread",
+      ),
+    ],
+  },
+  {
+    id: "canva_presentation",
+    icon: "📊",
+    title: "CANVA PRESENTATION",
+    subtitle: "10 Slide Canva Nối Tiếp",
+    seed: 30,
+    cards: [
+      card(
+        "slide-1",
+        "Slide 1: Mở Đầu (Title/Hook)",
+        "Slide đầu tiên giới thiệu chủ đề mạnh mẽ",
+        "slide 1 title hook opening intro",
+      ),
+      card(
+        "slide-2",
+        "Slide 2: Đặt Vấn Đề (Problem/Context)",
+        "Trình bày vấn đề hoặc bối cảnh",
+        "slide 2 context problem setting",
+      ),
+      card(
+        "slide-3",
+        "Slide 3: Giới Thiệu Nhân Vật (Character/Subject)",
+        "Nhân vật chính",
+        "slide 3 character introduction focus",
+      ),
+      card(
+        "slide-4",
+        "Slide 4: Diễn Biến 1 (Development A)",
+        "Điểm phát triển đầu tiên",
+        "slide 4 plot development action",
+      ),
+      card(
+        "slide-5",
+        "Slide 5: Cao Trào/Xung Đột (Climax/Conflict)",
+        "Điểm nhấn trung tâm của câu chuyện",
+        "slide 5 conflict climax turning point",
+      ),
+      card(
+        "slide-6",
+        "Slide 6: Phân Tích Chi Tiết (Deep Dive)",
+        "Slide đi sâu vào một khía cạnh",
+        "slide 6 detail analysis deep dive",
+      ),
+      card(
+        "slide-7",
+        "Slide 7: Thông Điệp/Ý Nghĩa (Message/Quote)",
+        "Trích dẫn đắt giá, thông điệp lõi",
+        "slide 7 quote message core value",
+      ),
+      card(
+        "slide-8",
+        "Slide 8: Diễn Biến 2 (Development B)",
+        "Phần sau cao trào",
+        "slide 8 aftermath resolution flow",
+      ),
+      card(
+        "slide-9",
+        "Slide 9: Tổng Kết (Summary/Vision)",
+        "Tóm tắt lại hành trình",
+        "slide 9 summary wrap up vision",
+      ),
+      card(
+        "slide-10",
+        "Slide 10: Call to Action (Outro)",
+        "Kết thúc và kêu gọi hành động",
+        "slide 10 outro call to action end",
+      ),
+    ],
+  },
+];
+
+export const rooms: Room[] = RAW_ROOMS.map(r => {
+  const cards = r.cards.map(c => {
+    let extraErrorGuard = "";
+    const lowerId = c.id.toLowerCase();
+    
+    if (lowerId.includes("line") || lowerId.includes("style") || lowerId.includes("art") || lowerId.includes("render")) {
+      extraErrorGuard = "\n⚠️ CHỐNG LỖI MỸ THUẬT: Tuyệt đối tránh nét vẽ AI nhạt nhòa bệt màu, không nét vẽ mờ đục rác nét làm loãng kết cấu. Khóa nét mực Deliberate Ink sắc sảo, dải bóng đổ có phân cấp chiều sâu quang học.";
+    } else if (lowerId.includes("face") || lowerId.includes("eye") || lowerId.includes("beauty") || lowerId.includes("makeup") || lowerId.includes("expression") || lowerId.includes("soul")) {
+      extraErrorGuard = "\n⚠️ CHỐNG LỖI GƯƠNG MẶT: Tuyệt đối tránh mắt đơ nhựa bóng bẩy vô hồn, mắt lác hay trợn ngược lệch trục, tránh da mặt sáp nến bẹt phẳng thiếu khối xương gò má và hốc mắt cơ học. Khóa cấu trúc hốc mắt, dải lông mi sắc mảnh, đồng tử lấp lánh thần sắc tinh anh.";
+    } else if (lowerId.includes("pose") || lowerId.includes("gesture") || lowerId.includes("hand") || lowerId.includes("action") || lowerId.includes("body")) {
+      extraErrorGuard = "\n⚠️ CHỐNG LỖI GIẢI PHẪU: Tuyệt đối tránh lỗi giải phẫu tay chân biến dị gãy gập phi thực tế, ngón tay mọc thừa thiếu hay dính chùm, dáng đứng sượng sùng cứng ngắc như tượng sáp. Khóa bàn tay 5 ngón thuôn dài, khớp xương mềm mại chính xác tuyệt đối.";
+    } else if (lowerId.includes("hair")) {
+      extraErrorGuard = "\n⚠️ CHỐNG LỖI VẼ TÓC: Tuyệt đối tránh tóc bệt rít như dính keo hoặc sợi tóc rời rạc bay lộn xộn vô tội vạ làm loãng đường thị giác. Khóa các mảng tóc (hair chunks) hình học rành mạch, dải highlight bắt sáng mịn màng có nhịp điệu.";
+    } else if (lowerId.includes("outfit") || lowerId.includes("cloth") || lowerId.includes("fashion") || lowerId.includes("dress")) {
+      extraErrorGuard = "\n⚠️ CHỐNG LỖI TRANG PHỤC: Tuyệt đối tránh vải phẳng lì vô hồn không có nếp gấp động lực học vật lý. Khóa chặt nếp nhăn vật lý (fold tension), nếp gấp rủ tự nhiên của tà áo, độ dầy của chất liệu vải lụa, da, hay len rách.";
+    } else if (lowerId.includes("composition") || lowerId.includes("perspective") || lowerId.includes("camera") || lowerId.includes("flow") || lowerId.includes("layout")) {
+      extraErrorGuard = "\n⚠️ CHỐNG LỖI BỐ CỤC: Tuyệt đối tránh bố cục phẳng dẹt tầm thường đặt nhân vật chính giữa khung một cách vô lý buồn tẻ. Khóa chặt đường chéo động kịch tính, dải dẫn dắt ánh nhìn (leading lines) dẫn dắt mắt người xem, và radial flow.";
+    } else if (lowerId.includes("background") || lowerId.includes("setting") || lowerId.includes("scene")) {
+      extraErrorGuard = "\n⚠️ CHỐNG LỖI BỐI CẢNH: Tuyệt đối tránh chi tiết bối cảnh thừa thãi lộn xộn bệ rạc, mờ nhòe bệt hình cướp spotlight của cặp nhân vật chính.";
+    } else {
+      extraErrorGuard = "\n⚠️ CHỐNG LỖI THIẾT KẾ: Cam kết triệt tiêu biến dạng hình học, sai lệch tỷ lệ cơ thể và lỗi nhiễu hạt bệt màu ở bề mặt.";
+    }
+
+    return {
+      ...c,
+      instruction: c.instruction + extraErrorGuard
+    };
+  });
+
+  if (!cards.some(c => c.id === "supreme_command")) {
+    cards.unshift(supremeCommandCard);
+  }
+  if (!cards.some(c => c.id === "beautiful_hair_art")) {
+    cards.splice(1, 0, beautifulHairCard);
+  }
+  if (!cards.some(c => c.id === "expressive_eye_art")) {
+    cards.splice(2, 0, expressiveEyeCard);
+  }
+  if (!cards.some(c => c.id === "face_aura_art")) {
+    cards.splice(3, 0, faceAuraCard);
+  }
+  if (!cards.some(c => c.id === "body_scale_placement_art")) {
+    cards.splice(4, 0, bodyScalePlacementCard);
+  }
+  if (!cards.some(c => c.id === "reference_visual_translation")) {
+    cards.splice(5, 0, referenceVisualTranslationCard);
+  }
+  if (!cards.some(c => c.id === "cinematic_visual_art")) {
+    cards.splice(6, 0, cinematicVisualCard);
+  }
+  if (!cards.some(c => c.id === "mistake_prevention_card")) {
+    cards.push(mistakePreventionCard);
+  }
+  if (!cards.some(c => c.id === "error_guard_analysis")) {
+    cards.push(errorGuardCard);
+  }
+  return { ...r, cards };
+});

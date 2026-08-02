@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { getHomeWallpaper, setHomeWallpaper } from "../lib/storage";
 import { compressImageFile } from "../utils/imageCompressor";
 import { logout, auth } from "../lib/firebase";
+import PinkMatchaFullscreenButton from "../components/PinkMatchaFullscreenButton";
 
 type Props = {
   active: boolean;
@@ -175,6 +176,7 @@ export default function HomeScreen({ active, onOpenApp, time, date }: Props) {
             <span>{date}</span>
           </div>
           <div className="home-actions">
+            <PinkMatchaFullscreenButton />
             <button className="icon-btn" onClick={handleLogout} title="Đăng xuất">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>

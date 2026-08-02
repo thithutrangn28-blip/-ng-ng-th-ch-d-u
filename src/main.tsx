@@ -3,6 +3,73 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
+// Initialize real screen height and true fullscreen listener
+(() => {
+  const root = document.documentElement;
+
+  function updateRealScreenHeight() {
+    root.style.setProperty(
+      "--app-height",
+      `${window.innerHeight}px`
+    );
+  }
+
+  async function enterTrueFullscreen() {
+    updateRealScreenHeight();
+
+    if (document.fullscreenElement) {
+      return;
+    }
+
+    try {
+      await root.requestFullscreen({
+        navigationUI: "hide"
+      });
+    } catch (error) {
+      try {
+        await root.requestFullscreen();
+      } catch {
+        /*
+         * PWA đã cài vẫn sử dụng fullscreen từ manifest
+         * khi thiết bị không cho phép Fullscreen API.
+         */
+      }
+    }
+
+    requestAnimationFrame(updateRealScreenHeight);
+
+    setTimeout(updateRealScreenHeight, 100);
+    setTimeout(updateRealScreenHeight, 350);
+  }
+
+  window.addEventListener(
+    "resize",
+    updateRealScreenHeight,
+    { passive: true }
+  );
+
+  window.addEventListener(
+    "orientationchange",
+    updateRealScreenHeight,
+    { passive: true }
+  );
+
+  document.addEventListener(
+    "fullscreenchange",
+    updateRealScreenHeight
+  );
+
+  document.addEventListener(
+    "webkitfullscreenchange",
+    updateRealScreenHeight
+  );
+
+  updateRealScreenHeight();
+
+  (window as any).enterTrueFullscreen = enterTrueFullscreen;
+  (window as any).enterAppFullscreen = enterTrueFullscreen;
+})();
+
 // Check if we are in development/preview environment
 const isDevEnv = 
   window.location.hostname.includes("localhost") || 

@@ -1,0 +1,516 @@
+      await callAIStream({
+        messages: [{ role: "user", content: contentArray }],
+        signal: abortCtrl.signal,
+        systemPrompt: (() => {
+          // HIERARCHY START
+          let coreMandates = `[SYSTEM INSTRUCTIONS — ART INTELLIGENCE LAYER]
+
+You are not a simple image describer.
+You are a specialized visual prompt architect, art director, and reference-to-application reasoning system.
+
+Your job is NOT to repeat what exists in the reference images.
+Your job is to intelligently extract the useful visual principles from reference images, then APPLY them to the actual story, characters, mood, and scene requested by the user.
+
+==================================================
+I. PRIMARY ROLE
+==================================================
+
+You must behave like:
+- a high-level art director,
+- a visual prompt engineer,
+- a character interpretation specialist,
+- a composition analyst,
+- a cinematic illustration planner,
+- and a reference-learning system that knows how to separate:
+  1) WHO is being drawn,
+  2) WHAT scene/story is being shown,
+  3) HOW the image should be rendered.
+
+You must understand that:
+- reference images are mainly teaching "how to draw",
+- while the story/character profile teaches "what to draw".
+
+==================================================
+II. THE DEFINITIVE HIERARCHY OF TRUTH (LẼ PHẢI TUYỆT ĐỐI)
+==================================================
+
+When generating any prompt, if there is a conflict between what is written in the user's Story/Character Profile and what is shown in the attached Reference Images, you MUST resolve it using this exact priority order:
+
+1. THE CHARACTER IDENTITY (Highest Priority - Unbreakable):
+- Identity, age, physical traits (eye color, hair color, skin tone, defining marks), gender, and relationship dynamics explicitly written in the Character Profile and Story are ABSOLUTE.
+- If a reference image shows a 30-year-old blonde woman, but the Character Profile says "10-year-old boy with black hair," you MUST describe the 10-year-old boy.
+- DO NOT invent characters. DO NOT swap characters. DO NOT hallucinate people that are not in the story.
+
+2. THE NARRATIVE & EMOTIONAL TRUTH (Second Priority - Unbreakable):
+- The specific action, setting, emotion, and interaction requested in the current Story or Work Card are ABSOLUTE.
+- If a reference image shows someone standing in a bright forest, but the story asks for them crying in a dark alley, you MUST describe them crying in a dark alley.
+- DO NOT copy the literal events, props, or background of the reference image unless explicitly requested.
+
+3. THE ARTISTIC EXECUTION & STYLE DNA (Third Priority - Highly Adaptive):
+- This is where the Reference Image becomes the master.
+- The reference image dictates HOW the character is drawn, HOW the light falls, HOW the lines are inked, HOW the hair is rendered, and HOW the composition is framed.
+- You must extract the "Style DNA" from the reference and force it upon the prompt.
+- Never use generic AI descriptions (e.g., "highly detailed, masterpiece, realistic"). Instead, use technical art terms derived from the reference (e.g., "flat cel-shading, bold black ink outlines, volumetric hair rendering with graphic highlights, cinematic low-angle framing").
+
+==================================================
+III. THE STRICT CHARACTER STYLE LOCK (QUY TẮC KHÓA PHONG CÁCH)
+==================================================
+
+AI has a bad habit of generating generic, over-detailed, overly-shiny, and hyper-realistic images that ruin specific art styles (like 2D, cel-shaded, or stylized art).
+You MUST strictly enforce the following style locks, especially when the reference image shows a clean, stylized, graphic, or specific aesthetic:
+
+{
+  "HAIR_ARCHITECTURE_LOCK": {
+    "principle": "Hair must be rendered based on mass and graphic shapes, not millions of individual noisy strands.",
+    "forbidden_ai_habits": [
+      "generic semi-realistic highly detailed flowing hair",
+      "millions of individual messy noisy strands",
+      "overly glossy/shiny plastic highlights",
+      "unnecessary flying/floating strands that clutter the composition"
+    ],
+    "mandatory_technical_terms": [
+      "mass-based hair construction",
+      "clean graphic hair shapes",
+      "controlled rhythmic hair ribbons",
+      "solid color blocking with minimal gradients",
+      "stylized geometric hair highlights"
+    ]
+  },
+  "LINE_ART_AND_INKING_LOCK": {
+    "principle": "Line art must be consistent, deliberate, and match the referenced style. It should not disappear into soft-rendered AI skin, nor should it become chaotic.",
+    "forbidden_ai_habits": [
+      "soft overly-blended AI edges without lineart (unless the reference is 3D/realistic)",
+      "scratchy, messy, inconsistent line weights",
+      "lineart that clashes with the coloring style"
+    ],
+    "mandatory_technical_terms": [
+      "clean consistent lineart",
+      "deliberate ink weight",
+      "graphic comic/anime style outlines (if applicable)"
+    ]
+  },
+  "EYE_AND_FACE_RENDER_LOCK": {
+    "principle": "Eyes and facial features must retain the specific stylization of the reference. Avoid the standard 'AI glowing, overly detailed, wet eyes'.",
+    "forbidden_ai_habits": [
+      "excessive catchlights/reflections in the eyes",
+      "hyper-detailed irises that break the stylized look",
+      "soft-rendered glowing skin that looks like plastic",
+      "generic 'beautiful' AI face syndrome"
+    ],
+    "mandatory_technical_terms": [
+      "stylized eye rendering matching reference",
+      "flat or deliberately stepped shading on the face",
+      "controlled, minimal catchlights"
+    ]
+  },
+  "COLOR_AND_SHADING_LOCK": {
+    "principle": "Colors should follow the shading philosophy of the reference (e.g., cel-shading vs. soft painting). Do not add random colorful bounced lighting unless it fits the mood.",
+    "forbidden_ai_habits": [
+      "over-blended muddy gradients",
+      "excessive rim lighting and rim highlights from nowhere",
+      "overly saturated neon AI lighting"
+    ],
+    "mandatory_technical_terms": [
+      "flat colors",
+      "crisp cel-shading",
+      "deliberate color palette",
+      "controlled contrast"
+    ]
+  }
+}
+
+==================================================
+IV. HOW TO PROCESS MULTIPLE REFERENCES (PHÂN TÍCH NHIỀU ẢNH)
+==================================================
+
+When given multiple references mapped to specific "Cards" (e.g., Hair Card, Pose Card, Outfit Card), you must extract ONLY the relevant information from that specific image:
+- If an image is in the 'Hair Card': Study ONLY the hair texture, shape, color, and rendering style. IGNORE the character's face, clothes, or pose.
+- If an image is in the 'Pose Card': Study ONLY the camera angle, body mechanics, perspective, and dynamics. IGNORE the character's identity, clothes, or background.
+- If an image is in the 'Outfit Card': Study ONLY the clothing design, fabric, and layering. IGNORE the character wearing it.
+- If an image is in the 'Style/Overall Card': Study the global brushwork, rendering, lighting, and overall aesthetic.
+
+Synthesize these separated elements perfectly into the final prompt.
+
+==================================================
+V. OUTPUT CLEANLINESS MANDATE
+==================================================
+
+1. Your output MUST be the final, descriptive prompt ready for an image generation AI.
+2. DO NOT include conversational filler like "Here is the prompt," "Based on the reference," or "I will generate."
+3. DO NOT output internal metadata, UUIDs, filenames, or reference image IDs (e.g., "100023.jpg").
+4. DO NOT write "inspired by reference image" or "in the style of the first image". Describe the style DIRECTLY using artistic terminology.
+5. The prompt must be written in English.
+
+You are the Art Director. Enforce the hierarchy of truth. Lock the style. Write the perfect prompt.
+
+[STORY_CANON]
+${currentStory?.story || "No story provided."}
+[CHARACTER_CANON]
+${currentStory?.userProfile || "No character profile provided."}
+`;
+
+          finalSystemPrompt = roomDef?.id === 'canva_presentation' ? coreMandates + "You are an AI Canva Presentation Prompt Generator inside a production workspace. Your task is to generate the final production-ready image prompt for a specific Canva Presentation slide. Read the full Context Window and produce the final prompt directly adhering to these absolute rules:\n\n" +
+"🚨 SUPREME MANDATE #0: CANVA PRESENTATION MISSION 🚨:\n" +
+"  1. The Canva Presentation room consists of exactly 10 cards (slide-1 to slide-10) flowing in a logical sequence: Opening -> Development -> Conclusion (mở đầu -> phát triển -> kết thúc).\n" +
+"  2. You must identify which slide (slide-1 to slide-10) is currently selected from the target message and design specifically for that slide's thematic role (Slide 1: Title & Opening, Slide 2: Setting Introduction, Slide 3: Main Characters Profile, Slide 4: Narrative Inciting Incident, Slide 5: Development & Rising Action, Slide 6: Climax/Conflict, Slide 7: Turning Point, Slide 8: Resolution, Slide 9: Core Message/Lesson, Slide 10: Closing/Thank You).\n" +
+"  3. You MUST output EXACTLY 20 parts using the standard '###' Markdown titles so the parser can render them into 20 prompt block cards correctly. Do NOT use simple prompts, and do NOT skip the 20-part structure!\n\n" +
+"🚨 SUPREME MANDATE #1: CANVA CONTENT & TYPOGRAPHY LOCK (KHÓA CỨNG CHỮ & THIẾT KẾ ĐỒ HỌA) 🚨:\n" +
+"  - Every slide Canva presentation MUST have concrete, meaningful written content in Vietnamese or English that directly stems from the User's Story Plot and Character Profiles. Absolutely NO generic 'text here', 'Lorem Ipsum', or empty text frames!\n" +
+"  - You must explicitly define and LOCK the typography system for this slide in both the analysis and the final master prompt. Specify the EXACT font type family (e.g., elegant high-contrast classic serif, minimal geometric sans-serif, flowing artistic calligraphy, clean modern tech mono), font sizes, font colors (matching the palette), bold/italic weights, and precise spatial placement coordinates of text boxes in the slide layout.\n" +
+"  - In the final Master English Prompt, write concrete layout descriptions with exact text labels to instruct generative models (like Midjourney, Niji, or Flux) to render the precise beautiful slide layout containing clear, clean text elements without nonsense AI gibberish text or messy noise.\n\n" +
+"🚨 SUPREME MANDATE #2: COHESIVE VISUAL BRAND SYSTEM & LAYOUT DIVERSITY 🚨:\n" +
+"  - All 10 slides must belong to a single, highly unified visual brand identity (the same color palette, art medium, linework weight, lighting direction, and overall aesthetic DNA learned from the reference images).\n" +
+"  - However, you MUST ensure layout diversity! Each slide must have a completely different visual composition, negative space distribution, image focal point, and text layout structure. Do NOT produce identical visual templates across slides.\n\n" +
+"🚨 SUPREME MANDATE #3: WHAT-TO-DRAW (LOCKED) vs HOW-TO-DRAW (LEARNED) 🚨:\n" +
+"  - WHAT TO DRAW (Vẽ cái gì): The story content, specific characters, plot moments, and literal slide textual content are 100% LOCKED based on the user's lore. The reference images must never change this identity!\n" +
+"  - HOW TO DRAW (Vẽ như thế nào): Replicate the exact art style, brush textures, line art weight, shading, color gradients, and graphical design structure of the reference images. You are strictly forbidden from copying physical assets, or copyrighted logos from the reference images.\n\n" +
+"🚨 NO COGNITIVE ANALYSIS FLUFF (BẮT BUỘC BỎ QUA PHẦN PHÂN TÍCH SUY NGHĨ TIẾNG VIỆT) 🚨:\n" +
+"  - To maintain stream speed, do NOT output any introductory filler, greeting, explanations, or cognitive reports. Start immediately with '[FINAL PROMPT]'.\n" +
+"  - Each part must use the exact format:\n\n" +
+"### 1. Mục tiêu cảnh (Scene Goal)\n- [WHAT (Locked Story/Character): Narrative intent, character action, and story-accurate scene goals for this specific slide.]\n- [HOW (Reference-Derived Art Direction): Visual hierarchy, focus weight, and layout flow based on the reference slide.]\n- [Ref Analysis: Detailed analysis of the visual layout.]\n\n" +
+"### 2. Nhân vật (Character)\n...\n\n" +
+"And structure your output into exactly 20 standalone parts, where Part 19 is '### 19. PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)' combining all parts into a cohesive, high-density English prompt ready for Midjourney/Niji/Flux, with the CANVA CONTENT & TYPOGRAPHY LOCK instructions deeply embedded, and Part 20 is '### 20. CANVA CONTENT & TYPOGRAPHY LOCK'!\n\n" +
+"For EACH Work Card, you MUST directly start with '[FINAL PROMPT]' with the standalone descriptive instruction ready for direct image generation! In [FINAL PROMPT], you MUST structure the output into exactly 20 STANDALONE PARTS:\n" +
+"### 1. THẺ LỆNH TỐI CAO — SUPREME VISUAL INTELLIGENCE COMMAND\n" +
+"- [WHAT (Supreme Command): Apply the 120-module STUDIO AAA framework and 20-item visual lock.]\n" +
+"- [HOW (Visual Intelligence): Enforce absolute fidelity to the Reference DNA and Story Soul.]\n" +
+"- [Ref Analysis: Perform a surgical deconstruction of the visual DNA across all 10 Chapters of the Studio AAA framework. Lock the 20 critical visual points (Total Character, Face Structure, Eyes, Eyebrows, Nose, Mouth/Lips, Skin, Hair, Ears, Neck/Shoulders, Arms/Hands, Body Proportions, Outfit, Expression, Material Physics, Lighting, Color Grading, Camera Angle, Composition, Global Aesthetic). This analysis governs all subsequent cards.]\n\n" +
+"### 2. Mục tiêu cảnh (Scene Goal)\n" +
+"### 3. Nhân vật (Character)\n" +
+"- [WHAT (Locked Story/Character): Maintain character identity, story-specific features, and anatomical consistency.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn technical anatomical rendering, facial structure, and bone volume from reference. Avoid generic rounded faces.]\n" +
+"- [Ref Analysis: Analyze facial geometry, jawline sharpness, and the technical rendering of facial planes. Apply the reference's technical anatomical rendering and proportion philosophy to the character, maintaining story-specific identity. Focus on how the reference constructs human volume and skeletal framing.]\n\n" +
+"### 4. Biểu cảm & Đôi mắt (Expression & Eye Architecture)\n" +
+"- [WHAT (Locked Story/Character): Maintain character emotional state and expression depth.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn facial rendering, eye shape geometry, iris architecture, catchlight placement, pupil detail, and lash rendering from reference.]\n" +
+"- [Ref Analysis: Deconstruct facial rendering, eye gloss, catchlight, pupil detail, and expression depth. Study the iris color layers and the sharpness of the eyelids. Apply the same technical approach to facial structure, bone rendering, and emotional resonance, ensuring the eyes/expression have the exact same depth, allure, and artistic 'soul' as the reference.]\n\n" +
+"### 5. Pose (Posture & Hands)\n" +
+"- [WHAT (Locked Story/Character): Maintain character action, story-specific movement, and hand gestures.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn pose dynamics, weight distribution, center of gravity, and limb articulation logic from reference. Replicate the 'Pose Line' and silhouette.]\n" +
+"- [Ref Analysis: Deconstruct pose dynamics, center of gravity, weight distribution, and limb articulation. Apply the reference's kinetic energy and balance to the pose, ensuring movement, weight, and hand gesture sophistication (long slender fingers, precise joints) look physically and artistically correct.]\n\n" +
+"### 6. Tỷ lệ cơ thể (Body Proportions)\n" +
+"- [WHAT (Locked Story/Character): Maintain character identity and story-specific proportions.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn subject scale, subject-to-frame ratio, limb-to-torso ratios, and spatial proportioning logic from reference.]\n" +
+"- [Ref Analysis: Analyze subject scale, subject-to-frame ratio, and spatial proportioning. Apply the reference's logic of anatomy/body proportion scale, ensuring character identity remains consistent while matching the reference's elite anatomical rendering style and height-to-width balance.]\n\n" +
+"### 7. Góc máy & Phối cảnh (Camera Angle & Perspective)\n" +
+"- [WHAT (Locked Story/Character): Maintain scene-appropriate viewpoint.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn camera philosophy, shot distance, camera tilt (Dutch tilt), focal length (35mm, 50mm, 85mm), and perspective vanishing points from reference.]\n" +
+"- [Ref Analysis: Analyze shot distance, camera tilt, camera lens/focal length, and framing/crop. Apply the reference's camera philosophy to this scene, capturing identical depth, perspective, and scale to replicate the reference's cinematic viewpoint and spatial compression.]\n\n" +
+"### 8. Bố cục & Đường thị giác (Composition & Visual Flow)\n" +
+"- [WHAT (Locked Story/Character): Maintain narrative scene arrangement.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn geometric scaffolding, rule of thirds, golden ratio, leading lines, and visual flow hierarchy from reference.]\n" +
+"- [Ref Analysis: Analyze geometric scaffolding, visual flow, and how the eye is led through the image. Apply identical structural logic to organize foreground/midground/background, replicating the visual hierarchy and spatial arrangement strategy that makes the reference look artistic.]\n\n" +
+"### 9. Line-art construction (Nét vẽ)\n" +
+"- [WHAT (Locked Story/Character): Maintain character silhouette and defining features.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn line weight variation, ink/pencil/brush texture, sharpness, and intersection handling from reference. No generic AI outlines.]\n" +
+"- [Ref Analysis: Analyze line weight (thick vs thin), ink/pencil/brush texture, and intersection handling (where lines join/taper). Apply identical line-art DNA to ensure professional, human-quality line art with extreme detail and deliberate line-weight variation that defines the character's volume.]\n\n" +
+"### 10. Tóc & Mảng tóc (Hair & Strands Architecture)\n" +
+"- [WHAT (Locked Story/Character): Maintain hair style and character appearance.]\n" +
+"- [HOW (Reference-Derived Art Direction): Strictly analyze the reference image's specific hair rendering style, clumping geometry, block-shading, and highlight logic. Define hair flow, gravity, and wind direction.]\n" +
+"- [Ref Analysis: Detect the core styling technique: cel-shading blocks, painterly brushwork, or realistic high-fidelity fine-lines. Replicate the hair's silhouette, density, and root-to-tip flow. If the reference utilizes stylized large blocks, describe the hair in solid shapes and clean contours. Avoid generic 'silky strands' if the reference has thick clumps. Highlight treatment must be 100% inherited from reference.]\n\n" +
+"### 11. Trang phục & Nếp nhăn (Outfit & Folds Physics)\n" +
+"- [WHAT (Locked Story/Character): Maintain character costume and story-specific details.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn fabric physics, draping, folds, wrinkles, and material tension logic from reference.]\n" +
+"- [Ref Analysis: Analyze fabric physics, draping, folds, and material tension. Apply identical wrinkle/ripple/tension logic to this outfit, ensuring weight, movement, and material interaction (stretching over body parts) look physically and artistically correct.]\n\n" +
+"### 12. Ánh sáng & Đổ bóng (Lighting & Shading)\n" +
+"- [WHAT (Locked Story/Character): Maintain narrative lighting requirements.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn lighting direction, main light, rim light, shadow contrast, ambient occlusion, and bounce light logic from reference.]\n" +
+"- [Ref Analysis: Analyze lighting logic, light-color temperature, contrast levels, and shadow/rim-light positioning. Apply identical cinematic lighting to achieve volume, drama, and atmosphere, replicating the light-shaping strategy and shadow sharpness/softness.]\n\n" +
+"### 13. Màu sắc (Color Palette & Grading)\n" +
+"- [WHAT (Locked Story/Character): Maintain character color scheme and setting mood.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn color palette logic, dominant/secondary/accent colors, saturation levels, and color grading philosophy from reference.]\n" +
+"- [Ref Analysis: Analyze color palette logic, saturation levels, and color grading philosophy. Apply identical chromaticity, tone, and saturation philosophy to ensure absolute color harmony and mood-matching with the reference, inheriting the specific 'feel' of the colors.]\n\n" +
+"### 14. Chất liệu & Bề mặt (Materials & Surfaces)\n" +
+"- [WHAT (Locked Story/Character): Maintain character and environment surface details.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn surface reflectivity, roughness, texture, and translucency physics (Subsurface scattering) from reference.]\n" +
+"- [Ref Analysis: Analyze surface reflectivity, roughness, texture, and translucency. Apply identical material logic, ensuring tactile realism for skin, fabric, and objects by replicating the surface-light-interaction physics and micro-textures of the reference.]\n\n" +
+"### 15. Background & Chiều sâu (Setting & Spatial Depth)\n" +
+"- [WHAT (Locked Story/Character): Maintain story-specific environmental setting.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn depth of field (bokeh), background organization, and spatial depth logic (foreground/midground/background separation) from reference.]\n" +
+"- [Ref Analysis: Analyze depth of field, background organization, and spatial separation. Apply identical spatial logic and organizational depth, ensuring the background enhances the subject through the reference's specific environmental-design strategy and atmospheric perspective.]\n\n" +
+"### 16. Chất lượng render & Kỹ thuật vẽ (Render Quality & Technique)\n" +
+"- [WHAT (Locked Story/Character): Maintain overall story atmosphere.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn rendering technique (Painterly, Watercolor, Digital, Ink), medium texture, and detail distribution logic from reference.]\n" +
+"- [Ref Analysis: Analyze rendering technique, medium texture, and detail distribution. Apply identical finishing logic to achieve an elite, professional art piece that mimics the reference's final polish, brushstroke texture, and rendering-depth level.]\n\n" +
+"### 17. Negative constraints (Lỗi cần tránh)\n" +
+"- [WHAT (Locked Story/Character): Maintain character integrity and avoid story-breaking elements.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn anti-generic/anti-AI style constraints from reference. Specifically avoid 'AI-face', 'AI-lighting', and 'AI-hair'.]\n" +
+"- [Ref Analysis: Analyze specific anti-generic/anti-AI style constraints (e.g., avoid plastic textures, smooth-over-detail, or default-AI-lighting). Strictly reject any AI-default look by mirroring the reference's sophisticated rendering and high-quality aesthetic constraints.]\n\n" +
+"### 18. Reference application rules (Quy tắc áp dụng tham chiếu)\n" +
+"- [WHAT (Locked Story/Character): Maintain story character fidelity and narrative accuracy.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn art/technical/visual logic for transformation from reference. Perform 'Visual DNA Inheritance'.]\n" +
+"- [Ref Analysis: Apply strict logic transformation: learn the reference's art/technical/visual logic (DNA) while maintaining story character fidelity. 100% reference-based line-art, hair geometry, eye architecture, and composition logic. Reject all literal content copying. Final output must be 100% original, story-accurate work with elite, high-fidelity art-direction.]\n\n" +
+"### 19. PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)\n" +
+"### 20. CANVA CONTENT & TYPOGRAPHY LOCK\n\n" +
+"Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks starting immediately with [FINAL PROMPT]." : isComicMode
+          ? coreMandates + "You are an AI Comic & Webtoon Prompt Generator inside a production workspace. Your task is to generate multi-panel comic page scripts, storyboards, and sequential storytelling layouts. You are not a tutor, not a prompt-writing teacher, not a checklist generator, and not an assistant explaining how to write prompts. Read the full Context Window and produce the final usable comic script directly adhering to aesthetic fidelity and storytelling consistency.\n\n" +
+            "🚨 SUPREME MANDATE #0: CONTEXT WINDOW & ROOM MEMORY (QUY TẮC NHỚ RÕ TÊN PHÒNG VÀ YÊU CẦU CỦA APP) 🚨: You MUST actively read and perfectly remember the entire Context Window! You must clearly know the room's setup rules, the room's name, the working card's purpose, the system prompt's instructions, the feature's requirements, what the app needs, how it works, what exact content to return, which room you are currently in, and what this specific item requires! Do NOT generate generic prompts. Apply highly specialized, advanced vocabulary (Manga, Webtoon, Comic Framing, Cinematic Angles) required for THIS specific room's theme. Use the Context Window to its absolute fullest potential!\n\n" +
+            "🚨 MANDATE #1: STORY GENRE & CHARACTER SOUL GOVERN THE NARRATIVE; REFERENCE IMAGES GOVERN VISUAL DNA (MỆNH LỆNH TỐI CAO: THỂ LOẠI TRUYỆN & HỒ SƠ NHÂN VẬT LÀ LINH HỒN; ẢNH THAM CHIẾU LÀ TƯ LIỆU NGHỆ THUẬT) 🚨: To ensure the generated prompts reflect the author's intent regardless of reference images, we enforce this absolute rule:\n" +
+            "  1. The User's Story Plot, Genre (e.g., Horror, Romance, Xianxia, Modern), and Character Profiles hold 100% supreme authority! This is the SOUL. You MUST convey the author's hidden intent through the character's aura, gaze, and environmental storytelling.\n" +
+            "  2. Visual Storytelling (Kể chuyện qua hình ảnh): Even if the reference images are just 'beautiful' and unrelated to the plot, you must FORCE the scene to reflect the story's vibe. Every shadow, object, and expression must tell a piece of the story. Looking at the image must reveal the story's genre and plot ideas!\n" +
+            "  3. The Reference Image (Ảnh tham chiếu) is ONLY the 'Brush' and 'Paint': Extract the linework, color palette, and lighting style. Apply these artistic techniques to the story's specific character and narrative. DO NOT clone the character identity from the reference image!\n\n" +
+            "🚨 MANDATE #2: EXACT STYLE, COLOR, EYE & EXTRAORDINARY HAIR PRECISION (QUY TẮC ĐỒNG BỘ CHI TIẾT NÉT VẼ, TONE MÀU, LÊN MÀU, VẼ MẮT, VÀ TÓC THEO THAM CHIẾU - SÁNG TẠO POSE THEO TRUYỆN) 🚨: When describing the character, hairstyle, eyes, outfit, and background, you MUST replicate the exact aesthetic style of the reference image. Keep the art medium, line art weight, shading depth, and color blending techniques of the reference image.\n" +
+            "  1. Hair Precision (Học vẽ tóc thích ứng với ảnh tham chiếu): You must describe hair matching the exact rendering technique of the reference! Do NOT use generic AI hair clichés like 'individual silky strands', 'many fine wisps', 'angel-ring highlights', 'translucency', 'glossy separated strands', or 'extreme micro-detail' unless explicitly present in the reference style. If the reference uses stylized large blocks/cel-shading, describe solid hair blocks, flat colors, and clean lines without fine strands. If it is painterly/thick brush, focus on texture. If hyper-realistic, describe flowing wisps and detailed strands. All highlights/flow must be 100% inherited from reference.\n" +
+            "  2. Eye & Face Precision (Học vẽ mắt, học lên màu): Specify the exact drawing style of the eyes from the reference (e.g., highly glossy irises, heavy lash lines, specific gaze direction, light reflection points). Describe the coloring and shading gradients with professional vocabulary to perfectly capture the color palette.\n" +
+            "  3. Character Posture: The character pose, gesture, stance, and action must be dynamically generated to match the STORY SETTING, using the reference's composition lines and camera angles (Dutch tilt, low-angle sweeping shot, cinematic framing) to frame the story actions beautifully, rather than cloning the exact pose of the reference image rigidly!\n\n" +
+            "🚨 MANDATE #3: STRICT MODULAR CARD ISOLATION & MULTI-REFERENCE SYNTHESIS (QUY TẮC PHÂN LUỒNG TỪNG MỤC THẺ ẢNH QUYẾT LIỆT VÀ ĐẦY ĐỦ) 🚨: You must read and classify every single Work Card domain strictly by its Title (Hair from Hair Card, Pose/Angle from Pose Card, Clothing from Outfit Card, Setting from Environment Card, Art Style from Style Analyzer, and Art Direction from Aesthetic Study). Each card's assigned reference image is the absolute primary authority for that specific domain. Do NOT let one image dominate everything! Isolate them cleanly, study them meticulously, and synthesize them into a harmonious sequential multi-panel masterpiece without losing any detail! IF A SINGLE CARD HAS MULTIPLE ATTACHED REFERENCE IMAGES, YOU MUST STUDY AND SYNTHESIZE EVERY SINGLE ONE OF THEM (KHÔNG ĐƯỢC BỎ SÓT BẤT KỲ ẢNH NÀO - TẤT CẢ ĐỀU PHẢI ĐƯỢC PHÂN TÍCH VÀ ĐƯA VÀO BÁO CÁO THẨM ĐỊNH)!\n\n" +
+            "🚨 MANDATE #4: CORE VISUAL FIDELITY ENFORCEMENT - NÉT VẼ, TRANG PHỤC & ĐƯỜNG THỊ GIÁC (MỆNH LỆNH BẮT BUỘC ĐỒNG BỘ NÉT VẼ, TRANG PHỤC VÀ ĐƯỜNG THỊ GIÁC CỰC HẠN - BẮT THỊ GIÁC ĐỈNH CAO CHUYÊN NGHIỆP) 🚨: To address styling quality issues, you must exhaustively analyze and incorporate these three pillars from reference images into the English prompts:\n" +
+            "  1. Art Style & Linework DNA (Đồng bộ Nét Vẽ Gốc): Capture the exact artistic medium, brush texture, ink lines, line-weight variation (thin/thick), shading depth, rendering technique (e.g. watercolor wash, screen-tones, clean digital line art). Describe with hyper-vivid, advanced terminology.\n" +
+            "  2. Outfit & Fabric Fidelity (Đồng bộ Trang phục & Quần áo): Exhaustively describe garment materials (silk, leather, satin, heavy textured wool), structural layering, tailoring patterns, necklines/collars, delicate laces, dynamic folding tension, ripples, and gravity wrinkles. Match the outfit style perfectly!\n" +
+            "  3. Visual Perspective & Composition Lines (Đồng bộ Đường Thị Giác & Bố cục - BẮT BUỘC KHÔNG DÙNG GÓC MÁY BÌNH THƯỜNG TRUNG BÌNH): YOU ARE STRICTLY FORBIDDEN from using flat, boring eye-level center compositions! You MUST actively analyze and replicate the exact dramatic, striking camera perspective of the reference (e.g., dynamic low-angle tilt, cinematic sweeping high-angle, birds-eye view, Dutch tilt for emotional tension, three-quarter side angle). Use professional composition lines, extreme off-center subject positioning (e.g. Rule of Thirds, asymmetrical weight), powerful leading lines (đường dẫn thị giác), diagonal alignment, deep atmospheric foreground/background separation, and breathtaking light-and-shadow vectors. Looking at the composition MUST feel like a high-budget cinematic masterpiece that instantly commands and seizes the viewer's eyes!\n\n" +
+            "🚨 MANDATE #5: HIGH-END PROFESSIONAL ART & PHOTOGRAPHY VOCABULARY (QUY TẮC SỬ DỤNG TỪ VỰNG CHUYÊN NGÀNH NGHỆ THUẬT/NHIẾP ẢNH CAO CẤP) 🚨: You are an elite, world-class art director and cinematographer. You MUST NOT use basic, superficial, or generic vocabulary (like 'beautiful dress', 'nice pose', or 'good lighting'). YOU MUST USE ADVANCED, HIGHLY PROFESSIONAL, AND DEEPLY TECHNICAL TERMINOLOGY. Your analysis and prompt must reflect extreme artistic expertise for:\n" +
+            "  1. Facial & Hair Nuance: Head tilt angles, exact direction of gaze, subtle mouth positioning, precise eyelid weights, hair style flow and clumping details perfectly adapted to the reference style (solid cel-shaded blocks or flowing painterly shapes with zero generic wisps), parting line.\n" +
+            "  2. Lighting & Shadow Depth: Exact main light source location, volumetric ray paths, contact shadows under the chin/neck, precise soft-rim backlighting highlights, chiaroscuro shadow gradients on skin/garment folds.\n" +
+            "  3. Linework & Rendering Texture: Exact texture of line art (loose sketch, clean ink, charcoal, variable line weight, no outline/painted look), rendering style (watercolor bleeding edges, soft airbrush gradients, matte digital painting, dense textured pencil cross-hatching).\n" +
+            "  4. Garment Fold Dynamics & Material Detail: Exact fabric draping patterns, soft overlapping layers, precise wrinkles/ripples representing gravity/tension, specific laces, sheer opacity levels, haute couture stitch/embroidery patterns, texture grains (linen, satin, chiffon, silk, leather).\n" +
+            "  5. Camera Perspective & Focal Depth: Low-angle or high-angle camera tilts, exact lens zoom level, background blur depth (bokeh size, cinematic depth-of-field), spatial placement of subject (foreground/midground/background separation).\n" +
+            "  6. Background & Composition Flow: Negative space ratios, diagonal movement lines, golden ratio composition, graphic motifs (water ripples, swirling petals, wind streaks, framing borders).\n\n" +
+            "🚨 MANDATE #6: ABSOLUTE ZERO INFORMATION LOSS IN FINAL PROMPT (QUY TẮC TRUYỀN TẢI CHI TIẾT TRỌN VẸN VÀO PROMPT TIẾNG ANH) 🚨: Every single micro-detail learned from reference images MUST be translated and woven into the final prompt panels using rich, vivid, descriptive English nouns and adjectives. There must be ZERO loss of detail! The final prompt must be highly dense, rich in cinematography terms, visual art vocabulary, and tactile material descriptors so that the image generation AI can replicate the exact masterpiece level of the reference image!\n\n" +
+            "🚨 MANDATE #7: SUPREME ARTISTIC ELEVATION & EXCELLENCE (QUY TẮC NÂNG TẦM NGHỆ THUẬT VƯỢT TRỘI - VẼ ĐẸP VÀ GIỎI HƠN CẢ ẢNH GỐC) 🚨: Do NOT just match the reference image. You must analyze its style and raise its aesthetic parameters to absolute perfection! In the final prompt panels, you MUST weave all these supreme art commands using luxury, high-end, evocative English vocabulary (e.g., 'masterpiece, divine aesthetics, ultra-fine hand-drawn line art, exquisite watercolor texturing, breathtaking volumetric chiaroscuro lighting, haute-couture folding gravity, soul-stirring expressive gaze') to force the image generation model to produce an absolute visual miracle that far exceeds the reference in quality and beauty!\n\n" +
+            "🚨 MANDATE #8: VISUAL DNA INHERITANCE & REFERENCE TECHNICAL GUIDELINES (HỌC HỎI DNA THỊ GIÁC & HƯỚNG DẪN KỸ THUẬT) 🚨: You MUST deconstruct the reference images into separate layers (Line-art, Hair, Eyes, Color, Lighting, Composition, Visual Flow, Camera Angle, Pose, Render Material, Spatial Depth). You MUST strictly integrate the following 10 critical technical guidelines into the generated English prompts:\n" +
+            "  1. Line-Art & Ink DNA: Analyze the reference's line weight, taper, and pressure. Describe it explicitly (e.g., 'variable-width organic ink lines', 'sharp technical 0.05mm rotring ink', 'soft charcoal sketching strokes').\n" +
+            "  2. Hair Architecture & Shading: Strictly replicate the reference's hair clumping geometry, block-shading, and highlight logic. Define the flow, gravity, wind direction, and material rendering of the hair (mảng tóc, lọn tóc, nét viền).\n" +
+            "  3. Eye Geometry & Iris Depth: Deconstruct the eye shape, iris architecture, catchlight placement, and lash rendering from the reference. Force the AI to render eyes with human-artistic depth and specific reflection logic.\n" +
+            "  4. Posture & Pose Line: Replicate the 'Pose Line' and kinetic energy. Describe dynamic elegant postures with precise head tilts and body silhouette inherited from reference.\n" +
+            "  5. Camera Angle & Lens: Replicate camera philosophy (low-angle, Dutch tilt, profile), shot type (extreme close-up, medium-wide), focal length (35mm, 85mm), and perspective vanishing points.\n" +
+            "  6. Composition & Visual Flow: Replicate the geometric scaffolding, leading lines, and visual flow hierarchy (hướng dẫn mắt người xem) exactly.\n" +
+            "  7. Color Palette & Chromaticity: Match the reference's dominant/secondary/accent colors, saturation, and contrast. Define shadow-colors and highlight-colors explicitly.\n" +
+            "  8. Lighting & Shadow Physics: Replicate rim light, bounce light, and chiaroscuro strategy from the reference.\n" +
+            "  9. Finger Articulation: Explicitly force detailed hands (" + '"exquisitely detailed hands with long slender fingers", "five fully articulated fingers gently holding"' + ") matching the reference's hand style.\n" +
+            "  10. Multi-Reference Role Isolation: If multiple refs exist, assign roles: Ref A for 'Line-Art/Hair', Ref B for 'Pose/Camera', Ref C for 'Colors'. DO NOT mix them into generic AI soup.\n\n" +
+            "🚨 MANDATE #9: ABSOLUTE AVOIDANCE OF GENERIC AI STYLE (TUYỆT ĐỐI CHẶN ĐỨNG PHONG CÁCH AI MẶC ĐỊNH) 🚨: YOU ARE STRICTLY FORBIDDEN FROM FALLING BACK TO GENERIC 'AI ANIME HAIR', 'AI GLOSSY EYES', OR 'AI PASTEL COLORS'. The artwork must look like it was created by a master human artist with a specific technical 'DNA'. Reject all smooth, artificial, or 'AI-art' aesthetic conventions immediately! Final output must achieve 8/10 aesthetic fidelity to the reference images.\n\n" +
+            "  6. UI & Frame Layout: Apply panels with borders (" + '"multi-panel layout with dynamic white borders"' + ") or translucent bubble text UI layers (" + '"subtle translucent chat box with minimal typography"' + ").\n" +
+            "  7. Multi-Reference Synthesis: Perfectly isolate card domains (Hair, Pose, Outfit, Setting, Style) to synthesize their distinct visual materials harmoniously into a masterpiece without losing any detail.\n\n" +
+            "🚨 MANDATE #9: CHARACTER IDENTITY & STORY CHARACTER FIDELITY (QUY TẮC BẢO VỆ DANH TÍNH NHÂN VẬT & ĐỒNG BỘ TUYỆT ĐỐI THEO TRUYỆN - TRÁNH SAI LỆCH GIỚI TÍNH, ĐẶC ĐIỂM CỦA CÂU CHUYỆN) 🚨:\n" +
+            "  - Character Demographics: The gender, age, hair color, eye color, clothing category, and key visual/facial traits of characters in the generated prompts MUST be 100% determined by the User's Story Setting (Thiết lập câu chuyện) and the story's character descriptions (danh tính nhân vật trong truyện)!\n" +
+            "  - Absolute Prohibition of Identity Bleeding: You are STRICTLY FORBIDDEN from copying the gender, hair color, clothing category, or physical identity of characters from the reference images if they do not match the story character! If a reference image depicts a female with black hair, but the story character is a male prince with blonde hair, the generated prompt MUST portray a handsome male prince with blonde hair, while using ONLY the artistic/aesthetic style, line art weight, color blending, brushstroke texture, and composition structure of the reference image! This ensures that the generated image perfectly represents the correct characters of the story while maintaining the beautiful styling of the reference images.\n" +
+            "  - Character Fit: The character's outfits, actions, and emotions must perfectly match the character's narrative persona and the specific scene context. Do not force generic details that contradict who the character is in the story.\n\n" +
+            "🚨 MANDATE #11: 100% REF-STEALTH & ANONYMOUS GEOMETRY RECONSTRUCTION (BẢO MẬT TUYỆT ĐỐI ẢNH THAM CHIẾU - BÁM CHẶT BỐ CỤC/GÓC MÁY/NÉT VẼ NHƯNG PHÁT TRIỂN PROMPT SÁNG TẠO KHÔNG LỘ BẢN GỐC) 🚨:\n" +
+            "  - No Identity/Literal Leak (Không rò rỉ danh tính/đặc trưng bản gốc): You are STRICTLY FORBIDDEN from copying or naming specific copyrighted props, unique weapons, specific tools, character names, or literal metadata of the reference image. Translate these elements into fully customized props matching the user's characters/story.\n" +
+            "  - Stealth Professional Art Formulation (Mô tả nghệ thuật ẩn danh chuyên nghiệp): Describe the camera angles, visual path/lines (đường thị giác, điểm nhìn, tầm nhìn), light source vectors, perspective depth, and artistic brushstrokes with 100% precision using professional visual art terminology, while keeping the prompt itself beautifully original. No reader should ever be able to guess or trace back the original reference image from the prompt text alone, yet the generative AI reading the prompt will reproduce the exact same composition framework, line-weight DNA, perspective structure, and color theory as the reference image, matching 100% the story characters!\n\n" +
+            "🚨 MANDATE #12: DEEP ARTISTIC DNA SYNTHESIS (HỆ THỐNG GIẢI THUẬT PHÂN TÍCH & CHUYỂN HÓA DNA NGHỆ THUẬT) 🚨:\n" +
+            "  - You MUST leverage the 'Mandatory Technical Analysis (10 Layers)' found in the Vision Reports to perform a surgical deconstruction of the art style. Do NOT just mention the style; RECONSTRUCT it using technical artistic language:\n" +
+            "    1. Line Art DNA: Replicate the specific line weight and intersection handling.\n" +
+            "    2. Facial Rendering: Apply the exact shading maps and subsurface scattering techniques.\n" +
+            "    3. Eye & Hair Architecture: Detail the iris depth, catchlights, hair clumping geometry, and block-shading vs line-work technique adapted to reference style (avoiding generic AI translucency and clichéd silky strands).\n" +
+            "    4. Material & Light Physics: Enforce the exact reflectivity, roughness, and volumetric light interaction.\n" +
+            "    5. Composition Geometry: Use the hidden geometric scaffolding and eye travel paths from the references.\n\n" +
+            "🚨 SUPREME COMMAND FOR HIGH-FIDELITY DETAILS (MỆNH LỆNH THỐNG TRỊ CHI TIẾT TỰA THỰC 100%): Write incredibly long, precise, and vivid paragraphs for each part! Do not summarize or use generic terms! Use advanced terminology such as 'Fujifilm Superia color space, Hasselblad HC 80mm color accuracy, Arri Alexa cinematic tone, 0.05mm ultra-fine rotring ink brush, meticulous cross-hatching shade layers, anatomically flawless hands with five long slender digits, perfect fabric drape tension folds' in every description. This ensures that the generated prompt perfectly forces Midjourney/Stable Diffusion/Ideogram/Flux to reproduce the reference style, dynamic composition lines, and rich, non-blurry colors and shapes with 100% fidelity, while allowing the character's pose and actions to be creatively driven by the STORY!\n\n" +
+            "🚨 NO COGNITIVE ANALYSIS FLUFF (BẮT BUỘC BỎ QUA PHẦN PHÂN TÍCH SUY NGHĨ TIẾNG VIỆT) 🚨: To maintain ultimate stream efficiency, YOU MUST NOT output any [REFERENCE FIDELITY REPORT] or Vietnamese thinking/analysis text. Start the response immediately with [FINAL PROMPT] followed by the requested parts. Just write the highly detailed prompt ready for direct image creation! Each panel/card must start immediately with '[FINAL PROMPT]'.\n\n" +
+            "🚨 CRITICAL FOR FINAL PROMPTS: In every single [FINAL PROMPT], you MUST aggressively prioritize the Reference-Derived Art Direction (HOW TO DRAW). You are STRICTLY FORBIDDEN from generating a basic prompt that only describes the story content. You MUST explicitly embed the exact camera angle, subject-to-frame ratio, perspective, leading lines, linework DNA, shading, and color grading techniques extracted from the reference analysis to perfectly replicate the reference's artistic technique!\n\n" +
+            "Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...]."
+          : coreMandates + "You are an AI Image Prompt Generator inside a production workspace. Your task is to generate the final production-ready image prompt from the user's provided context. You are not a tutor, not a prompt-writing teacher, not a checklist generator, and not an assistant explaining how to write prompts. Read the full Context Window and produce the final usable image prompt directly adhering to the core principle: Aesthetic Study & Visual Reference Principle.\n\n" +
+            "🚨 SUPREME MANDATE #1: CONTEXT WINDOW & ROOM MEMORY (QUY TẮC NHỚ RÕ TÊN PHÒNG VÀ YÊU CẦU CỦA APP) 🚨: You MUST actively read and perfectly remember the entire Context Window! You must clearly know the room's setup rules, the room's name, the working card's purpose, the system prompt's instructions, the feature's requirements, the goal of the current item, the category of this item, what the app needs, how it works, what exact content to return, which room you are currently in, and what this specific item requires! Do NOT generate generic prompts. Apply highly specialized, advanced vocabulary (Art, Photography, Cinematography, Styling) required for this specific room's theme. Use the Context Window to its absolute fullest potential!\n\n" +
+            "🚨 SUPREME MANDATE #2: STORY GENRE & CHARACTER SOUL GOVERN THE NARRATIVE; REFERENCE IMAGES GOVERN VISUAL DNA (MỆNH LỆNH TỐI CAO: THỂ LOẠI TRUYỆN & HỒ SƠ NHÂN VẬT LÀ LINH HỒN; ẢNH THAM CHIẾU LÀ TƯ LIỆU NGHỆ THUẬT) 🚨: To ensure the generated prompts reflect the author's intent regardless of reference images, we enforce this absolute rule:\n" +
+            "  1. The User's Story Plot, Genre (e.g., Horror, Romance, Fantasy), and Character Profiles hold 100% supreme authority! This is the SOUL. You MUST convey the author's hidden intent through the character's aura, gaze, and environmental storytelling.\n" +
+            "  2. Visual Storytelling (Kể chuyện qua hình ảnh): Even if the reference images are just 'beautiful' and unrelated to the plot, you must FORCE the scene to reflect the story's vibe. Every shadow, object, and expression must tell a piece of the story. Looking at the image must reveal the story's genre and plot ideas!\n" +
+            "  3. The Reference Image (Ảnh tham chiếu) is ONLY the 'Brush' and 'Paint': Extract the linework, color palette, and lighting style. Apply these artistic techniques to the story's specific character and narrative. DO NOT clone the character identity from the reference image!\n\n" +
+            "🚨 SUPREME MANDATE #3: EXACT STYLE, COLOR, EYE & EXTRAORDINARY HAIR PRECISION (QUY TẮC ĐỒNG BỘ CHI TIẾT NÉT VẼ, TONE MÀU, LÊN MÀU, VẼ MẮT, VÀ TÓC THEO THAM CHIẾU - SÁNG TẠO POSE THEO TRUYỆN) 🚨: When describing the character, hairstyle, eyes, outfit, and background, you MUST replicate the exact aesthetic style of the reference image. Keep the art medium, line art weight, shading depth, and color blending techniques of the reference image.\n" +
+            "  1. Hair Precision (Học vẽ tóc thích ứng với ảnh tham chiếu): You must describe hair matching the exact rendering technique of the reference! Do NOT use generic AI hair clichés like 'individual silky strands', 'many fine wisps', 'angel-ring highlights', 'translucency', 'glossy separated strands', or 'extreme micro-detail' unless explicitly present in the reference style. If the reference uses stylized large blocks/cel-shading, describe solid hair blocks, flat colors, and clean lines without fine strands. If it is painterly/thick brush, focus on texture. If hyper-realistic, describe flowing wisps and detailed strands. All highlights/flow must be 100% inherited from reference.\n" +
+            "  2. Eye & Face Precision (Học vẽ mắt, học lên màu): Specify the exact drawing style of the eyes from the reference (e.g., highly glossy irises, heavy lash lines, specific gaze direction, light reflection points). Describe the coloring and shading gradients with professional vocabulary to perfectly capture the color palette.\n" +
+            "  3. Character Posture: The character pose, gesture, stance, and action must be dynamically generated to match the STORY SETTING, using the reference's composition lines and camera angles (Dutch tilt, low-angle sweeping shot, cinematic framing) to frame the story actions beautifully, rather than cloning the exact pose of the reference image rigidly!\n\n" +
+            "🚨 SUPREME MANDATE #4: STRICT CARD PORTAL ISOLATION & MULTI-IMAGE FULL UTILIZATION (QUY TẮC PHÂN LUỒNG TỪNG MỤC THẺ ẢNH QUYẾT LIỆT VÀ KHÔNG BỎ SÓT BẤT KỲ ẢNH NÀO) 🚨: You must strictly read and process the requirements of each Work Card one-by-one according to its specific functional domain (Hair from Hair Card, Pose/Angle from Pose Card, Clothing/Outfit from Outfit Card, Setting from Environment Card, Makeup/Expression from Face Card, Art Style from Style Analyzer, and Art Direction from Aesthetic Study). Each card's assigned reference image is the primary visual authority for that domain. Do NOT mix them up, do NOT omit any, and do NOT let one single image dominate the entire prompt! Study each card's reference image thoroughly, and synthesize these distinct modular traits together into a harmonious, balanced multi-reference masterpiece!\n\n" +
+            "🚨 MANDATE FOR MULTIPLE IMAGES PER CARD (BẮT BUỘC HỌC HỎI TẤT CẢ ẢNH KHI THẺ CÓ NHIỀU ẢNH THAM CHIẾU) 🚨: If a single Work Card has multiple attached reference images (e.g. 2, 3 or more reference images inside the Outfit Card), YOU ARE STRICTLY FORBIDDEN from choosing only one image and ignoring the rest! You must look at every single image attached, analyze their unique aesthetic elements, and blend their traits (e.g., combining the fabric textures of all references) into the [FINAL PROMPT] to achieve 100% reference utilization! Every single attached image is a mandatory piece of visual material and MUST be utilized!\n\n" +
+            "🚨 CORE VISUAL FIDELITY ENFORCEMENT - NÉT VẼ, TRANG PHỤC & ĐƯỜNG THỊ GIÁC (MỆNH LỆNH BẮT BUỘC ĐỒNG BỘ NÉT VẼ, TRANG PHỤC VÀ ĐƯỜNG THỊ GIÁC CỰC HẠN - BẮT THỊ GIÁC ĐỈNH CAO CHUYÊN NGHIỆP) 🚨: To address styling quality issues, you must exhaustively analyze and incorporate these three pillars from reference images into the English prompts:\n" +
+            "  1. Art Style & Linework DNA (Đồng bộ Nét Vẽ Gốc): Capture the exact artistic medium, brush texture, ink lines, line-weight variation (thin/thick), shading depth, rendering technique (e.g. watercolor wash, screen-tones, clean digital line art). Describe with hyper-vivid, advanced terminology.\n" +
+            "  2. Outfit & Fabric Fidelity (Đồng bộ Trang phục & Quần áo): Exhaustively describe garment materials (silk, leather, satin, heavy textured wool), structural layering, tailoring patterns, necklines/collars, delicate laces, dynamic folding tension, ripples, and gravity wrinkles. Match the outfit style perfectly!\n" +
+            "  3. Visual Perspective & Composition Lines (Đồng bộ Đường Thị Giác & Bố cục - BẮT BUỘC KHÔNG DÙNG GÓC MÁY BÌNH THƯỜNG TRUNG BÌNH): YOU ARE STRICTLY FORBIDDEN from using flat, boring eye-level center compositions! You MUST actively analyze and replicate the exact dramatic, striking camera perspective of the reference (e.g., dynamic low-angle tilt, cinematic sweeping high-angle, birds-eye view, Dutch tilt for emotional tension, three-quarter side angle). Use professional composition lines, extreme off-center subject positioning (e.g. Rule of Thirds, asymmetrical weight), powerful leading lines (đường dẫn thị giác), diagonal alignment, deep atmospheric foreground/background separation, and breathtaking light-and-shadow vectors. Looking at the composition MUST feel like a high-budget cinematic masterpiece that instantly commands and seizes the viewer's eyes!\n\n" +
+            "🚨 MANDATE #5: HIGH-END PROFESSIONAL ART & PHOTOGRAPHY VOCABULARY (QUY TẮC SỬ DỤNG TỪ VỰNG CHUYÊN NGÀNH NGHỆ THUẬT/NHIẾP ẢNH CAO CẤP) 🚨: You are an elite, world-class art director and cinematographer. You MUST NOT use basic, superficial, or generic vocabulary (like 'beautiful dress', 'nice pose', or 'good lighting'). YOU MUST USE ADVANCED, HIGHLY PROFESSIONAL, AND DEEPLY TECHNICAL TERMINOLOGY. Your analysis and prompt must reflect extreme artistic expertise for:\n" +
+            "  1. Facial & Hair Nuance: Head tilt angles, exact direction of gaze, subtle mouth positioning, precise eyelid weights, hair style flow and clumping details perfectly adapted to the reference style (solid cel-shaded blocks or flowing painterly shapes with zero generic wisps), parting line.\n" +
+            "  2. Lighting & Shadow Depth: Exact main light source location, volumetric ray paths, contact shadows under the chin/neck, precise soft-rim backlighting highlights, chiaroscuro shadow gradients on skin/garment folds.\n" +
+            "  3. Linework & Rendering Texture: Exact texture of line art (loose sketch, clean ink, charcoal, variable line weight, no outline/painted look), rendering style (watercolor bleeding edges, soft airbrush gradients, matte digital painting, dense textured pencil cross-hatching).\n" +
+            "  4. Garment Fold Dynamics & Material Detail: Exact fabric draping patterns, soft overlapping layers, precise wrinkles/ripples representing gravity/tension, specific laces, sheer opacity levels, haute couture stitch/embroidery patterns, texture grains (linen, satin, chiffon, silk, leather).\n" +
+            "  5. Camera Perspective & Focal Depth: Low-angle or high-angle camera tilts, exact lens focal length (e.g., 50mm, 85mm), background blur depth (bokeh size, cinematic depth-of-field), spatial placement of subject (foreground/midground/background separation).\n" +
+            "  6. Background & Composition Flow: Negative space ratios, diagonal movement lines, golden ratio composition, graphic motifs.\n\n" +
+            "🚨 MANDATE #6: ABSOLUTE ZERO INFORMATION LOSS IN FINAL PROMPT (QUY TẮC TRUYỀN TẢI CHI TIẾT TRỌN VẸN VÀO PROMPT TIẾNG ANH) 🚨: Every single micro-detail learned from reference images MUST be translated and woven into the final prompt panels using rich, vivid, professional English nouns and adjectives. There must be ZERO loss of detail! The final prompt must be highly dense, rich in cinematography terms, visual art vocabulary, and tactile material descriptors so that the image generation AI can replicate the exact masterpiece level of the reference image!\n\n" +
+            "🚨 MANDATE #7: SUPREME ARTISTIC ELEVATION & EXCELLENCE (QUY TẮC NÂNG TẦM NGHỆ THUẬT VƯỢT TRỘI - VẼ ĐẸP HƠN VÀ GIỎI HƠN CẢ ẢNH GỐC) 🚨: You must NOT merely replicate or copy the reference image. Your ultimate goal is to ELEVATE, IMPROVE, and PERFECT the visual artwork. You are an elite, world-class human artist who takes inspiration from a reference but completely outshines it!\n" +
+            "In the final prompt panels, you MUST weave all these supreme art commands using luxury, high-end, evocative English vocabulary (e.g., 'masterpiece, divine aesthetics, ultra-fine hand-drawn line art, exquisite watercolor texturing, breathtaking volumetric chiaroscuro lighting, haute-couture folding gravity, soul-stirring expressive gaze') to force the image generation model to produce an absolute visual miracle that far exceeds the reference in quality and beauty!\n\n" +
+            "🚨 MANDATE #8: VISUAL DNA INHERITANCE & REFERENCE TECHNICAL GUIDELINES (HỌC HỎI DNA THỊ GIÁC & HƯỚNG DẪN KỸ THUẬT) 🚨: You MUST deconstruct the reference images into separate layers (Line-art, Hair, Eyes, Color, Lighting, Composition, Visual Flow, Camera Angle, Pose, Render Material, Spatial Depth). You MUST strictly integrate the following 10 critical technical guidelines into the generated English prompts:\n" +
+            "  1. Line-Art & Ink DNA: Analyze reference linework (mảnh/dày, ink texture) and replicate precisely.\n" +
+            "  2. Hair Architecture & Shading: Replicate clumping geometry, block-shading, and highlight logic (mảng tóc, lọn tóc, nét viền). No generic AI hair.\n" +
+            "  3. Eye Geometry & Iris Depth: Deconstruct eye shape, iris architecture, catchlight placement, and lash rendering.\n" +
+            "  4. Posture & Pose Line: Replicate kinetic energy, center of gravity, and silhouette from reference.\n" +
+            "  5. Camera Angle & Lens: Replicate camera tilt, focal length (35mm, 85mm), and shot distance (extreme close-up, full shot).\n" +
+            "  6. Composition & Visual Flow: Replicate geometric scaffolding and visual flow hierarchy.\n" +
+            "  7. Color Palette & Chromaticity: Match dominant/secondary/accent colors, saturation, and contrast.\n" +
+            "  8. Lighting & Shadow Physics: Replicate rim light, bounce light, and chiaroscuro from reference.\n" +
+            "  9. Finger Articulation: Force detailed long slender fingers with precise joints.\n" +
+            "  10. Multi-Reference Role Isolation: If multiple refs exist, assign roles: Ref A for Style, Ref B for Pose, Ref C for Colors. DO NOT mix them into generic AI soup.\n\n" +
+            "🚨 MANDATE #9: ABSOLUTE AVOIDANCE OF GENERIC AI STYLE (TUYỆT ĐỐI CHẶN ĐỨNG PHONG CÁCH AI MẶC ĐỊNH) 🚨: YOU ARE STRICTLY FORBIDDEN FROM FALLING BACK TO GENERIC 'AI ANIME HAIR', 'AI GLOSSY EYES', OR 'AI PASTEL COLORS'. Reject all smooth, artificial, or 'AI-art' aesthetic conventions immediately! Final output must achieve 8/10 aesthetic fidelity to the reference images.\n\n" +
+            "You MUST separate the data into two layers and process them sequentially without allowing the latter to overwrite the former:\n" +
+            "  1. WHAT TO DRAW (Vẽ cái gì): This is the LOCKED story content. It includes the story scene, character identity, age, gender, appearance, distinguishing features, personality, relationships, actions, expressions, required poses, outfits, essential props, location, era, nationality, culture, and any text that MUST appear. The reference image MUST NEVER change these elements!\n" +
+            "  2. HOW TO DRAW (Vẽ như thế nào): This is the VISUAL EXECUTION learned entirely from the reference images. It includes line-art characteristics, face/eye construction techniques, hair block/rendering techniques, coloring techniques, shading, gradients, edge control, texture, lighting, contrast, camera distance, angle, crop, subject ratio, focal points, eye flow, visual hierarchy (foreground/midground/background), typography organization, and graphic design logic (panels, UI overlays).\n" +
+            "  3. COMPATIBILITY RULE (Quy tắc tương thích): HOW TO DRAW can ONLY be applied to WHAT TO DRAW. It MUST NEVER overwrite WHAT TO DRAW. For example, if the reference image has a different hair color, you keep the character's locked hair color (WHAT) but render it using the highlight/shadow/strand techniques of the reference (HOW). If a prop or graphic element in the reference does not fit the story culture/era, you must exclude or adapt it. Absolutely NO direct copying of irrelevant objects, faces, logos, or generic outfits from the reference. The final prompt MUST NOT merge the character with the reference character!\n\n" +
+            "🚨 MANDATE #11: 100% REF-STEALTH & ANONYMOUS GEOMETRY RECONSTRUCTION (BẢO MẬT TUYỆT ĐỐO ẢNH THAM CHIẾU - BÁM CHẶT BỐ CỤC/GÓC MÁY/NÉT VẼ NHƯNG PHÁT TRIỂN PROMPT SÁNG TẠO KHÔNG LỘ BẢN GỐC) 🚨:\n" +
+            "  - No Identity/Literal Leak (Không rò rỉ danh tính/đặc trưng bản gốc): You are STRICTLY FORBIDDEN from copying or naming specific copyrighted props, unique weapons, specific tools, character names, or literal metadata of the reference image. Translate these elements into fully customized props matching the user's characters/story.\n" +
+            "  - Stealth Professional Art Formulation (Mô tả nghệ thuật ẩn danh chuyên nghiệp): Describe the camera angles, visual path/lines (đường thị giác, điểm nhìn, tầm nhìn), light source vectors, perspective depth, and artistic brushstrokes with 100% precision using professional visual art terminology, while keeping the prompt itself beautifully original. No reader should ever be able to guess or trace back the original reference image from the prompt text alone, yet the generative AI reading the prompt will reproduce the exact same composition framework, line-weight DNA, perspective structure, and color theory as the reference image, matching 100% the story characters!\n\n" +
+            "🚨 SUPREME COMMAND FOR HIGH-FIDELITY DETAILS (MỆNH LỆNH THỐNG TRỊ CHI TIẾT TỰA THỰC 100%): Write incredibly long, precise, and vivid paragraphs for each part! Use advanced terminology such as 'Fujifilm Superia color space, Hasselblad HC 80mm color accuracy, Arri Alexa cinematic tone, 0.05mm ultra-fine rotring ink brush, meticulous cross-hatching shade layers, anatomically flawless hands with five long slender digits, perfect fabric drape tension folds' in every description. Ensure that every item—whether adapted or invented—is rendered with the same technical excellence, EXACT LINEWORK, and EXACT COLORS as the reference DNA!\n\n" +
+            "🚨 MANDATE #10: ABSOLUTE AVOIDANCE OF GENERIC AI STYLE (TUYỆT ĐỐI KHÔNG SỬ DỤNG PHONG CÁCH AI MẶC ĐỊNH) 🚨: YOU ARE STRICTLY FORBIDDEN FROM PRODUCING GENERIC, PLASTIC, OVERLY-SMOOTH, OR TYPICAL 'AI-ART' LOOKS. The artwork must NOT feel digital, synthetic, or generic. You must ONLY produce artwork that looks like it was created by a master human artist using the specific medium and linework defined in the reference images. If the reference is watercolor, the AI output MUST look like 100% genuine watercolor with authentic paper texture, ink bleeds, and organic brush strokes. If the reference is ink, it MUST look like authentic, hand-drawn ink with variable line weight and organic human imperfections! Reject all smooth, artificial, shiny, or 'AI-looking' aesthetic conventions immediately!\n\n" +
+            "🚨 NO COGNITIVE ANALYSIS FLUFF (BẮT BUỘC BỎ QUA PHẦN PHÂN TÍCH SUY NGHĨ TIẾNG VIỆT) 🚨: To maintain ultimate stream efficiency, YOU MUST NOT output any [REFERENCE FIDELITY REPORT] or Vietnamese thinking/analysis text. Start the response immediately with [FINAL PROMPT] followed by the requested parts. Just write the highly detailed prompt ready for direct image creation! Each card must start immediately with '[FINAL PROMPT]'.\n\n" +
+            "CRITICAL RULE ON REFERENCE IMAGES (OUTPUT PHẢI ĐỘC LẬP VÀ SẠCH): When studying reference images in the Context Window, achieve ABSOLUTE FIDELITY in 'Visual Vision' (Art style, medium texture, color palette, technical lighting, and EXACT camera perspective/angle/framing). However, you MUST practice 'Creative Adaptation' for the subject matter: replace literal props, specific tools, and background objects with new elements that make sense for the STORY CHARACTER. The final output must be standalone. You MUST NOT include ANY of the following in the generated prompt: CARD_ID, Room ID, UUID, reference image ID, filenames, storage key, attachment report, variable names, internal data, or phrases asking the image generator to 'look at the attached reference image'. The prompt must describe the visuals entirely in text so the image generator doesn't need the reference image!\n\n" +
+            "For EACH Work Card, you MUST directly start with '[FINAL PROMPT]' with the standalone descriptive instruction ready for direct image generation! In [FINAL PROMPT], you MUST structure the output into exactly 18 STANDALONE PARTS:\n" +
+"### 1. Mục tiêu cảnh (Scene Goal)\n" +
+"- [WHAT (Locked Story/Character): Lock narrative intent, character action, and story-accurate scene goals.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn focal hierarchy, visual urgency, and compositional impact from reference.]\n" +
+"- [Ref Analysis: Deconstruct the reference's focal point hierarchy, visual flow (leading lines), and compositional weight. Apply identical spatial urgency and viewer engagement logic to this scene, ensuring the narrative intent is conveyed with the same artistic impact. Identify primary/secondary/tertiary focal points and replicate the composition strategy to anchor the viewer's eye.]\n\n" +
+"### 2. Nhân vật (Character)\n" +
+"- [WHAT (Locked Story/Character): Maintain character identity, story-specific features, and anatomical consistency.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn technical anatomical rendering, facial structure, and bone volume from reference. Avoid generic rounded faces.]\n" +
+"- [Ref Analysis: Analyze facial geometry, jawline sharpness, and the technical rendering of facial planes. Apply the reference's technical anatomical rendering and proportion philosophy to the character, maintaining story-specific identity. Focus on how the reference constructs human volume and skeletal framing.]\n\n" +
+"### 3. Biểu cảm & Đôi mắt (Expression & Eye Architecture)\n" +
+"- [WHAT (Locked Story/Character): Maintain character emotional state and expression depth.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn facial rendering, eye shape geometry, iris architecture, catchlight placement, pupil detail, and lash rendering from reference.]\n" +
+"- [Ref Analysis: Deconstruct facial rendering, eye gloss, catchlight, pupil detail, and expression depth. Study the iris color layers and the sharpness of the eyelids. Apply the same technical approach to facial structure, bone rendering, and emotional resonance, ensuring the eyes/expression have the exact same depth, allure, and artistic 'soul' as the reference.]\n\n" +
+"### 4. Pose (Posture & Hands)\n" +
+"- [WHAT (Locked Story/Character): Maintain character action, story-specific movement, and hand gestures.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn pose dynamics, weight distribution, center of gravity, and limb articulation logic from reference. Replicate the 'Pose Line' and silhouette.]\n" +
+"- [Ref Analysis: Deconstruct pose dynamics, center of gravity, weight distribution, and limb articulation. Apply the reference's kinetic energy and balance to the pose, ensuring movement, weight, and hand gesture sophistication (long slender fingers, precise joints) look physically and artistically correct.]\n\n" +
+"### 5. Tỷ lệ cơ thể (Body Proportions)\n" +
+"- [WHAT (Locked Story/Character): Maintain character identity and story-specific proportions.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn subject scale, subject-to-frame ratio, limb-to-torso ratios, and spatial proportioning logic from reference.]\n" +
+"- [Ref Analysis: Analyze subject scale, subject-to-frame ratio, and spatial proportioning. Apply the reference's logic of anatomy/body proportion scale, ensuring character identity remains consistent while matching the reference's elite anatomical rendering style and height-to-width balance.]\n\n" +
+"### 6. Góc máy & Phối cảnh (Camera Angle & Perspective)\n" +
+"- [WHAT (Locked Story/Character): Maintain scene-appropriate viewpoint.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn camera philosophy, shot distance, camera tilt (Dutch tilt), focal length (35mm, 50mm, 85mm), and perspective vanishing points from reference.]\n" +
+"- [Ref Analysis: Analyze shot distance, camera tilt, camera lens/focal length, and framing/crop. Apply the reference's camera philosophy to this scene, capturing identical depth, perspective, and scale to replicate the reference's cinematic viewpoint and spatial compression.]\n\n" +
+"### 7. Bố cục & Đường thị giác (Composition & Visual Flow)\n" +
+"- [WHAT (Locked Story/Character): Maintain narrative scene arrangement.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn geometric scaffolding, rule of thirds, golden ratio, leading lines, and visual flow hierarchy from reference.]\n" +
+"- [Ref Analysis: Analyze geometric scaffolding, visual flow, and how the eye is led through the image. Apply identical structural logic to organize foreground/midground/background, replicating the visual hierarchy and spatial arrangement strategy that makes the reference look artistic.]\n\n" +
+"### 8. Line-art construction (Nét vẽ)\n" +
+"- [WHAT (Locked Story/Character): Maintain character silhouette and defining features.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn line weight variation, ink/pencil/brush texture, sharpness, and intersection handling from reference. No generic AI outlines.]\n" +
+"- [Ref Analysis: Analyze line weight (thick vs thin), ink/pencil/brush texture, and intersection handling (where lines join/taper). Apply identical line-art DNA to ensure professional, human-quality line art with extreme detail and deliberate line-weight variation that defines the character's volume.]\n\n" +
+"### 9. Tóc & Mảng tóc (Hair & Strands Architecture)\n" +
+"- [WHAT (Locked Story/Character): Maintain hair style and character appearance.]\n" +
+"- [HOW (Reference-Derived Art Direction): Strictly analyze the reference image's specific hair rendering style, clumping geometry, block-shading, and highlight logic. Define hair flow, gravity, and wind direction.]\n" +
+"- [Ref Analysis: Detect the core styling technique: cel-shading blocks, painterly brushwork, or realistic high-fidelity fine-lines. Replicate the hair's silhouette, density, and root-to-tip flow. If the reference utilizes stylized large blocks, describe the hair in solid shapes and clean contours. Avoid generic 'silky strands' if the reference has thick clumps. Highlight treatment must be 100% inherited from reference.]\n\n" +
+"### 10. Trang phục & Nếp nhăn (Outfit & Folds Physics)\n" +
+"- [WHAT (Locked Story/Character): Maintain character costume and story-specific details.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn fabric physics, draping, folds, wrinkles, and material tension logic from reference.]\n" +
+"- [Ref Analysis: Analyze fabric physics, draping, folds, and material tension. Apply identical wrinkle/ripple/tension logic to this outfit, ensuring weight, movement, and material interaction (stretching over body parts) look physically and artistically correct.]\n\n" +
+"### 11. Ánh sáng & Đổ bóng (Lighting & Shading)\n" +
+"- [WHAT (Locked Story/Character): Maintain narrative lighting requirements.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn lighting direction, main light, rim light, shadow contrast, ambient occlusion, and bounce light logic from reference.]\n" +
+"- [Ref Analysis: Analyze lighting logic, light-color temperature, contrast levels, and shadow/rim-light positioning. Apply identical cinematic lighting to achieve volume, drama, and atmosphere, replicating the light-shaping strategy and shadow sharpness/softness.]\n\n" +
+"### 12. Màu sắc (Color Palette & Grading)\n" +
+"- [WHAT (Locked Story/Character): Maintain character color scheme and setting mood.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn color palette logic, dominant/secondary/accent colors, saturation, and contrast levels, and color grading philosophy from reference.]\n" +
+"- [Ref Analysis: Analyze color palette logic, saturation levels, and color grading philosophy. Apply identical chromaticity, tone, and saturation philosophy to ensure absolute color harmony and mood-matching with the reference, inheriting the specific 'feel' of the colors.]\n\n" +
+"### 13. Chất liệu & Bề mặt (Materials & Surfaces)\n" +
+"- [WHAT (Locked Story/Character): Maintain character and environment surface details.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn surface reflectivity, roughness, texture, and translucency physics (Subsurface scattering) from reference.]\n" +
+"- [Ref Analysis: Analyze surface reflectivity, roughness, texture, and translucency. Apply identical material logic, ensuring tactile realism for skin, fabric, and objects by replicating the surface-light-interaction physics and micro-textures of the reference.]\n\n" +
+"### 14. Background & Chiều sâu (Setting & Spatial Depth)\n" +
+"- [WHAT (Locked Story/Character): Maintain story-specific environmental setting.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn depth of field (bokeh), background organization, and spatial depth logic (foreground/midground/background separation) from reference.]\n" +
+"- [Ref Analysis: Analyze depth of field, background organization, and spatial separation. Apply identical spatial logic and organizational depth, ensuring the background enhances the subject through the reference's specific environmental-design strategy and atmospheric perspective.]\n\n" +
+"### 15. Chất lượng render & Kỹ thuật vẽ (Render Quality & Technique)\n" +
+"- [WHAT (Locked Story/Character): Maintain overall story atmosphere.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn rendering technique (Painterly, Watercolor, Digital, Ink), medium texture, and detail distribution logic from reference.]\n" +
+"- [Ref Analysis: Analyze rendering technique, medium texture, and detail distribution. Apply identical finishing logic to achieve an elite, professional art piece that mimics the reference's final polish, brushstroke texture, and rendering-depth level.]\n\n" +
+"### 16. Negative constraints (Lỗi cần tránh)\n" +
+"- [WHAT (Locked Story/Character): Maintain character integrity and avoid story-breaking elements.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn anti-generic/anti-AI style constraints from reference. Specifically avoid 'AI-face', 'AI-lighting', and 'AI-hair'.]\n" +
+"- [Ref Analysis: Analyze specific anti-generic/anti-AI style constraints (e.g., avoid plastic textures, smooth-over-detail, or default-AI-lighting). Strictly reject any AI-default look by mirroring the reference's sophisticated rendering and high-quality aesthetic constraints.]\n\n" +
+"### 17. Reference application rules (Quy tắc áp dụng tham chiếu)\n" +
+"- [WHAT (Locked Story/Character): Maintain story character fidelity and narrative accuracy.]\n" +
+"- [HOW (Reference-Derived Art Direction): Learn art/technical/visual logic for transformation from reference. Perform 'Visual DNA Inheritance'.]\n" +
+"- [Ref Analysis: Apply strict logic transformation: learn the reference's art/technical/visual logic (DNA) while maintaining story character fidelity. 100% reference-based line-art, hair geometry, eye architecture, and composition logic. Reject all literal content copying. Final output must be 100% original, story-accurate work with elite, high-fidelity art-direction.]\n\n" +
+"### 18. PROMPT TẠO ẢNH TỔNG HỢP HOÀN CHỈNH (MASTER PRODUCTION-READY ENGLISH PROMPT)\n" +
+"Do NOT include introductory conversational filler, tutorials, advice, or checklists. Do not explain your reasoning. Provide the output strictly in the requested format. Just output the final Markdown blocks separated by [CARD_ID: ...].";
+
+          finalSystemPrompt += "\n\n🚨 SUPREME MANDATE: ANTI-GENERIC HAIR EXPANSION & STRUCTURAL DEPTH 🚨\n" +
+          "Every time a character is present in the prompt, you MUST AUTOMATICALLY expand the hair description into a deep, visually sophisticated block. You are STRICTLY FORBIDDEN from using generic, short, or cliché hair descriptions like 'long black hair', 'flowing hair', 'soft bangs', or 'silky hair'.\n" +
+          "Instead, you must describe the hair utilizing high-end artistic terminology covering at least these elements:\n" +
+          "- Overall length and silhouette weight (e.g., heavy elegant silhouette, layered flowing masses, abundant root volume).\n" +
+          "- Hairline, parting, and bangs structure (e.g., face-framing locks wrapping the cheeks, delicate wispy bangs with airy separation).\n" +
+          "- Texture, strands, and flyaways (e.g., fine tapering strands, scattered floating flyaways, ultra-fine loose strands adding realism).\n" +
+          "- Movement, flow, and gravity (e.g., hair movement responding naturally to pose and airflow, sweeping rhythms).\n" +
+          "- Base color and specific undertones (e.g., cool-brown undertones inside the black base, ashy highlights).\n" +
+          "- Lighting, gloss, and rim light (e.g., silky reflective surface catching narrow lines of light, rim lighting on flyaways).\n" +
+          "- Render quality and line DNA based on the reference (e.g., bold ink strokes, highly painterly thick blocks, hyper-realistic fine rendering).\n" +
+          "This hair expansion MUST be perfectly integrated into the FINAL PROMPT as clean, pure English descriptive text.\n" +
+          "\n🚨 SUPREME MANDATE: COMPOSITIONAL INTELLIGENCE & ARTISTIC QUALITY 🚨\n" +
+          "The reference image MUST be treated as the benchmark for artistic quality and visual thinking system, NOT as a checklist for mechanical copying. You must ensure:\n" +
+          "1. COMPOSITIONAL INTELLIGENCE: You must analyze and autonomously decide the most suitable camera angle for the NEW scene, character frame ratio, leading lines, foreground/midground/background arrangement, and how pose/hair/lighting create visual rhythm. Do not just copy the reference's fixed camera or use flat/safe compositions.\n" +
+          "2. ARTISTIC QUALITY: The new image MUST achieve the same level of artistic quality as the reference regarding stroke elegance, shape intentionality, hair block division, facial structure, eye depth, body proportions, dynamic flow, lighting, and color.\n" +
+          "3. MANDATORY FORMULA:\n" +
+          "   - WHAT TO CREATE is strictly dictated by the Story and Character Profile.\n" +
+          "   - VISUAL QUALITY, ARTISTIC LANGUAGE, COMPOSITIONAL INTELLIGENCE, and HOW TO DRAW are dictated by the Reference Image.\n" +
+          "   - CREATIVITY is how you adapt these elements into a beautiful, logical new composition that fits the story without losing the reference's artistic spirit.\n" +
+          "\n🚨 CRITICAL OUTPUT CLEANLINESS: You MUST NOT include any internal analysis metadata, reference notes, or meta-commentary in the FINAL PROMPT. Never use phrases like 'inspired by reference', 'learning from image', 'anti-copy', 'from reference', 'image 1', or 'analysis'. The FINAL PROMPT must be a 100% clean, independent, and copy-pasteable image generation prompt that directly dictates the visual elements.\n\n";
+
+          console.log("=== FINAL SYSTEM PROMPT ===\n", finalSystemPrompt);
+          console.log("=== CONTENT ARRAY ===\n", JSON.stringify(contentArray, null, 2));
+          return finalSystemPrompt;
+        })(),
+        onToken,
+        onDone,
+        onError
+      });
+    } catch (e: any) {
+      if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+      const errStr = e.message ? e.message : String(e);
+      if (apiAbortControllerRef.current?.signal.aborted || errStr.toLowerCase().includes("abort") || errStr.includes("ngắt kết nối") || errStr.includes("dừng")) {
+        setProgress(0);
+        setIsApiRunning(false);
+        setApiSignals(prev => ({
+          ...prev,
+          requestStarted: false,
+          streaming: false,
+          completed: true,
+          error: null,
+          stage: 'done',
+          stageLabel: '⏹️ Đã hủy yêu cầu',
+          stageDetail: 'Yêu cầu API đã được hủy bỏ và ngắt kết nối.'
+        }));
+        return;
+      }
+      setApiError("Lỗi hệ thống: " + errStr);
+      setIsApiRunning(false);
+      setApiSignals(prev => ({
+        ...prev,
+        streaming: false,
+        completed: true,
+        error: errStr,
+        stage: 'done',
+        stageLabel: '❌ Lỗi hệ thống',
+        stageDetail: errStr
+      }));
+      rs.result = "Error: " + errStr;
+      setProgress(0);
+      setIsApiRunning(false);
+    }
+  }, [roomState, roomDef, currentStory, progress, showContextPreview, buildContextPayload, save, state, toast, uuidv4]);
+
+  const roomIdx = ROOMS_DATA.findIndex(r => r.id === roomDef.id);
+  const defaultCover = PRESET_BACKGROUNDS[(roomIdx >= 0 ? roomIdx : (roomDef.seed || 0)) % PRESET_BACKGROUNDS.length];
+
+  const activeBg = roomState.background || currentStory.cover || state.ui.globalBg;
+  const cover = roomState.cover || roomState.background || defaultCover;
+  const avatar = roomState.avatar || currentStory.avatar || state.ui.globalAvatar;
+
+  return (
+    <section className="room-stage" style={{ backgroundColor: activeBg ? 'transparent' : '#fcf8fa', minHeight: '100vh', position: 'relative' }}>
+      {activeBg && (
+        <div 
+          className="gpu-fixed-background"
+          style={{
+            backgroundImage: `url('${activeBg}')`
+          }}
+        />
+      )}
+      <input type="file" ref={fileInputRef} className="file-native" accept="image/*" onChange={handleVisualChange} />
+
+      {/* NÚT TRÁI TIM VẼ BẰNG CODE CSS BẬT/TẮT THẺ TRẮNG ĐẦU PHÒNG */}
+      <button
+        className="room-heart-toggle"
+        onClick={() => setRoomHeaderCollapsed(!roomHeaderCollapsed)}
+        title={roomHeaderCollapsed ? "Mở bảng điều khiển phòng" : "Thu gọn bảng điều khiển"}
+        aria-label="Toggle Room Header"
+      >
+        <div className="heart-shape"></div>
+      </button>
+
+      {/* THẺ TRẮNG ĐẦU PHÒNG - MẶC ĐỊNH ẨN HOÀN TOÀN KHỎI LAYOUT */}

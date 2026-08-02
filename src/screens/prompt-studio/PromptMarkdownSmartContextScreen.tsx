@@ -595,17 +595,18 @@ Task: ${requestText}
     return getRoomCatalog(roomIdx).tasks;
   };
 
-  const validateContextQuality = (story: Story | null, roomIdx: number, selectedTasks: any[] = [], all = false) => {
+  const validateContextQuality = (story: Story | null, roomIdx: number, selectedTasks: any[] | null = null, all = false) => {
     const errors: string[] = [];
     
     // 1. Validate room catalog(s)
     if (!all) {
       const tasks = getStoryRoomTasks(story, roomIdx);
-      const roomVal = validateRoomCatalog(tasks);
+      const tasksToValidate = selectedTasks !== null ? selectedTasks : tasks;
+      const roomVal = validateRoomCatalog(tasksToValidate);
       if (!roomVal.valid) {
         errors.push(roomVal.error || "Phòng này chưa có task hợp lệ. Không thể gọi API.");
       }
-      if (selectedTasks && selectedTasks.length === 0 && tasks && tasks.length > 0) {
+      if (selectedTasks !== null && selectedTasks.length === 0 && tasks && tasks.length > 0) {
         errors.push("Vui lòng chọn ít nhất 1 tác vụ trong phòng trước khi gọi API Proxy.");
       }
     } else {
@@ -640,12 +641,18 @@ Task: ${requestText}
     roomNote = "", 
     format = "markdown", 
     strict = "cold-technical", 
-    selectedTasksList: any[] = [],
+    selectedTasksList: any[] | null = null,
     targetRoomIdx = currentRoom
   ): any[] => {
     const catalog = getRoomCatalog(targetRoomIdx);
     const storyTasks = getStoryRoomTasks(story, targetRoomIdx);
-    const tasks = (selectedTasksList && selectedTasksList.length > 0) ? selectedTasksList : storyTasks;
+    let tasks = (selectedTasksList !== null) ? selectedTasksList : storyTasks;
+    
+    // Auto filter invalid tasks to prevent QUALITY GATE blocking and empty rendering
+    tasks = tasks.filter(t => {
+      const rule = t.transformationRule || t.detailedInstruction || t.desc || "";
+      return t.title && t.title.trim() !== "" && rule.trim().length >= 1;
+    });
 
     const fmtLabel = format === "yaml" ? "YAML Prompt" : format === "json" ? "JSON Structured Prompt" : format === "xml" ? "XML Tagged Prompt" : format === "plaintext" ? "Plain Text Instructions" : format === "hybrid" ? "Hybrid Markdown + YAML" : "Prompt Markdown";
 
@@ -791,7 +798,8 @@ General Prompt Architecture Task / API Test.
         let totalCount = 0;
         const allTasksText = rooms.map((_, idx) => {
           const cat = getRoomCatalog(idx);
-          const rTasks = getStoryRoomTasks(story, idx);
+          let rTasks = getStoryRoomTasks(story, idx);
+          rTasks = rTasks.filter(t => t.title && t.title.trim() !== "" && (t.transformationRule || t.detailedInstruction || t.desc || "").trim().length >= 5);
           totalCount += rTasks.length;
           return `### THEMATIC ARCHITECTURAL MODULE: ${cat.roomName.toUpperCase()} (${rTasks.length} RULES)\n\n${rTasks.map((t: any, i: number) => `- **[Ý ${i+1}/${rTasks.length}]: ${t.title}**\n  - Mục đích: ${t.purpose || ""}\n  - Chỉ dẫn quy tắc: ${t.detailedInstruction || t.transformationRule || t.outputRequirement || t.desc || ""}\n  - Kiểm tra đầu ra: ${t.validationRule || ""}`).join("\n\n")}`;
         }).join("\n\n=========================================================\n\n");
@@ -811,7 +819,7 @@ ${allTasksText}
 2. CHI TIẾT CHUYÊN SÂU CHO TỪNG Ý: Dưới mỗi tag số thứ tự, bạn phải viết giải thích quy tắc rõ ràng, chi tiết, chuyên sâu thành các đoạn văn hoàn chỉnh.
 3. HỆ THỐNG APP SẼ TỰ ĐỘNG DỌN DẸP SỐ ĐẾM: Bạn không cần lo lắng số thứ tự làm xấu prompt của người dùng vì app client bên dưới sẽ tự động ẩn và dọn dẹp các thẻ số đếm này sau khi nhận kết quả. Nhiệm vụ của bạn là PHẢI ĐẾM SỐ ĐỂ ĐẢM BẢO VIẾT ĐỦ 100% SỐ Ý!
 
-${tasks.map((t: any, idx: number) => `- **[Ý ${idx + 1}/${tasks.length}]: ${t.title}**\n  - Purpose: ${t.purpose || ""}\n  - Core Operational Guideline: ${t.detailedInstruction || t.transformationRule || t.outputRequirement || t.desc || ""}\n  - Output Check: ${t.validationRule || ""}\n  - 🚨 PROHIBITED ERRORS (LỖI NGHIÊM CẤM): ${t.prohibitedErrors || "Không có dữ liệu răn đe cụ thể cho thẻ này."}`).join("\n\n")}
+${tasks.map((t: any, idx: number) => `- **[Ý ${idx + 1}/${tasks.length}]: ${t.title}**\n  - Purpose: ${t.purpose || ""}\n  - Core Operational Guideline: ${t.detailedInstruction || t.transformationRule || t.outputRequirement || t.desc || ""}\n  - Output Check: ${t.validationRule || ""}`).join("\n\n")}
 
 `;
       }
@@ -842,17 +850,14 @@ Action Type: ${actionType}
 Task: ${requestText}
 🌐 MANDATORY PROMPT LANGUAGE: ${langStr}. You MUST write all instructions, explanations, and rules in ${langStr}!
 
-🚨 QUY TRÌNH 9 GIAI ĐOẠN BẮT BUỘC (9-STAGE EXECUTION - INTERNAL AI PROCESS):
-Với tư cách là Chuyên gia Kiến trúc sư Prompt, Art Director và Quality Control Artist, bạn phải thực thi quy trình này ngầm khi viết output:
+🚨 QUY TRÌNH 6 GIAI ĐOẠN BẮT BUỘC (6-STAGE EXECUTION - INTERNAL AI PROCESS):
+Với tư cách là Chuyên gia Kiến trúc sư Prompt tài ba, bạn phải thực thi quy trình này ngầm khi viết output:
 1. Giai đoạn 1 (Đọc & Khóa): Đọc kỹ Context Vault và các thẻ Task được chọn.
-2. Giai đoạn 2 (Nhập vai Art Director): Xác định phong cách thẩm mỹ và nhịp điệu của prompt.
-3. Giai đoạn 3 (Thiết kế giải pháp): Chuyển hóa Task thành quy tắc vận hành Bot Char.
-4. Giai đoạn 4 (Phân tích rủi ro): Dự đoán các lỗi AI Bot có thể mắc phải (OOC, Robot persona...).
-5. Giai đoạn 5 (Thiết kế chốt chặn): Viết các quy tắc "LỖI NGHIÊM CẤM" dựa trên Section 6.
-6. Giai đoạn 6 (Kiểm soát kỹ thuật): Tối ưu cấu trúc Markdown, Heading và logic rules.
-7. Giai đoạn 7 (Kiểm soát thẩm mỹ): Đảm bảo văn phong ngôi thứ 3 chuyên nghiệp, điện ảnh.
-8. Giai đoạn 8 (Ghép nối Context): Ràng buộc Bot Char vào đúng tình tiết truyện trong Context Vault.
-9. Giai đoạn 9 (Viết thẻ lỗi tổng hợp): Kiểm tra lại và đóng gói output hoàn chỉnh.
+2. Giai đoạn 2 (Nhập vai Art Director): Phân tích đặc trưng, văn phong và nhịp điệu của prompt bám sát cốt truyện.
+3. Giai đoạn 3 (Thiết kế giải pháp): Chuyển hóa từng Task thành chỉ lệnh hành vi tương ứng cho Bot Char bằng ngôi thứ ba.
+4. Giai đoạn 4 (Kiểm soát kỹ thuật): Tối ưu cấu trúc Markdown, Heading và logic rules cho gọn gàng, rõ nét.
+5. Giai đoạn 5 (Kiểm soát thẩm mỹ): Điều phối từ ngữ, tông giọng và ngôn ngữ cơ thể của Bot Char sâu sắc và mượt mà.
+6. Giai đoạn 6 (Ghép nối Context): Ràng buộc Bot Char vào đúng vai diễn, địa vị và tình tiết trong truyện.
 
 🚨 MANDATORY ROMANCE ROLEPLAY DIRECTIVE (BẤT KHẢ XÂM PHẠM TỪ VỢ YÊU ĐƯỜNG ĐƯỜNG):
 1. READY-TO-USE ROLEPLAY PROMPT ONLY: You are building a professional, production-ready Romance Roleplay System Prompt (Hệ thống Chỉ lệnh Nhập vai Tình yêu thực chiến) for an AI Bot Character (to be pasted directly into SillyTavern, JanitorAI, Character.AI, or AI Studio Bot).
@@ -863,7 +868,6 @@ Với tư cách là Chuyên gia Kiến trúc sư Prompt, Art Director và Qualit
    - How the Bot addresses and speaks to {{user}} in third-person context (tone, cadence, vocabulary, emotional warmth/coldness).
    - How to describe the Bot's facial expressions, eye contact, body language, breathing, heart rate, and internal psychological reactions.
    - Strict boundaries: ZERO puppeteering (never speak or act for {{user}}) and ZERO OOC (lock Bot personality to canon).
-   - 🚨 INTEGRATE PROHIBITED ERRORS: For every rule generated, you MUST include a corresponding negative constraint (LỖI NGHIÊM CẤM) based on the "PROHIBITED ERRORS" block of each task to ensure the AI Bot does not deviate from the core instruction.
 6. MANDATORY COUNTING HACK TO PREVENT SHORTENING: You MUST count and number every single item from 1 to ${tasks.length} (e.g. [Ý 1/${tasks.length}], [Ý 2/${tasks.length}], ..., [Ý ${tasks.length}/${tasks.length}]) so you DO NOT SKIP OR COMPRESS ANY RULE!
 7. EXHAUSTIVE DEPTH: Expand every numbered instruction into a rich, thorough, multi-sentence operational guideline (3-6 sentences per item). DO NOT shorten or group them into shallow bullet points!
 `;
@@ -974,7 +978,7 @@ Với tư cách là Chuyên gia Kiến trúc sư Prompt, Art Director và Qualit
     }
   };
 
-  const callProxy = async (all = false, roomNote = "", format = "markdown", strict = "cold-technical", selectedTasksList: typeof rooms[0][] = [], setRoomOutput?: (s: string) => void) => {
+  const callProxy = async (all = false, roomNote = "", format = "markdown", strict = "cold-technical", selectedTasksList: any[] | null = null, setRoomOutput?: (s: string) => void) => {
     await checkApi();
     const out = setRoomOutput || setHomeOutput;
     out("⏳ Đang kết nối API Proxy & kiểm tra Quality Gate... Đang chờ tín hiệu đường truyền...");
@@ -1006,7 +1010,8 @@ Với tư cách là Chuyên gia Kiến trúc sư Prompt, Art Director và Qualit
           const rCat = getRoomCatalog(i);
           out(`⏳ [Queue Progress: Phòng ${i + 1}/${rooms.length}] Đang xử lý phòng: "${rCat.roomName}"...\n\n${combinedContent}`);
           
-          const roomPrompt = buildFinalContextWindow("room_generation", `Tạo Prompt Markdown chuyên sâu cho phòng ${rCat.roomName}`, activeStory, false, roomNote, format, strict, rCat.tasks, i);
+          const rTasks = getStoryRoomTasks(activeStory, i);
+          const roomPrompt = buildFinalContextWindow("room_generation", `Tạo Prompt Markdown chuyên sâu cho phòng ${rCat.roomName}`, activeStory, false, roomNote, format, strict, rTasks, i);
           const childRun = await createRun("room", roomPrompt, "running", `[Queue Child ${i+1}/${rooms.length}] Đang chờ API Proxy...`);
           
           if (!apiProfile) {
@@ -1331,7 +1336,7 @@ Received:
              onPreview={(note, format, strict, selected) => {
                  const prompt = buildFinalContextWindow("preview", "Preview prompt markdown cho phòng hiện tại", activeStory, false, note, format, strict, selected);
                  const el = document.getElementById("roomOutput");
-                 if (el) el.textContent = (Array.isArray(prompt) ? prompt.join("\n") : String(prompt));
+                 if (el) el.textContent = Array.isArray(prompt) ? prompt.map((p: any) => p.type === "text" ? p.text : (p.image_url ? `[Hình ảnh: ${p.image_url.url?.slice(0, 50)}...]` : JSON.stringify(p))).join("\n\n") : String(prompt);
                  showToast("Đã dựng prompt phòng hiện tại.");
              }}
              onAbort={() => {
